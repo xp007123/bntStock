@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 import duckdb
+import pandas as pd
 import pyarrow.parquet as pq
 
 from . import versions
@@ -33,6 +34,11 @@ class _Snapshot:
     manifest: dict
     daily_meta: pq.FileMetaData
     row_groups: dict[str, list[int]]  # code -> daily.parquet 中的行组序号（导入时每只股票一个行组）
+    calendar: pd.DatetimeIndex        # 市场交易日（浦发、平安、茅台日期并集）
+
+    @property
+    def data_end(self) -> str:
+        return self.manifest["data_end"]
 
 
 def _index_row_groups(meta: pq.FileMetaData) -> dict[str, list[int]]:
@@ -68,11 +74,16 @@ class MarketStore:
                         con.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{file.as_posix()}')")
                 meta = pq.read_metadata(path / "daily.parquet")
                 old, self._con = self._con, con
+                calendar = pd.DatetimeIndex(pd.to_datetime(pq.read_table(path / "calendar.parquet")["date"].to_pandas()))
                 self._snapshot = _Snapshot(version_id, path, versions.read_manifest(self.market_dir, version_id),
-                                           meta, _index_row_groups(meta))
+                                           meta, _index_row_groups(meta), calendar)
                 if old is not None:
                     old.close()
             return self._snapshot, self._con.cursor()
+
+    def snapshot(self) -> _Snapshot:
+        """当前行情版本（供研究引擎使用；同一任务全程固定在这个版本上）。"""
+        return self._current()[0]
 
     def version(self) -> dict:
         snap, _ = self._current()

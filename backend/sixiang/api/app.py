@@ -5,26 +5,39 @@
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..config import Settings, load_settings
 from ..data.store import MarketStore
-from .routes import market
+from ..research.jobs import JobManager
+from .routes import market, patterns
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
-    app = FastAPI(title="四象智投", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+    market_store = MarketStore(settings.market_dir)
+    jobs = JobManager(settings.data_dir / "research" / "jobs", market_store)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        yield
+        jobs.shutdown()
+
+    app = FastAPI(title="四象智投", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)
     app.state.settings = settings
-    app.state.market = MarketStore(settings.market_dir)
+    app.state.market = market_store
+    app.state.jobs = jobs
 
     @app.get("/api/health", tags=["system"])
     def health():
         return {"status": "ok"}
 
     app.include_router(market.router)
+    app.include_router(patterns.router)
 
     dist = settings.frontend_dist
     if (dist / "index.html").exists():

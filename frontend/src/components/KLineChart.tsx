@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts/core'
 import { BarChart, CandlestickChart, LineChart } from 'echarts/charts'
-import { AxisPointerComponent, DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components'
+import { AxisPointerComponent, DataZoomComponent, GridComponent, MarkPointComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { Bar } from '../api/client'
 import { sma } from '../lib/indicators'
 import { fmtBig, fmtPct, fmtPrice } from '../lib/format'
 import './KLineChart.css'
 
-echarts.use([CandlestickChart, BarChart, LineChart, GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent, CanvasRenderer])
+echarts.use([CandlestickChart, BarChart, LineChart, GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent, MarkPointComponent, CanvasRenderer])
 
 const MA = [
   { n: 5, color: 'var(--series-1)', hex: '#2a78d6' },
@@ -17,10 +17,19 @@ const MA = [
 ]
 const C = { up: '#d23b33', down: '#1e8a4c', grid: '#e4e6df', axis: '#7b8179', surface: '#ffffff', ink: '#272b28' }
 
-type Props = { bars: Bar[]; height?: number; showVolume?: boolean; ariaLabel: string }
+type Props = {
+  bars: Bar[]
+  height?: number
+  showVolume?: boolean
+  ariaLabel: string
+  /** 需要标注的日期（如形态入选日） */
+  marks?: string[]
+  /** 初始视图对准的日期 */
+  focus?: string
+}
 
 /** 日 K 线：红涨（空心）绿跌（实心），MA5/10/20，成交量。悬停显示当日数值。 */
-export default function KLineChart({ bars, height = 420, showVolume = true, ariaLabel }: Props) {
+export default function KLineChart({ bars, height = 420, showVolume = true, ariaLabel, marks, focus }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const chart = useRef<echarts.ECharts>()
 
@@ -41,7 +50,21 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
     if (!chart.current) return
     const dates = bars.map(b => b.date)
     const isUp = (b: Bar) => b.close >= b.open
-    const start = bars.length > 120 ? 100 - (120 / bars.length) * 100 : 0
+    let start = bars.length > 120 ? 100 - (120 / bars.length) * 100 : 0
+    let end = 100
+    const fi = focus ? dates.indexOf(focus) : -1
+    if (fi >= 0 && bars.length > 120) {
+      // 入选日放在视图偏左，右侧留出之后的走势
+      const lo = Math.max(0, Math.min(fi - 60, bars.length - 120))
+      start = (lo / bars.length) * 100
+      end = ((lo + 120) / bars.length) * 100
+    }
+    const markSet = new Set(marks ?? [])
+    const markData = bars.flatMap((b, i) => markSet.has(b.date) ? [{
+      coord: [i, b.high], value: b.date === focus ? '入选' : '',
+      itemStyle: { color: b.date === focus ? '#e65336' : '#e6533699' },
+      symbolSize: b.date === focus ? 30 : 14,
+    }] : [])
     const priceGrid = showVolume ? { left: 8, right: 56, top: 12, height: '64%' } : { left: 8, right: 56, top: 12, bottom: 48 }
     chart.current.setOption({
       animation: false,
@@ -72,13 +95,17 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
         ...(showVolume ? [{ gridIndex: 1, position: 'right', splitNumber: 2, axisLabel: { show: false }, splitLine: { show: false }, axisLine: { show: false } }] : []),
       ],
       dataZoom: [
-        { type: 'inside', xAxisIndex: showVolume ? [0, 1] : [0], start, end: 100 },
-        { type: 'slider', xAxisIndex: showVolume ? [0, 1] : [0], start, end: 100, height: 18, bottom: 4, borderColor: C.grid, showDetail: false },
+        { type: 'inside', xAxisIndex: showVolume ? [0, 1] : [0], start, end },
+        { type: 'slider', xAxisIndex: showVolume ? [0, 1] : [0], start, end, height: 18, bottom: 4, borderColor: C.grid, showDetail: false },
       ],
       series: [
         {
           type: 'candlestick', name: 'K', data: bars.map(b => [b.open, b.close, b.low, b.high]),
           itemStyle: { color: C.surface, color0: C.down, borderColor: C.up, borderColor0: C.down, borderWidth: 1 },
+          markPoint: markData.length ? {
+            symbol: 'pin', symbolOffset: [0, -4], data: markData,
+            label: { color: '#fff', fontSize: 10 }, animation: false, tooltip: { show: false },
+          } : undefined,
         },
         ...MA.map((m, k) => ({
           type: 'line', name: `MA${m.n}`, data: series.ma[k], showSymbol: false, smooth: false,
@@ -90,7 +117,7 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
         }] : []),
       ],
     }, true)
-  }, [bars, series, showVolume])
+  }, [bars, series, showVolume, marks, focus])
 
   const last = bars.length - 1
   return (
