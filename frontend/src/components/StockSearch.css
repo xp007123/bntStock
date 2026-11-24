@@ -1,0 +1,41 @@
+.stock-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 320px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+.stock-search:focus-within { border-color: var(--line-strong); }
+.stock-search input { flex: 1; border: 0; outline: none; background: transparent; min-width: 0; }
+.stock-search-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px #3344221a;
+  max-height: 360px;
+  overflow: auto;
+}
+.stock-search-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.stock-search-list li .muted { grid-column: 1 / -1; font-size: 12px; }
+.stock-search-list li.active { background: var(--accent-soft); }
+.stock-search-list li.empty { cursor: default; color: var(--muted); display: block; }

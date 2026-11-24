@@ -1,0 +1,53 @@
+.home {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 12px 0 24px;
+  text-align: center;
+}
+.home-pet { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.home-caption { font-size: 12px; letter-spacing: 2px; color: #979c90; }
+.home h1 { font-size: 34px; font-weight: 500; letter-spacing: 2px; line-height: 1.5; color: #343b30; margin-top: 10px; }
+.home-lede { color: #8a9083; letter-spacing: .5px; margin: 8px 0 30px; }
+
+.composer {
+  border: 1px solid #dfe2d9;
+  border-radius: 19px;
+  background: var(--surface);
+  padding: 16px 18px 12px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+.composer:focus-within { border-color: var(--line-strong); }
+.composer textarea { width: 100%; border: 0; outline: none; resize: none; background: transparent; font-size: 15px; }
+.composer-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 12px; }
+.send {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.suggestions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; text-align: left; }
+.suggestions button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-align: left;
+  transition: border-color .2s, transform .2s;
+}
+.suggestions button:hover { border-color: #e6533666; transform: translateY(-1px); }
+.s-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); margin-bottom: 8px; }
+.suggestions strong { display: block; font-size: 14px; }
+.suggestions p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.home-foot { margin-top: 36px; font-size: 11px; letter-spacing: 1px; color: var(--faint); }
+
+@media (max-width: 700px) {
+  .suggestions { grid-template-columns: 1fr; }
+  .home h1 { font-size: 26px; }
+}

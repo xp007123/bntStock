@@ -1,0 +1,34 @@
+/* 四象智投设计变量（沿用旧版 ResearchHome 暖色设计，见 docs/产品与架构说明 6.1） */
+:root {
+  color-scheme: light;
+  --bg: #fafaf8;
+  --side: #f0f1ed;
+  --surface: #ffffff;
+  --line: #e4e6df;
+  --line-strong: #d6d9cf;
+  --ink: #272b28;
+  --ink-2: #4a5048;
+  --muted: #7b8179;
+  --faint: #afb4a5;
+
+  /* 主色只用于可交互元素；数据里的红色一律表示涨 */
+  --accent: #e65336;
+  --accent-ink: #ffffff;
+  --accent-soft: #fbede7;
+
+  /* 行情：红涨绿跌 */
+  --up: #d23b33;
+  --down: #1e8a4c;
+  --flat: #948e83;
+
+  /* 指标线（已校验色盲区分；黄色对比度低，必须配文字标签） */
+  --series-1: #2a78d6;
+  --series-2: #eda100;
+  --series-3: #6250d6;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 12px #33442203, 0 14px 35px #33442203;
+  --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>四象智投 · 视觉风格样板</title>
+<link rel="stylesheet" href="xiaosi.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>四象智投</div>
+  <nav aria-label="主导航">
+    <a class="on" href="#">问小四</a><a href="#">个股看盘</a><a href="#">形态测试</a><a href="#">研究记录</a><a href="#">全 A 行情</a>
+  </nav>
+  <div class="data-badge" title="当前数据版本"><span class="dot"></span>日线截至 2026-11-18 · v0</div>
+</header>
+
+<main class="layout">
+  <section class="chat" aria-label="小四对话">
+    <div class="hello">
+      <div class="xiaosi" id="xiaosi" aria-hidden="true"></div>
+      <span class="pet-caption">你的投研伙伴</span>
+      <h1>我是小四，有什么能帮到你？</h1><p>说出你的判断，我带团队用历史数据算给你看。</p>
+    </div>
+    <div class="chips"><button>问个股：这只票能涨吗</button><button>问期权：这个费率值不值</button><button>问方法：缩量回踩灵不灵</button></div>
+
+    <div class="msg user"><p>比亚迪，3 个月平值看涨，期权费 7.5%，值不值得买？</p></div>
+
+    <div class="msg bot">
+      <div class="card confirm">
+        <div class="card-h">先确认一下我的理解</div>
+        <dl>
+          <dt>标的</dt><dd>002594 比亚迪</dd>
+          <dt>结构</dt><dd>100% 平值看涨（100c）</dd>
+          <dt>期限</dt><dd>3 个月，约 63 个交易日</dd>
+          <dt>费率</dt><dd>7.5%，即到期涨幅超过 7.5% 才回本</dd>
+        </dl>
+        <div class="row"><button class="btn primary">确认，开始分析</button><button class="btn">修改条件</button></div>
+        <p class="confirmed">✓ 已确认 · 11-24 10:32</p>
+      </div>
+    </div>
+
+    <div class="msg bot">
+      <div class="card team">
+        <div class="card-h">研究团队 <span class="muted">4 / 4 完成 · 用时 38 秒</span></div>
+        <ul>
+          <li><span class="st ok" aria-label="完成">✓</span><b>走势与概率</b><span>63 日收益分布，样本 4,312 个交易日</span><code>return_distribution · v0 · 截至 11-18</code></li>
+          <li><span class="st ok" aria-label="完成">✓</span><b>基本面与估值</b><span>PE 处于近 5 年 38% 分位</span><code>fundamentals.valuation · 截至 11-18</code></li>
+          <li><span class="st ok" aria-label="完成">✓</span><b>事件与风险</b><span>期限内有年报披露；无大额解禁</span><code>lockup.schedule · news.search</code></li>
+          <li><span class="st ok" aria-label="完成">✓</span><b>市场环境</b><span>大盘处于震荡区间，板块强于大盘</span><code>market.regime · 截至 11-18</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="msg bot">
+      <div class="card result">
+        <div class="card-h">结论 <span class="tag">示意数据</span></div>
+        <div class="stats">
+          <div class="stat"><span>回本概率</span><b>31%</b><small>无条件基准 28%</small></div>
+          <div class="stat"><span>期望净收益</span><b class="down">−1.2%</b><small>占本金，已扣期权费</small></div>
+          <div class="stat"><span>最差 10% 情形</span><b class="down">−7.5%</b><small>损失全部期权费</small></div>
+        </div>
+        <figure class="chart">
+          <figcaption>比亚迪历史上任意 63 个交易日的涨跌幅分布</figcaption>
+          <div class="legend"><span><i class="sw loss"></i>下跌</span><span><i class="sw flat"></i>上涨但未回本</span><span><i class="sw gain"></i>超过 7.5%，期权盈利</span></div>
+          <div class="hist" id="hist"></div>
+        </figure>
+        <p class="say">小四：按历史统计，这个费率略贵。回本概率比无条件基准高 3 个点，主要来自板块走强；但期限内有年报，波动可能放大。数字来自上面的工具结果，不构成买卖建议。</p>
+        <div class="settle">⏳ 已冻结此判断，2027-02-24 到期后自动结算并对照</div>
+      </div>
+    </div>
+
+    <form class="composer" onsubmit="return false"><textarea rows="1" placeholder="继续追问，或换一只股票…"></textarea><button class="btn primary" aria-label="发送">↑</button></form>
+  </section>
+
+  <aside class="side" aria-label="证据">
+    <div class="card">
+      <div class="card-h">002594 比亚迪 <span class="muted">日 K · 近 80 日</span></div>
+      <div class="kline" id="kline"></div>
+      <div class="kv"><span>收盘</span><b class="up">286.40</b><span>涨跌</span><b class="up">+1.82%</b><span>20 日波动率</span><b>31.6%</b></div>
+    </div>
+    <div class="card">
+      <div class="card-h">期限内事件</div>
+      <ul class="events"><li><time>2027-01 下旬</time>年报预告窗口</li><li><time>2027-02</time>无大额限售解禁</li></ul>
+    </div>
+    <div class="card note"><b>样板说明</b><p>本页只用于比较视觉风格，所有行情和统计均为示意数据。小四形象复用旧版四象智投组件。</p></div>
+  </aside>
+</main>
+<div class="tip" id="tip" role="status"></div>
+<script src="sample.js"></script>
+<script src="xiaosi.js"></script>
+</body>
+</html>

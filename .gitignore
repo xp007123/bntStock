@@ -1,0 +1,23 @@
+# 数据与运行时
+/data/
+*.parquet
+*.duckdb
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# 本地
+.env
+.DS_Store
+
+# 日志
+*.log

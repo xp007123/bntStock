@@ -1,0 +1,92 @@
+/* 四象智投暖色设计（沿用旧版 ResearchHome 设计变量） */
+:root{
+  color-scheme:light;
+  --bg:#fafaf8;--side:#f0f1ed;--surface:#fff;--line:#e4e6df;--ink:#272b28;--ink-2:#4a5048;--muted:#7b8179;
+  --accent:#e65336;--accent-ink:#fff;--accent-soft:#fbede7;
+  --up:#d23b33;--down:#1e8a4c;--flat:#948e83;
+  --radius:16px;--shadow:0 4px 12px #33442203,0 14px 35px #33442203;--head-font:Inter,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 Inter,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;transition:background .2s,color .2s}
+button,textarea{font:inherit;color:inherit}
+.muted{color:var(--muted);font-weight:400;font-size:12px}
+
+
+.top{display:flex;align-items:center;gap:28px;padding:0 28px;height:56px;border-bottom:1px solid var(--line);background:var(--side)}
+.brand{display:flex;align-items:center;gap:10px;font:600 17px/1 var(--head-font);letter-spacing:.06em}
+.logo{display:grid;grid-template-columns:repeat(2,8px);gap:3px}
+.logo i{width:8px;height:8px;border-radius:2px;background:var(--accent)}
+.logo i:nth-child(2),.logo i:nth-child(3){opacity:.45}
+nav{display:flex;gap:4px}
+nav a{color:var(--ink-2);text-decoration:none;padding:6px 12px;border-radius:var(--radius)}
+nav a:hover{background:var(--accent-soft)}
+nav a.on{color:var(--ink);background:var(--surface);font-weight:600;box-shadow:0 0 0 1px var(--line)}
+.data-badge{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--down)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;max-width:1180px;margin:0 auto;padding:28px}
+.chat{display:flex;flex-direction:column;gap:14px;min-width:0}
+.hello{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:8px 0 4px}
+.xiaosi{width:96px;height:96px}
+.pet-caption{font-size:12px;letter-spacing:2px;color:#979c90}
+.hello h1{font-size:30px;font-weight:500;letter-spacing:2px;line-height:1.5;color:#343b30;margin:6px 0 0}
+.hello p{margin:4px 0 0;color:var(--muted)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chips button{border:1px solid var(--line);background:var(--surface);padding:6px 14px;border-radius:999px;cursor:pointer;color:var(--ink-2)}
+.chips button:hover{border-color:var(--accent);color:var(--accent)}
+
+.msg{display:flex}
+.msg.user{justify-content:flex-end}
+.msg.user p{margin:0;background:var(--accent-soft);color:var(--ink);padding:10px 16px;border-radius:var(--radius) var(--radius) 4px var(--radius);max-width:70%}
+.msg.bot .card{width:100%}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+.card-h{font:600 15px/1.4 var(--head-font);margin-bottom:10px;display:flex;align-items:baseline;gap:8px;justify-content:space-between}
+.tag{font-size:11px;line-height:1;font-weight:400;padding:3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+
+.confirm dl{display:grid;grid-template-columns:56px 1fr;gap:4px 12px;margin:0 0 12px}
+.confirm dt{color:var(--muted)}.confirm dd{margin:0}
+.row{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 14px;border-radius:var(--radius);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.confirmed{margin:10px 0 0;font-size:12px;color:var(--muted)}
+
+.team ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.team li{display:grid;grid-template-columns:22px 96px 1fr;gap:2px 10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}
+.team li:first-child{border-top:0}
+.team code{grid-column:3;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--muted)}
+.st{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:11px;background:var(--accent-soft);color:var(--accent)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.stat{padding:10px 12px;border-radius:var(--radius);background:var(--bg)}
+.stat span{display:block;font-size:12px;color:var(--muted)}
+.stat b{display:block;font:600 26px/1.3 var(--head-font);font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:12px}
+.up{color:var(--up)}.down{color:var(--down)}
+.chart{margin:0}
+.chart figcaption{font-size:13px;color:var(--ink-2);margin-bottom:4px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.legend span{display:flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.sw.loss{background:var(--down)}.sw.flat{background:var(--flat)}.sw.gain{background:var(--up)}
+.hist,.kline{width:100%}
+.hist svg,.kline svg{display:block;width:100%;height:auto;overflow:visible}
+.axis{fill:var(--muted);font-size:11px}
+.grid{stroke:var(--line);stroke-width:1}
+.say{margin:14px 0 10px;padding:10px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 var(--radius) var(--radius) 0;color:var(--ink-2)}
+.settle{font-size:12px;color:var(--muted)}
+
+.composer{border-radius:19px!important;position:sticky;bottom:12px;display:flex;gap:8px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:calc(var(--radius) + 4px);padding:8px;box-shadow:var(--shadow)}
+.composer textarea{flex:1;border:0;background:transparent;resize:none;outline:none;padding:6px 8px}
+
+.side{display:flex;flex-direction:column;gap:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin-top:8px;font-size:13px}
+.kv span{color:var(--muted)}.kv b{text-align:right;font-variant-numeric:tabular-nums}
+.events{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13px}
+.events time{color:var(--muted);margin-right:8px}
+.note p{margin:6px 0 0;font-size:12px;color:var(--muted)}
+
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .1s;white-space:nowrap;z-index:9}
+.hit{fill:transparent;cursor:crosshair}
+
+@media (max-width:900px){.layout{grid-template-columns:1fr;padding:16px}.top{gap:12px;padding:0 12px;overflow-x:auto}.stats{grid-template-columns:1fr}.data-badge{display:none}}

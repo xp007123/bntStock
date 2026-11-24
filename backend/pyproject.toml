@@ -1,0 +1,26 @@
+[project]
+name = "sixiang"
+version = "0.1.0"
+description = "四象智投后端：行情数据、收益分布引擎、小四与 Agent 运行时"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "pyarrow>=16",
+  "duckdb>=1.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "httpx>=0.27"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sixiang*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
