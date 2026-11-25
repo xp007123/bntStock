@@ -18,6 +18,7 @@ export const METHOD_TABS = [
   { to: '/records', label: '我验证过的' },
 ]
 export const MARKET_TABS = [
+  { to: '/watch', label: '自选' },
   { to: '/stocks', label: '个股' },
   { to: '/market', label: '大盘' },
 ]

@@ -42,11 +42,11 @@ export default function HomePage() {
             <div className="hero-pet"><HomeResearchPet size={168} followPointer status={nod ? 'complete' : 'idle'} /></div>
             <AskPanel onPick={picked} />
           </section>
-          <WatchlistCard />
           <JobsCard />
         </div>
 
         <aside className="home-side stagger">
+          <WatchlistCard />
           <JudgmentsCard />
           <IndicesCard />
           <DataCard />

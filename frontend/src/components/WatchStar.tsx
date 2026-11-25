@@ -17,7 +17,7 @@ export default function WatchStar({ code }: { code: string }) {
     finally { setBusy(false) }
   }
   return (
-    <button className={`watch-star ${on ? 'on' : ''}`} aria-pressed={on} disabled={busy || !q.data} onClick={toggle} title={error || (on ? '从自选里拿掉' : '加到自选，首页每天能看到小四怎么看')}>
+    <button className={`watch-star ${on ? 'on' : ''}`} aria-pressed={on} disabled={busy || !q.data} onClick={toggle} title={error || (on ? '已在自选里（行情 → 自选 可以看全部），再点一下拿掉' : '加到自选：首页和“行情 → 自选”里每天能看到小四怎么看')}>
       <Star size={15} fill={on ? 'currentColor' : 'none'} />{error ? error : on ? '已自选' : '加自选'}
     </button>
   )
