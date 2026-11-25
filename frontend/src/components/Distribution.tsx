@@ -11,6 +11,8 @@ type Zone = { key: string; label: string; color: string }
 export default function Distribution({ stats, line, lineLabel }: { stats: DistStats; line?: number; lineLabel?: string }) {
   const [hover, setHover] = useState<number | null>(null)
   const [hoverZone, setHoverZone] = useState<string | null>(null)
+  // 触屏没有悬停：点一下就是“看这一档”，提示语跟着换
+  const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
   const zones: Zone[] = line != null
     ? [{ key: 'down', label: '跌了', color: 'var(--down)' }, { key: 'up_not_breakeven', label: '涨了，但没回本', color: 'var(--flat)' },
        { key: 'breakeven', label: '回本', color: 'var(--up)' }]
@@ -35,7 +37,7 @@ export default function Distribution({ stats, line, lineLabel }: { stats: DistSt
     <div className="dist">
       <div className="dist-zones" onMouseLeave={() => setHoverZone(null)}>
         {zones.map(z => (
-          <i key={z.key} className={focus && focus !== z.key ? 'dim' : ''} onMouseEnter={() => setHoverZone(z.key)}
+          <i key={z.key} className={focus && focus !== z.key ? 'dim' : ''} onMouseEnter={() => setHoverZone(z.key)} onClick={() => setHoverZone(z.key)}
              style={{ width: `${(stats.zones[z.key] ?? 0) * 100}%`, background: z.color }} />
         ))}
       </div>
@@ -49,7 +51,7 @@ export default function Distribution({ stats, line, lineLabel }: { stats: DistSt
       <div className="dist-chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="到期涨跌幅的分布" onMouseLeave={() => setHover(null)}>
           {bins.map((b, i) => (
-            <g key={i} onMouseEnter={() => setHover(i)}>
+            <g key={i} onMouseEnter={() => setHover(i)} onClick={() => setHover(i)}>
               {b.n > 0 && <rect className="dist-bar" x={x(b.from) + 1.5} y={y(b.n)} width={x(b.to) - x(b.from) - 3} height={y(0) - y(b.n)} rx={3}
                                 fill={colorOf(b)} opacity={barOpacity(i)} style={{ animationDelay: `${i * 14}ms` }} />}
               <rect x={x(b.from)} y={pt} width={x(b.to) - x(b.from)} height={H - pt - pb} fill="transparent" />
@@ -65,7 +67,7 @@ export default function Distribution({ stats, line, lineLabel }: { stats: DistSt
         <p className="dist-hover" aria-live="polite">
           {hb ? <>涨跌在 {Math.round(hb.from * 100)}% 到 {Math.round(hb.to * 100)}% 之间：<b className="num">{hb.n}</b> 次，占 {(hb.n / stats.n * 100).toFixed(1)}%</>
             : fz ? <>“{fz.label}”：{stats.n} 次里大约 <b className="num">{Math.round((stats.zones[fz.key] ?? 0) * stats.n)}</b> 次，占 {Math.round((stats.zones[fz.key] ?? 0) * 100)}%</>
-            : <>把鼠标放在柱子或上面的色条上看具体次数。超过 ±40%/+60% 的极端情况并入两端。</>}
+            : <>{touch ? '点一下' : '把鼠标放在'}柱子或上面的色条{touch ? '' : '上'}看具体次数。超过 ±40%/+60% 的极端情况并入两端。</>}
         </p>
       </div>
     </div>

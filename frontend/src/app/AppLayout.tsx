@@ -7,15 +7,15 @@ import StockSearch from '../components/StockSearch'
 import HomeResearchPet from '../components/xiaosi/HomeResearchPet'
 import './AppLayout.css'
 
-type Item = { to: string; label: string; icon: LucideIcon; match?: (path: string) => boolean }
+type Item = { to: string; label: string; short?: string; icon: LucideIcon; match?: (path: string) => boolean }
 const GROUPS: { title: string; items: Item[] }[] = [
   { title: '问', items: [
     { to: '/', label: '问小四', icon: MessageCircle, match: p => p === '/' || p.startsWith('/ask') },
-    { to: '/judgments', label: '我的判断', icon: Stamp },
+    { to: '/judgments', label: '我的判断', short: '判断', icon: Stamp },
   ] },
   { title: '验证方法', items: [
     { to: '/patterns', label: '形态', icon: Shapes },
-    { to: '/records', label: '我的研究', icon: History },
+    { to: '/records', label: '我的研究', short: '研究', icon: History },
   ] },
   { title: '行情', items: [
     { to: '/stocks', label: '看盘', icon: CandlestickChart },
@@ -38,8 +38,8 @@ function UserMenu() {
   if (!me.data) return null
   return (
     <div className="user-menu">
-      {me.data.is_admin && <NavLink to="/admin" className="icon-link" title="管理后台"><Shield size={15} />管理</NavLink>}
-      <span className="user-chip"><i aria-hidden="true">{me.data.username.slice(0, 1).toUpperCase()}</i>{me.data.username}</span>
+      {me.data.is_admin && <NavLink to="/admin" className="icon-link" title="管理后台"><Shield size={15} /><span>管理</span></NavLink>}
+      <span className="user-chip" title={me.data.username}><i aria-hidden="true">{me.data.username.slice(0, 1).toUpperCase()}</i><span>{me.data.username}</span></span>
       <button className="icon-link" title="退出登录" aria-label="退出登录" onClick={async () => { await logout(); qc.clear(); navigate('/login', { replace: true }) }}>
         <LogOut size={15} />
       </button>
@@ -94,7 +94,7 @@ export default function AppLayout() {
                 const active = n.match ? n.match(pathname) : pathname.startsWith(n.to)
                 return (
                   <NavLink key={n.to} to={n.to} className={active ? 'on' : ''} aria-current={active ? 'page' : undefined} title={n.label}>
-                    <n.icon size={17} /><span>{n.label}</span>
+                    <n.icon size={17} /><span className="nav-full">{n.label}</span><span className="nav-short">{n.short ?? n.label}</span>
                     {n.to === '/judgments' && sealed > 0 && <em key={bump} className={bump ? 'bump' : ''} title={`${sealed} 个判断封存中`}>{sealed}</em>}
                   </NavLink>
                 )
@@ -111,6 +111,7 @@ export default function AppLayout() {
 
       <div className="main">
         <header className="topbar">
+          <Link to="/" className="topbar-brand" aria-label="四象智投首页"><span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span></Link>
           <StockSearch onPick={c => navigate(`/stocks/${c}`)} placeholder="搜股票看 K 线：代码或名称，如 600519 / 茅台" />
           <UserMenu />
         </header>

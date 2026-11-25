@@ -42,6 +42,7 @@
 /* 第一行只放股票，第二行是整句话，不管屏幕多宽都这样排 */
 .ask-row { flex-basis: 100%; display: flex; }
 .ask-group { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ask-comma { font-style: normal; margin-left: -6px; }
 .ask-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 8px 0 18px; border-radius: var(--r-pill); background: var(--ink); color: var(--on-night); }
 .ask-chip b { font-weight: 600; }
 .ask-chip .num { font-size: 13px; font-weight: 400; color: var(--on-night-muted); }
@@ -98,5 +99,34 @@
   .hero-pet { display: none; }
   .hero-text h2 { font-size: 32px; }
   .ask-tabs span { display: none; }
+  .home-side { grid-template-columns: 1fr; }
+}
+
+/* ---- 手机端 ---- */
+@media (max-width: 760px) {
+  .home { gap: 16px; }
+  .home-hello h1 { font-size: 24px; }
+  .home-grid, .home-main, .home-side { gap: 12px; }
+  .home-hero { grid-template-columns: minmax(0, 1fr) auto; padding: 20px 16px 16px; border-radius: 24px; }
+  .hero-pet { display: block; margin-right: 0; align-self: start; }
+  .hero-pet .home-xiaosi { width: 76px !important; height: 76px !important; }
+  .hero-pet svg { width: 76px; height: 76px; }
+  .hero-text h2 { font-size: 28px; margin-top: 10px; }
+  .hero-text p { display: none; }
+  .ask-panel { margin-top: 18px; border-radius: 20px; padding: 6px; }
+  .ask-tabs button { padding: 10px 0; align-items: center; }
+  .ask-body { padding: 16px 10px 10px; gap: 14px; align-items: stretch; }
+  .ask-sentence { font-size: 16px; gap: 8px; }
+  .ask-sentence .stock-search { width: 100%; height: 46px; }
+  .ask-group { flex-wrap: wrap; white-space: normal; }
+  .ask-select { width: 100%; }
+  .ask-select button { flex: 1; }
+  /* 手机上一行放一段，逗号就不要了 */
+  .ask-comma { display: none; }
+  .ask-group { width: 100%; }
+  .ask-group:has(.ask-fee) { width: auto; }
+  .ask-select button { height: 40px; padding: 0 12px; font-size: 14px; }
+  .ask-go { width: 100%; }
+  .home-card { padding: 16px; }
   .home-side { grid-template-columns: 1fr; }
 }

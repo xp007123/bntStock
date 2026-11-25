@@ -38,3 +38,15 @@
   .stock-grid { grid-template-columns: 1fr; grid-template-areas: "main" "side" "fin"; }
   .stock-head { flex-direction: column; }
 }
+
+/* ---- 手机端 ---- */
+@media (max-width: 760px) {
+  .stock-grid { gap: 12px; }
+  .stock-main { padding: 16px; }
+  .stock-head { gap: 8px; }
+  .stock-head h1 { font-size: 22px; }
+  .quote b { font-size: 30px; }
+  .stock-controls { margin: 12px 0 8px; gap: 8px; }
+  .kline > div[role='img'] { height: 340px !important; }
+  .kline-legend { flex-wrap: wrap; gap: 6px; }
+}

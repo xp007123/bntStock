@@ -23,3 +23,10 @@
 .dist-line { animation: line-drop .4s .55s var(--ease) both; }
 @keyframes line-drop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .dist-bar, .dist-line { animation: none; } }
+
+@media (max-width: 760px) {
+  .dist-zone-labels { font-size: 11px; }
+  .dist-zone-labels b { display: block; font-size: 16px; margin: 0; }
+  .dist-axis { font-size: 24px; }
+  .dist-line-label { font-size: 26px; }
+}

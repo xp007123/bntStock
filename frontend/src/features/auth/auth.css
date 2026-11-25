@@ -47,3 +47,20 @@
   .asks { grid-template-columns: 1fr; }
   .side { padding: 24px 8px; }
 }
+
+/* ---- 手机端：先看到一句话和小四，马上就是登录 ---- */
+@media (max-width: 760px) {
+  .landing { padding: 8px; gap: 8px; min-height: 100dvh; }
+  .story { padding: 20px 20px 24px; border-radius: 24px; }
+  .hero { margin: 0; padding: 20px 0 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 8px; }
+  .hero-xiaosi { grid-column: 2; grid-row: 2; margin: 0; }
+  .hero-xiaosi .home-xiaosi, .hero-xiaosi svg { width: 84px !important; height: 84px !important; }
+  .hero-kicker { grid-column: 1 / -1; margin-bottom: 10px; font-size: 12px; }
+  .hero h1 { grid-column: 1; grid-row: 2; font-size: 40px; }
+  .hero .lede, .asks, .story footer { display: none; }
+  .side { padding: 0; gap: 16px; justify-content: flex-start; }
+  .auth-card { width: 100%; padding: 22px 18px 20px; border-radius: 24px; }
+  .auth-card h2 { font-size: 22px; margin-bottom: 14px; }
+  .auth-form input { height: 48px; }
+  .keeper { padding: 4px 8px 16px; }
+}

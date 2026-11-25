@@ -58,12 +58,12 @@ export default function AskPanel({ onPick }: { onPick?: () => void }) {
               <span className="ask-select">
                 {horizons.map(o => <button key={o.value} aria-pressed={h === o.value} onClick={() => setH(o.value)}>{o.label.trim()}</button>)}
               </span>
-              {tab === 'option' ? '的平值看涨，' : '，'}
+              {tab === 'option' && '的平值看涨'}<i className="ask-comma">，</i>
             </span>
             {tab === 'option' ? (
               <>
                 <span className="ask-group">期权费
-                  <span className="ask-fee"><input inputMode="decimal" value={fee} onChange={e => setFee(e.target.value)} aria-label="期权费（%）" />%</span>，
+                  <span className="ask-fee"><input inputMode="decimal" value={fee} onChange={e => setFee(e.target.value)} aria-label="期权费（%）" />%</span><i className="ask-comma">，</i>
                 </span>
                 <span>值不值？</span>
               </>

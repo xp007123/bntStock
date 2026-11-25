@@ -159,3 +159,22 @@ table { font-variant-numeric: tabular-nums; }
 .progress.live { animation: hatch-drift 5s linear infinite; }
 @keyframes hatch-drift { to { background-position: 9.9px 0, 0 0; } }
 @media (prefers-reduced-motion: reduce) { .progress.live { animation: none; } }
+
+/* ---- 手机端通用 ---- */
+@media (max-width: 760px) {
+  /* 输入框不小于 16px，iPhone 上点进去不会自动放大页面 */
+  input, select, textarea { font-size: 16px !important; }
+  /* 手指点得准：按钮和分段选择至少 40 高 */
+  .btn { min-height: 40px; padding: 8px 16px; }
+  .btn.lg { height: 48px; }
+  .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { min-height: 36px; padding: 4px 14px; flex-shrink: 0; }
+  .card { padding: 16px; border-radius: 18px; }
+  .page-head h1, .pt-head h1 { font-size: 24px; }
+  .table-wrap { margin: 0 -16px; padding: 0 16px; -webkit-overflow-scrolling: touch; }
+}
+/* 触屏没有悬停：不让卡片“抬起来”停在那儿 */
+@media (hover: none) {
+  .tpl-card:hover, .index-card:hover, .jd-list li a:hover { transform: none; box-shadow: var(--shadow); }
+}

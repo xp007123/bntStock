@@ -151,3 +151,28 @@
   .pt-entries, .stat-tiles, .cmp-heads { grid-template-columns: 1fr; }
   .run-bar { flex-direction: column; align-items: stretch; }
 }
+
+/* ---- 手机端 ---- */
+@media (max-width: 760px) {
+  .pt-layout, .pt-new, .pt-report { gap: 14px; }
+  .pt-entries { gap: 8px; margin-bottom: 14px; }
+  .pt-entry { padding: 12px 14px; border-radius: 18px; }
+  .tpl-grid { grid-template-columns: 1fr; gap: 8px; }
+  .tpl-card { padding: 14px 16px; border-radius: 18px; }
+  .stat-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .stat-tiles div { padding: 12px; border-radius: 16px; }
+  .stat-tiles b { font-size: 20px; }
+  .stat-tiles small { font-size: 11px; line-height: 1.5; }
+  .cond-list li { align-items: flex-start; }
+  .param-grid { grid-template-columns: 1fr 1fr; }
+  input[type='number'] { max-width: none; }
+  .run-bar { padding: 14px; }
+  .run-bar .btn { width: 100%; }
+  .toolbar .btn { flex: 1; }
+  .my-patterns li { flex-wrap: wrap; padding: 12px 14px; }
+  .my-patterns li > div { flex-basis: 100%; }
+  .module-grid { grid-template-columns: 1fr; }
+  .picked-head input { width: 100%; }
+  .case-sort { flex-wrap: wrap; }
+  .winbar { width: 44px; margin-right: 6px; }
+}

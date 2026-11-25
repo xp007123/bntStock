@@ -12,3 +12,8 @@
 .sync-kv { display: grid; grid-template-columns: 80px 1fr; gap: 6px 12px; font-size: 13px; margin: 0 0 14px; }
 .sync-kv dt { color: var(--muted); }
 .sync-kv dd { margin: 0; color: var(--ink); }
+
+@media (max-width: 760px) {
+  .admin { gap: 14px; }
+  .admin-table { min-width: 620px; }
+}

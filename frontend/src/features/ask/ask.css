@@ -82,3 +82,30 @@
 .seal-flyer { position: fixed; z-index: 50; background: var(--accent); box-shadow: var(--glow); pointer-events: none; }
 .ask-kept { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; animation-delay: .3s; }
 .ask-keep.done { background: linear-gradient(160deg, var(--accent-soft), var(--surface) 75%); }
+
+/* ---- 手机端：把右栏拆开，按“结论 → 小四说 → 关键数 → 分布 → 封存 → 证据”的顺序排 ---- */
+@media (max-width: 760px) {
+  .ask-doc { gap: 16px; }
+  .ask-question { font-size: 22px; }
+  .ask-terms { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+  .ask-terms::-webkit-scrollbar { display: none; }
+  .ask-terms > span { flex-shrink: 0; white-space: nowrap; }
+  .ask-grid { display: flex; flex-direction: column; gap: 12px; }
+  .ask-main, .ask-rail { display: contents; }
+  .ask-main > .verdict { order: 1; }
+  .ask-rail > .ask-voice { order: 2; }
+  .ask-main > .ask-facts { order: 3; }
+  .ask-main > .ask-section:nth-of-type(2) { order: 4; }
+  .ask-rail > .ask-keep { order: 5; }
+  .ask-main > .ask-section:nth-of-type(3) { order: 6; }
+  .ask-main > .ask-method { order: 7; }
+  .ask-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ask-facts div { padding: 12px 12px 14px; border-radius: 16px; }
+  .ask-facts b { font-size: 22px; }
+  .ask-facts small { font-size: 11px; line-height: 1.5; }
+  .ask-section { padding: 18px 16px; }
+  .ask-section h2 { font-size: 16px; margin-bottom: 14px; }
+  .ask-voice { padding: 16px; }
+  .ask-keep { padding: 20px 16px 16px; }
+  .ask-blank { padding-top: 72px; }
+}

@@ -84,3 +84,32 @@
 /* 列表里还没点开看过的到期判断 */
 .jd-due { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); box-shadow: var(--glow); }
 @media (prefers-reduced-motion: reduce) { .jd-cover, .jd-line { transition: none; } }
+
+/* ---- 手机端 ---- */
+@media (max-width: 760px) {
+  .jd, .jd-detail { gap: 14px; }
+  .jd-record { padding: 16px; gap: 12px; }
+  .jd-record-n b { font-size: 36px; }
+  .jd-record-bars > div { grid-template-columns: minmax(0, 1fr) 48px; gap: 4px 10px; }
+  .jd-record-bars span { grid-column: 1 / -1; }
+  .jd-empty { flex-direction: column; align-items: flex-start; gap: 16px; padding: 20px 16px; }
+  .jd-list li a { grid-template-columns: auto minmax(0, 1fr); gap: 10px 14px; padding: 14px 16px; }
+  .jd-side { grid-column: 1 / -1; }
+  .jd-go { display: none; }
+  .jd-main b { font-size: 15px; }
+  .jd-top { gap: 12px; padding-right: 4px; }
+  .jd-top .seal { --size: 60px !important; }
+  .jd-top h1 { font-size: 24px; }
+  .jd-q { font-size: 14px; }
+  /* 当时 和 实际 仍然并排：这是这一页的全部意思 */
+  .jd-vs { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .jd-vs > div, .jd-cover { padding: 14px 14px 16px; border-radius: 20px; }
+  .jd-vs span { font-size: 12px; }
+  .jd-vs b { font-size: 40px; line-height: 1.25; }
+  .jd-then b i { font-size: 20px; }
+  .jd-vs small { font-size: 11px; line-height: 1.5; }
+  .jd-voice { grid-template-columns: 44px 1fr; gap: 10px; }
+  .jd-voice .home-xiaosi, .jd-voice svg { width: 44px !important; height: 44px !important; }
+  .jd-voice p { font-size: 14px; }
+  .jd-path .dist-axis { font-size: 20px; }
+}

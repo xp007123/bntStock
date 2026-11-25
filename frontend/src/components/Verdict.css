@@ -37,3 +37,14 @@
 .verdict-figure, .verdict-dots, .verdict-plain { transition: opacity var(--t) var(--ease); }
 .verdict.pending .verdict-figure, .verdict.pending .verdict-dots, .verdict.pending .verdict-plain { opacity: .45; }
 .verdict-dots .grid i { transition: background var(--t) var(--ease); }
+
+@media (max-width: 760px) {
+  .verdict { padding: 20px 18px 22px; border-radius: 24px; gap: 10px 0; }
+  .verdict-figure { font-size: 88px; }
+  .verdict-figure small { font-size: 34px; }
+  .verdict-dots { padding: 6px 0 0; gap: 14px; }
+  .verdict-dots .grid { grid-template-columns: repeat(10, 8px); gap: 4px; }
+  .verdict-dots .grid i { width: 8px; height: 8px; }
+  .verdict-plain { margin-top: 10px; padding-top: 16px; font-size: 17px; }
+  .verdict-tag { font-size: 12px; padding: 3px 10px; }
+}
