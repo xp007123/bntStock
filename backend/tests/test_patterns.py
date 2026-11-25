@@ -13,7 +13,7 @@ from sixiang.config import Settings
 from sixiang.data.baseline_import import import_baseline
 from sixiang.patterns.rules import TEMPLATES, RuleError, comparison, evaluate, validate_rule
 
-from .conftest import write_daily
+from .conftest import login_as_admin, write_daily
 
 LATEST = "2026-11-18"
 
@@ -64,7 +64,9 @@ def client(tmp_path: Path) -> TestClient:
     import_baseline(src, data / "market", "v-test", workers=1, log=lambda *_: None)
     app = create_app(Settings(data_dir=data, frontend_dist=tmp_path / "none"))
     app.state.jobs.workers = 1
-    return TestClient(app)
+    c = TestClient(app)
+    login_as_admin(c)
+    return c
 
 
 RULE = {"name": "收阳线", "min_bars": 60, "cooldown": 0, "horizons": [1, 5],
@@ -106,3 +108,49 @@ def test_job_flow(client: TestClient):
 
 def test_unknown_job_404(client: TestClient):
     assert client.get("/api/patterns/jobs/nope").status_code == 404
+
+
+RULE2 = {"name": "收阳且放量", "min_bars": 60, "cooldown": 0, "horizons": [1, 5], "conditions": [
+    {"label": "收阳", "left": {"field": "close"}, "op": ">", "right": {"field": "open"}},
+    {"label": "自定义放量", "left": {"field": "volume"}, "op": ">", "right": {"fn": "mul", "x": {"fn": "lag", "x": {"fn": "sma", "x": {"field": "volume"}, "n": 7}, "n": 1}, "y": 0.5}}]}
+
+
+def test_variant_compare_library(client: TestClient):
+    base = client.post("/api/patterns/jobs", json={"rule": RULE2}).json()
+    assert base["library_save"]["conditions_added"] == 1   # “收阳”已在内置条件库，只保存自定义放量
+    assert _wait(client, base["id"])["status"] == "completed"
+
+    # 去掉第 2 条：新研究记录变更来源
+    v = client.post(f"/api/patterns/jobs/{base['id']}/variant", json={"action": "remove", "index": 1}).json()
+    assert v["comparison_base"] == base["id"] and v["comparison_change"]["action"] == "remove"
+    assert len(v["rule"]["conditions"]) == 1 and "去掉「自定义放量」" in v["name"]
+    assert _wait(client, v["id"])["status"] == "completed"
+
+    # 增加已存在的条件被拒绝；增加库里的新条件可以
+    dup = client.post(f"/api/patterns/jobs/{base['id']}/variant", json={"action": "add", "condition": RULE2["conditions"][0]})
+    assert dup.status_code == 422
+    lib = client.get("/api/patterns/library").json()
+    assert lib["categories"] and len(lib["modules"]) >= 20
+    assert [c["name"] for c in lib["conditions"]] == ["自定义放量"]
+    assert next(p for p in lib["patterns"] if p["name"] == "收阳且放量")["last_job"] == base["id"]
+    rsi = next(m for m in lib["modules"] if m["key"] == "rsi")
+    added = client.post(f"/api/patterns/jobs/{base['id']}/variant", json={"action": "add", "condition": rsi["condition"]}).json()
+    assert len(added["rule"]["conditions"]) == 3
+
+    cmp = client.get("/api/patterns/compare", params={"left": base["id"], "right": v["id"]}).json()
+    assert cmp["comparable"] and [c["label"] for c in cmp["only_left"]] == ["自定义放量"] and cmp["only_right"] == []
+    assert cmp["overlap"]["only_right"] == 0                      # 去掉条件后事件只多不少
+    assert cmp["overlap"]["common"] + cmp["overlap"]["only_left"] == cmp["left"]["events"]
+    assert cmp["right"]["events"] >= cmp["left"]["events"]
+
+    worst = client.get(f"/api/patterns/jobs/{v['id']}/events", params={"sort": "worst", "horizon": 5, "limit": 3}).json()["items"]
+    best = client.get(f"/api/patterns/jobs/{v['id']}/events", params={"sort": "best", "horizon": 5, "limit": 3}).json()["items"]
+    assert worst[0]["returns"]["5"] <= best[0]["returns"]["5"]
+    assert client.get(f"/api/patterns/jobs/{v['id']}/events", params={"sort": "typical", "horizon": 5}).json()["total"] > 0
+
+    # 同一数据版本上重跑会复用原结果
+    assert client.post(f"/api/patterns/jobs/{base['id']}/rerun").json()["id"] == base["id"]
+
+    pid = lib["patterns"][0]["id"]
+    assert client.post(f"/api/patterns/library/patterns/{pid}/remove").status_code == 200
+    assert client.post(f"/api/patterns/library/patterns/{pid}/remove").status_code == 404

@@ -1,21 +1,71 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message) }
+  constructor(public status: number, message: string, public field?: string) { super(message) }
 }
 
-async function get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+/** 会话失效（401）时的全局处理，由应用设置为跳转登录页。 */
+let onUnauthorized: (() => void) | null = null
+export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn }
+
+async function request<T>(method: 'GET' | 'POST', path: string, params?: Record<string, string | number | undefined>, body?: unknown): Promise<T> {
   const query = params
     ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()
     : ''
-  const res = await fetch(`/api${path}${query}`)
+  const res = await fetch(`/api${path}${query}`, {
+    method,
+    credentials: 'same-origin',
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
   if (!res.ok) {
-    let detail = res.statusText
-    try { detail = (await res.json()).detail ?? detail } catch { /* 非 JSON 错误体 */ }
-    throw new ApiError(res.status, detail)
+    let message = res.statusText
+    let field: string | undefined
+    try {
+      const detail = (await res.json()).detail
+      if (typeof detail === 'string') message = detail
+      else if (detail?.message) { message = detail.message; field = detail.field }
+    } catch { /* 非 JSON 错误体 */ }
+    if (res.status === 401 && !path.startsWith('/auth/')) onUnauthorized?.()
+    throw new ApiError(res.status, message, field)
   }
   return res.json() as Promise<T>
 }
+
+const get = <T,>(path: string, params?: Record<string, string | number | undefined>) => request<T>('GET', path, params)
+const post = <T,>(path: string, body: unknown) => request<T>('POST', path, undefined, body)
+
+// ---------------------------------------------------------------- 账号
+
+export type Me = { id: number; username: string; phone: string; status: string; is_admin: boolean }
+
+export const useMe = () =>
+  useQuery({ queryKey: ['me'], queryFn: () => get<Me>('/auth/me'), retry: false, staleTime: 5 * 60_000 })
+
+export const login = (account: string, password: string) => post<Me>('/auth/login', { account, password })
+export const register = (body: { username: string; phone: string; password: string; confirm: string }) =>
+  post<{ status: string; message: string }>('/auth/register', body)
+export const logout = () => post<{ ok: boolean }>('/auth/logout', {})
+
+export type AdminUser = {
+  id: number; username: string; phone: string; status: 'pending' | 'active' | 'rejected' | 'disabled'; is_admin: boolean
+  created_at: string; reviewed_at: string | null; review_note: string | null; last_login_at: string | null
+}
+export const useAdminUsers = (status?: string) =>
+  useQuery({ queryKey: ['admin-users', status], queryFn: () => get<{ counts: Record<string, number>; items: AdminUser[] }>('/admin/users', { status }) })
+export const setUserStatus = (id: number, status: 'active' | 'rejected' | 'disabled', note?: string) =>
+  post<Me>(`/admin/users/${id}/status`, { status, note })
+export const resetUserPassword = (id: number, password: string) => post<{ ok: boolean }>(`/admin/users/${id}/password`, { password })
+
+export type SyncStatus = {
+  state: 'never' | 'running' | 'ok' | 'check_failed' | 'error' | 'busy'
+  schedule: string | null; started_at?: string; finished_at?: string; message?: string
+  result?: { status: string; id?: string; data_end?: string; counts?: Record<string, number>; elapsed?: number }
+}
+export const useSyncStatus = () =>
+  useQuery({ queryKey: ['sync-status'], queryFn: () => get<SyncStatus>('/admin/data/sync-status'),
+             refetchInterval: q => (q.state.data?.state === 'running' ? 3000 : false) })
+export const runSync = () => post<{ state: string }>('/admin/data/sync', {})
 
 export type DataVersion = {
   id: string
@@ -109,6 +159,10 @@ export type Job = {
   rule: Rule
   rule_hash: string
   reused?: boolean
+  comparison_base?: string
+  comparison_change?: { action: 'add' | 'remove'; index?: number; condition: Condition }
+  rerun_of?: string
+  library_save?: { conditions_added: number; warnings: string[] }
 }
 export type JobListItem = Omit<Job, 'rule'> & { conditions: number }
 export type SummaryRow = {
@@ -125,16 +179,6 @@ export type StudyResult = {
   method: string; reference: string; limitations: string[]
 }
 export type Explain = { code: string; signal_dates: string[]; date: string; conditions: Reason[]; eligible: boolean; passed: boolean }
-
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-  if (!res.ok) {
-    let detail = res.statusText
-    try { detail = (await res.json()).detail ?? detail } catch { /* 非 JSON 错误体 */ }
-    throw new ApiError(res.status, detail)
-  }
-  return res.json() as Promise<T>
-}
 
 export const useTemplates = () =>
   useQuery({ queryKey: ['pattern-templates'], queryFn: () => get<Templates>('/patterns/templates'), staleTime: Infinity })
@@ -157,7 +201,8 @@ export const useJob = (id: string) =>
 export const useJobResult = (id: string, enabled: boolean) =>
   useQuery({ queryKey: ['pattern-result', id], queryFn: () => get<StudyResult>(`/patterns/jobs/${id}/result`), enabled, staleTime: Infinity })
 
-export const useJobEvents = (id: string, page: number, sort: 'date' | 'return', horizon: number, pageSize = 20) =>
+export type EventSort = 'date' | 'typical' | 'best' | 'worst'
+export const useJobEvents = (id: string, page: number, sort: EventSort, horizon: number, pageSize = 20) =>
   useQuery({
     queryKey: ['pattern-events', id, page, sort, horizon],
     queryFn: () => get<{ total: number; items: StudyEvent[] }>(`/patterns/jobs/${id}/events`, { offset: page * pageSize, limit: pageSize, sort, horizon }),
@@ -176,3 +221,32 @@ export const useExplain = (id: string, code: string | null, date?: string) =>
 
 export const submitJob = (rule: Rule) => post<Job>('/patterns/jobs', { rule })
 export const cancelJob = (id: string) => post<Job>(`/patterns/jobs/${id}/cancel`, {})
+
+// ---------------------------------------------------------------- 增减条件、对比、条件库
+
+export type LibraryModule = { key: string; name: string; category: string; condition: Condition; note: string; aliases: string[] }
+export type Library = {
+  categories: string[]
+  modules: LibraryModule[]
+  conditions: { id: number; name: string; condition: Condition; source_job: string | null }[]
+  patterns: { id: number; name: string; rule: Rule; last_job: string | null; updated_at: string }[]
+}
+export const useLibrary = () => useQuery({ queryKey: ['pattern-library'], queryFn: () => get<Library>('/patterns/library') })
+export const removeLibraryItem = (kind: 'conditions' | 'patterns', id: number) => post<Library>(`/patterns/library/${kind}/${id}/remove`, {})
+
+export type VariantChange = { action: 'remove'; index: number } | { action: 'add'; condition: Condition }
+export const variantJob = (id: string, change: VariantChange) => post<Job>(`/patterns/jobs/${id}/variant`, change)
+export const rerunJob = (id: string) => post<Job>(`/patterns/jobs/${id}/rerun`, {})
+
+export type CompareSide = {
+  id: string; name: string; rule: Rule; data_version: string; data_end: string; summary: SummaryRow[]; years: YearRow[]
+  events: number; stocks: number; selected: number; change?: Job['comparison_change']
+}
+export type Comparison = {
+  left: CompareSide; right: CompareSide; comparable: boolean; differences: string[]
+  common_conditions: Condition[]; only_left: Condition[]; only_right: Condition[]
+  overlap: { common: number; only_left: number; only_right: number }; note: string
+}
+export const useCompare = (left: string, right: string) =>
+  useQuery({ queryKey: ['pattern-compare', left, right], queryFn: () => get<Comparison>('/patterns/compare', { left, right }),
+             enabled: !!left && !!right, retry: false, staleTime: Infinity })

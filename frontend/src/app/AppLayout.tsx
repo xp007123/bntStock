@@ -1,5 +1,7 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { useDataVersion } from '../api/client'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { LogOut, Shield } from 'lucide-react'
+import { logout, useDataVersion, useMe } from '../api/client'
 import './AppLayout.css'
 
 const NAV = [
@@ -21,6 +23,22 @@ function DataBadge() {
   )
 }
 
+function UserMenu() {
+  const me = useMe()
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  if (!me.data) return null
+  return (
+    <div className="user-menu">
+      {me.data.is_admin && <NavLink to="/admin" className="icon-link" title="管理后台"><Shield size={15} />管理</NavLink>}
+      <span className="user-name">{me.data.username}</span>
+      <button className="icon-link" title="退出登录" onClick={async () => { await logout(); qc.clear(); navigate('/login', { replace: true }) }}>
+        <LogOut size={15} />退出
+      </button>
+    </div>
+  )
+}
+
 export default function AppLayout() {
   return (
     <div className="app">
@@ -33,6 +51,7 @@ export default function AppLayout() {
           {NAV.map(n => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}</NavLink>)}
         </nav>
         <DataBadge />
+        <UserMenu />
       </header>
       <main className="page"><Outlet /></main>
     </div>

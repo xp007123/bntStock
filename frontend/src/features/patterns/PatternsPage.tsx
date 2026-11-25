@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MessageCircle, Shapes } from 'lucide-react'
-import { useJobs, useTemplates } from '../../api/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { MessageCircle, Play, Shapes, Trash2 } from 'lucide-react'
+import { ApiError, removeLibraryItem, submitJob, useJobs, useLibrary, useTemplates } from '../../api/client'
 import JobList from './JobList'
 import './patterns.css'
 
@@ -34,6 +36,7 @@ export default function PatternsPage() {
             ))}
           </div>
         )}
+        <MyPatterns />
       </section>
 
       <aside className="card pt-records">
@@ -42,5 +45,37 @@ export default function PatternsPage() {
         <Link to="/records" className="muted pt-more">全部研究记录</Link>
       </aside>
     </div>
+  )
+}
+
+/** 我的形态：提交过的整套规则自动保存，可一键用最新数据再运行。 */
+function MyPatterns() {
+  const library = useLibrary()
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  const [error, setError] = useState('')
+  const items = library.data?.patterns ?? []
+  if (!items.length) return null
+  return (
+    <section className="my-patterns">
+      <h2>我的形态 <span className="muted">{items.length} 套 · 提交研究时自动保存</span></h2>
+      {error && <p className="state error">{error}</p>}
+      <ul>
+        {items.map(p => (
+          <li key={p.id}>
+            <div><b>{p.name}</b><span className="muted">{p.rule.conditions.length} 个条件 · 最近 {p.updated_at.slice(0, 10)}</span></div>
+            {p.last_job && <Link className="muted" to={`/patterns/jobs/${p.last_job}`}>上次结果</Link>}
+            <button className="btn" onClick={async () => {
+              setError('')
+              try { navigate(`/patterns/jobs/${(await submitJob(p.rule)).id}`) } catch (e) { setError(e instanceof ApiError ? e.message : String(e)) }
+            }}><Play size={14} />运行</button>
+            <button className="btn" aria-label={`删除 ${p.name}`} onClick={async () => {
+              if (!window.confirm(`从我的形态中删除「${p.name}」？已有研究记录不受影响。`)) return
+              qc.setQueryData(['pattern-library'], await removeLibraryItem('patterns', p.id))
+            }}><Trash2 size={14} /></button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

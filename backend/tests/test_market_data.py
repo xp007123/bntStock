@@ -11,6 +11,8 @@ from sixiang.data import versions
 from sixiang.data.baseline_import import import_baseline
 from sixiang.data.patternlab_csv import RejectedFile, read_daily
 
+from .conftest import login_as_admin
+
 
 def test_adj_factor_follows_prev_close(source: Path):
     parsed = read_daily(source / "daily" / "sz000001.csv")
@@ -32,7 +34,9 @@ def test_drops_bad_prefix_before_2007(source: Path):
 def client(source: Path, tmp_path: Path) -> TestClient:
     data_dir = tmp_path / "data"
     import_baseline(source, data_dir / "market", "v-test", workers=1, log=lambda *_: None)
-    return TestClient(create_app(Settings(data_dir=data_dir, frontend_dist=tmp_path / "no-dist")))
+    c = TestClient(create_app(Settings(data_dir=data_dir, frontend_dist=tmp_path / "no-dist")))
+    login_as_admin(c)
+    return c
 
 
 def test_version_and_manifest(client: TestClient):
@@ -77,4 +81,5 @@ def test_indices(client: TestClient):
 
 def test_no_version_returns_503(tmp_path: Path):
     c = TestClient(create_app(Settings(data_dir=tmp_path / "empty", frontend_dist=tmp_path / "x")))
+    login_as_admin(c)
     assert c.get("/api/data/version").status_code == 503

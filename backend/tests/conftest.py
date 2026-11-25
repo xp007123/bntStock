@@ -47,3 +47,10 @@ def source(tmp_path: Path) -> Path:
          "2026-11-17,3500,3520,3490,3510,1e11,1e8,sh000001\n"
          "2026-11-18,3510,3530,3500,3521.1,1e11,1e8,sh000001\n").encode("gbk"))
     return src
+
+
+def login_as_admin(client, username: str = "管理员", phone: str = "13800000000", password: str = "admin123") -> None:
+    """在测试应用中创建管理员并登录（会话 Cookie 留在 client 上）。"""
+    client.app.state.auth.register(username, phone, password, password, status="active", is_admin=True)
+    r = client.post("/api/auth/login", json={"account": username, "password": password})
+    assert r.status_code == 200, r.text

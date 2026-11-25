@@ -74,3 +74,7 @@ a { color: inherit; }
   color: var(--muted);
 }
 .state.error { color: var(--up); }
+
+.brand-mark { display: grid; grid-template-columns: repeat(2, 8px); gap: 3px; }
+.brand-mark i { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+.brand-mark i:nth-child(2), .brand-mark i:nth-child(3) { opacity: .45; }

@@ -74,20 +74,21 @@ class JobManager:
             self._jobs[meta["id"]] = meta
 
     # ---------------------------------------------------------- 提交
-    def submit(self, raw: dict, context: dict | None = None) -> dict:
+    def submit(self, raw: dict, owner: int | None = None, context: dict | None = None) -> dict:
         snap = self.market.snapshot()
         rule = validate_rule(raw, snap.data_end)
         digest = rule_hash(rule)
         with self._lock:
             for m in sorted(self._jobs.values(), key=lambda j: j["created"], reverse=True):
-                if m["rule_hash"] == digest and m["data_version"] == snap.version_id and m["status"] in ("completed", *ACTIVE):
+                if (m["rule_hash"] == digest and m["data_version"] == snap.version_id and m.get("owner") == owner
+                        and m["status"] in ("completed", *ACTIVE)):
                     return {**m, "reused": True}
             jid = uuid.uuid4().hex[:12]
             (self.root / jid).mkdir()
             meta = {"id": jid, "name": rule["name"], "status": "queued", "progress": 0.0, "done": 0, "total": 0,
                     "selected_count": 0, "event_count": 0, "message": "排队等待",
                     "created": time.strftime("%Y-%m-%d %H:%M:%S"), "rule": rule, "rule_hash": digest,
-                    "data_version": snap.version_id, "data_end": snap.data_end, **(context or {})}
+                    "data_version": snap.version_id, "data_end": snap.data_end, "owner": owner, **(context or {})}
             self._jobs[jid] = meta
             _save(self.root / jid / "meta.json", meta)
         self._executor.submit(self._run, jid)
@@ -133,9 +134,11 @@ class JobManager:
                 raise KeyError(jid)
             return json.loads(json.dumps(_clean(self._jobs[jid])))
 
-    def list(self) -> list[dict]:
+    def list(self, owner: int | None = None) -> list[dict]:
+        """owner 为 None 时返回全部（管理员）；否则只返回该用户的研究。"""
         with self._lock:
-            items = [{k: v for k, v in m.items() if k != "rule"} | {"conditions": len(m["rule"]["conditions"])} for m in self._jobs.values()]
+            items = [{k: v for k, v in m.items() if k != "rule"} | {"conditions": len(m["rule"]["conditions"])}
+                     for m in self._jobs.values() if owner is None or m.get("owner") == owner]
         return sorted(_clean(items), key=lambda j: j["created"], reverse=True)
 
     def cancel(self, jid: str) -> dict:

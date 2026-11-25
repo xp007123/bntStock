@@ -8,7 +8,7 @@
 
 - 产品与架构说明：[docs/产品与架构说明-V1.md](docs/产品与架构说明-V1.md)
 
-当前状态：M1 进行中。已完成行情快照与接口、首页、个股看盘、指数概览、形态测试（与 PatternLab 全市场对数一致）、研究记录。
+当前状态：M1 进行中。已完成行情快照与接口、首页、个股看盘、指数概览、形态测试（与 PatternLab 全市场对数一致，含增减条件与对比）、研究记录、登录与后台审核、iFinD 每日同步。
 
 ## 目录
 
@@ -34,6 +34,12 @@ python -m venv .venv
 
 ```powershell
 .\.venv\Scripts\python -m sixiang.data.baseline_import --source <PatternLab>\app\runtime\data-store\snapshots\baseline-bundled-20261118
+```
+
+创建管理员（交互输入密码）；之后其他用户在登录页注册，由管理员在“管理”页审核：
+
+```powershell
+.\.venv\Scripts\python -m sixiang.auth.cli create-admin --username 你的用户名 --phone 你的手机号
 ```
 
 启动后端（http://127.0.0.1:8000，接口文档 /api/docs）：
@@ -66,4 +72,4 @@ iFinD 增量同步（凭证写在仓库根目录 `.env`，不入库）：
 .\.venv\Scripts\python -m sixiang.data.ifind_sync
 ```
 
-环境变量（可写在 `.env`）：`SIXIANG_DATA_DIR`（默认 `data/`）、`SIXIANG_FRONTEND_DIST`（默认 `frontend/dist`）、`SIXIANG_IFIND_REFRESH_TOKEN`（iFinD 凭证）、`SIXIANG_SYNC_AT`（如 `17:30`，启用每日自动同步）。
+环境变量（可写在 `.env`）：`SIXIANG_DATA_DIR`（默认 `data/`）、`SIXIANG_FRONTEND_DIST`（默认 `frontend/dist`）、`SIXIANG_IFIND_REFRESH_TOKEN`（iFinD 凭证）、`SIXIANG_SYNC_AT`（如 `17:30`，启用每日自动同步）、`SIXIANG_DATABASE_URL`（默认 SQLite `data/app.db`）、`SIXIANG_COOKIE_SECURE=1`（HTTPS 部署时开启）。

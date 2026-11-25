@@ -12,6 +12,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class Settings:
     data_dir: Path
     frontend_dist: Path
+    database_url: str = ""
+
+    def db_url(self) -> str:
+        return self.database_url or f"sqlite:///{(self.data_dir / 'app.db').as_posix()}"
 
     @property
     def market_dir(self) -> Path:
@@ -33,4 +37,4 @@ def load_settings() -> Settings:
     load_dotenv()
     data_dir = Path(os.environ.get("SIXIANG_DATA_DIR", REPO_ROOT / "data")).resolve()
     dist = Path(os.environ.get("SIXIANG_FRONTEND_DIST", REPO_ROOT / "frontend" / "dist")).resolve()
-    return Settings(data_dir=data_dir, frontend_dist=dist)
+    return Settings(data_dir=data_dir, frontend_dist=dist, database_url=os.environ.get("SIXIANG_DATABASE_URL", ""))

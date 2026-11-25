@@ -1,5 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import AppLayout from './AppLayout'
+import RequireAuth from './RequireAuth'
+import LoginPage from '../features/auth/LoginPage'
+import AdminPage from '../features/admin/AdminPage'
 import HomePage from '../features/home/HomePage'
 import StockPage, { DEFAULT_STOCK } from '../features/stocks/StockPage'
 import MarketPage from '../features/market/MarketPage'
@@ -7,10 +10,12 @@ import RecordsPage from '../features/records/RecordsPage'
 import PatternsPage from '../features/patterns/PatternsPage'
 import NewPatternPage from '../features/patterns/NewPatternPage'
 import JobPage from '../features/patterns/JobPage'
+import ComparePage from '../features/patterns/ComparePage'
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
-    element: <AppLayout />,
+    element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'stocks', element: <Navigate to={`/stocks/${DEFAULT_STOCK}`} replace /> },
@@ -18,8 +23,10 @@ export const router = createBrowserRouter([
       { path: 'patterns', element: <PatternsPage /> },
       { path: 'patterns/new/:index', element: <NewPatternPage /> },
       { path: 'patterns/jobs/:id', element: <JobPage /> },
+      { path: 'patterns/compare', element: <ComparePage /> },
       { path: 'records', element: <RecordsPage /> },
       { path: 'market', element: <MarketPage /> },
+      { path: 'admin', element: <RequireAuth admin><AdminPage /></RequireAuth> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

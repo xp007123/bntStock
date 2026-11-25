@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
-import { cancelJob, type Job, type StudyResult, useJob, useJobEvents, useJobResult } from '../../api/client'
+import { ArrowLeft, GitCompare, RefreshCw, SlidersHorizontal } from 'lucide-react'
+import { ApiError, cancelJob, type EventSort, type Job, rerunJob, type StudyResult, useDataVersion, useJob, useJobEvents, useJobResult, useJobs } from '../../api/client'
 import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import { conditionText } from './ruleText'
 import { STATUS } from './JobList'
 import YearChart from './YearChart'
 import CaseViewer from './CaseViewer'
+import VariantPanel from './VariantPanel'
 import './patterns.css'
 
 type Case = { code: string; name: string; date: string }
@@ -30,9 +31,78 @@ export default function JobPage() {
           {job.data.elapsed != null && <> · 用时 {job.data.elapsed} 秒</>}
         </p>
       </header>
+      <Lineage job={job.data} />
       <Conditions job={job.data} />
+      {done && <Toolbar job={job.data} />}
       {done ? (result.data ? <Report job={job.data} result={result.data} /> : <div className="state">读取结果…</div>) : <Progress job={job.data} />}
     </div>
+  )
+}
+
+/** 由“增减一条条件”或“重跑”生成的研究，标明来源并提供对比入口。 */
+function Lineage({ job }: { job: Job }) {
+  if (job.comparison_base && job.comparison_change) {
+    const ch = job.comparison_change
+    return (
+      <p className="lineage">
+        基于 <Link to={`/patterns/jobs/${job.comparison_base}`}>原研究</Link>{ch.action === 'remove' ? '去掉' : '增加'}了一条条件「{ch.condition.label}」
+        {job.status === 'completed' && <> · <Link to={`/patterns/compare?left=${job.comparison_base}&right=${job.id}`}>与原研究对比</Link></>}
+      </p>
+    )
+  }
+  if (job.rerun_of && job.rerun_of !== job.id) {
+    return <p className="lineage">用最新数据重跑自 <Link to={`/patterns/jobs/${job.rerun_of}`}>原研究</Link>（数据截至 {job.data_end}）</p>
+  }
+  return null
+}
+
+function Toolbar({ job }: { job: Job }) {
+  const [panel, setPanel] = useState<'variant' | 'compare' | null>(null)
+  const [error, setError] = useState('')
+  const version = useDataVersion()
+  const jobs = useJobs()
+  const navigate = useNavigate()
+  const stale = !!version.data && version.data.id !== job.data_version
+  const others = (jobs.data ?? []).filter(j => j.status === 'completed' && j.id !== job.id)
+  const rerun = async () => {
+    setError('')
+    try { navigate(`/patterns/jobs/${(await rerunJob(job.id)).id}`) } catch (e) { setError(e instanceof ApiError ? e.message : String(e)) }
+  }
+  return (
+    <>
+      <div className="toolbar">
+        {stale ? (
+          <span className="stale-note">数据已更新到 {version.data?.data_end}，这条研究用的是旧数据。</span>
+        ) : (
+          <button className="btn" aria-pressed={panel === 'variant'} onClick={() => setPanel(p => (p === 'variant' ? null : 'variant'))}>
+            <SlidersHorizontal size={15} />增减一条条件
+          </button>
+        )}
+        <button className="btn" aria-pressed={panel === 'compare'} onClick={() => setPanel(p => (p === 'compare' ? null : 'compare'))}>
+          <GitCompare size={15} />与其他研究对比
+        </button>
+        {stale && <button className="btn primary" onClick={rerun}><RefreshCw size={15} />用最新数据重跑</button>}
+        {error && <span className="state error">{error}</span>}
+      </div>
+      {panel === 'variant' && <VariantPanel job={job} onClose={() => setPanel(null)} />}
+      {panel === 'compare' && (
+        <section className="card">
+          <div className="card-title">选择对比的研究 <span className="muted">当前研究作为 A</span></div>
+          {others.length === 0 ? <p className="muted">还没有其他已完成的研究。</p> : (
+            <ul className="job-list">
+              {others.map(o => (
+                <li key={o.id}><Link to={`/patterns/compare?left=${job.id}&right=${o.id}`}>
+                  <div className="job-line"><b>{o.name}</b><span className="muted">{o.event_count.toLocaleString()} 个事件</span></div>
+                  <div className="muted job-meta">
+                    {o.created.slice(5, 16)} · {o.conditions} 个条件 · 数据 {o.data_end}{o.data_version !== job.data_version ? '（数据版本不同）' : ''}
+                  </div>
+                </Link></li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </>
   )
 }
 
@@ -149,22 +219,28 @@ function Report({ job, result }: { job: Job; result: StudyResult }) {
 
 function Events({ job, horizons, onOpen }: { job: Job; horizons: number[]; onOpen: (c: Case) => void }) {
   const [page, setPage] = useState(0)
-  const [sort, setSort] = useState<'date' | 'return'>('date')
+  const [sort, setSort] = useState<EventSort>('date')
   const [horizon, setHorizon] = useState(horizons.includes(10) ? 10 : horizons[0])
   const size = 20
   const events = useJobEvents(job.id, page, sort, horizon, size)
   const total = events.data?.total ?? 0
+  const SORTS: { id: EventSort; label: string }[] = [{ id: 'date', label: '最近' }, { id: 'typical', label: '典型' }, { id: 'best', label: '最好' }, { id: 'worst', label: '最差' }]
   return (
     <section className="card">
       <div className="card-title">
         历史案例 <span className="muted">{total.toLocaleString()} 个</span>
-        <div className="seg" role="group" aria-label="排序">
-          <button aria-pressed={sort === 'date'} onClick={() => { setSort('date'); setPage(0) }}>最近</button>
-          {horizons.map(h => (
-            <button key={h} aria-pressed={sort === 'return' && horizon === h} onClick={() => { setSort('return'); setHorizon(h); setPage(0) }}>{h} 日收益最高</button>
-          ))}
+        <div className="case-sort">
+          <div className="seg" role="group" aria-label="案例排序">
+            {SORTS.map(o => <button key={o.id} aria-pressed={sort === o.id} onClick={() => { setSort(o.id); setPage(0) }}>{o.label}</button>)}
+          </div>
+          {sort !== 'date' && (
+            <select aria-label="按哪个持有期挑选" value={horizon} onChange={e => { setHorizon(Number(e.target.value)); setPage(0) }}>
+              {horizons.map(h => <option key={h} value={h}>按 {h} 日收益</option>)}
+            </select>
+          )}
         </div>
       </div>
+      {sort === 'typical' && <p className="muted footnote">“典型”按 {horizon} 日收益最接近全体中位数排序，最能代表一般情况；“最好 / 最差”只用于核对形态，不代表全体。</p>}
       <div className="table-wrap">
         <table className="list-table">
           <thead><tr><th>入选日</th><th>股票</th><th>收盘</th>{horizons.map(h => <th key={h}>{h} 日</th>)}</tr></thead>
