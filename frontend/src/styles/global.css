@@ -46,7 +46,7 @@ a { color: inherit; }
 }
 .card-title .muted { font: 400 12px/1.5 var(--font); }
 
-/* 按钮：主按钮焦橙底墨黑字，每屏只放一个；次按钮白底细边；.dark 是墨黑实底 */
+/* 按钮：主按钮焦橙底白字，每屏只放一个；次按钮白底细边；.dark 是墨黑实底 */
 .btn {
   border: 1px solid var(--line-strong);
   background: var(--surface);

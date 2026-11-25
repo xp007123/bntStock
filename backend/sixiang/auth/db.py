@@ -1,10 +1,14 @@
 """业务数据库（账号与会话）。默认 SQLite，SIXIANG_DATABASE_URL 可切换到 PostgreSQL / MySQL。"""
 from __future__ import annotations
 
-from sqlalchemy import (Boolean, Column, DateTime, Integer, MetaData, String, Table, UniqueConstraint, create_engine, event)
+from sqlalchemy import (Boolean, Column, DateTime, Integer, MetaData, String, Table, Text, UniqueConstraint, create_engine, event)
+from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import Engine
 
 metadata = MetaData()
+
+# 长 JSON 字段：MySQL 的 VARCHAR 受行宽 65535 字节限制，用 MEDIUMTEXT；SQLite 里就是 TEXT
+LongText = Text().with_variant(mysql.MEDIUMTEXT(), "mysql")
 
 users = Table(
     "users", metadata,
@@ -32,7 +36,11 @@ sessions = Table(
 
 
 def make_engine(url: str) -> Engine:
-    engine = create_engine(url, future=True, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {})
+    if url.startswith("sqlite"):
+        engine = create_engine(url, future=True, connect_args={"check_same_thread": False})
+    else:
+        # MySQL 等服务端数据库：连接前探活，定期回收，避免 wait_timeout 断开后报错
+        engine = create_engine(url, future=True, pool_pre_ping=True, pool_recycle=1800)
     if url.startswith("sqlite"):
         @event.listens_for(engine, "connect")
         def _pragma(conn, _record):
@@ -50,7 +58,7 @@ user_conditions = Table(
     Column("user_id", Integer, nullable=False, index=True),
     Column("fingerprint", String(40), nullable=False),
     Column("name", String(120), nullable=False),
-    Column("condition_json", String(8000), nullable=False),
+    Column("condition_json", LongText, nullable=False),
     Column("source_job", String(20)),
     Column("created_at", DateTime(), nullable=False),
     UniqueConstraint("user_id", "fingerprint"),
@@ -62,7 +70,7 @@ user_patterns = Table(
     Column("user_id", Integer, nullable=False, index=True),
     Column("fingerprint", String(40), nullable=False),
     Column("name", String(120), nullable=False),
-    Column("rule_json", String(64000), nullable=False),
+    Column("rule_json", LongText, nullable=False),
     Column("last_job", String(20)),
     Column("updated_at", DateTime(), nullable=False),
     UniqueConstraint("user_id", "fingerprint"),
@@ -83,10 +91,10 @@ judgments = Table(
     Column("asof", String(10), nullable=False),             # 封存时的行情日期（以该日收盘为起点）
     Column("data_version", String(60), nullable=False),
     Column("question", String(200), nullable=False),
-    Column("prediction_json", String(8000), nullable=False),
+    Column("prediction_json", LongText, nullable=False),
     Column("status", String(12), nullable=False),           # sealed / settled
     Column("due_estimate", String(10), nullable=False),     # 按工作日估算的揭晓日（不含节假日）
-    Column("outcome_json", String(16000)),
+    Column("outcome_json", LongText),
     Column("created_at", DateTime(), nullable=False),
     Column("settled_at", DateTime()),
 )
