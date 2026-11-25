@@ -59,4 +59,11 @@ cd backend; .\.venv\Scripts\python -m pytest
 cd frontend; npm test; npm run typecheck
 ```
 
-环境变量：`SIXIANG_DATA_DIR`（默认 `data/`）、`SIXIANG_FRONTEND_DIST`（默认 `frontend/dist`）。
+iFinD 增量同步（凭证写在仓库根目录 `.env`，不入库）：
+
+```powershell
+.\.venv\Scripts\python -m sixiang.data.ifind_sync --dry-run
+.\.venv\Scripts\python -m sixiang.data.ifind_sync
+```
+
+环境变量（可写在 `.env`）：`SIXIANG_DATA_DIR`（默认 `data/`）、`SIXIANG_FRONTEND_DIST`（默认 `frontend/dist`）、`SIXIANG_IFIND_REFRESH_TOKEN`（iFinD 凭证）、`SIXIANG_SYNC_AT`（如 `17:30`，启用每日自动同步）。

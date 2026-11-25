@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -12,6 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..config import Settings, load_settings
+from ..data.scheduler import DailySync
 from ..data.store import MarketStore
 from ..research.jobs import JobManager
 from .routes import market, patterns
@@ -22,9 +24,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     market_store = MarketStore(settings.market_dir)
     jobs = JobManager(settings.data_dir / "research" / "jobs", market_store)
 
+    scheduler = DailySync(settings.market_dir, os.environ["SIXIANG_SYNC_AT"]) if os.environ.get("SIXIANG_SYNC_AT") else None
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        if scheduler:
+            scheduler.start()
         yield
+        if scheduler:
+            scheduler.stop()
         jobs.shutdown()
 
     app = FastAPI(title="四象智投", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)

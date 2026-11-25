@@ -29,6 +29,13 @@ def data_version(request: Request):
     return _guard(_store(request).version)
 
 
+@router.get("/data/sync-status")
+def sync_status(request: Request):
+    """最近一次行情同步的结果（只读；手动触发等管理操作在登录完成后提供）。"""
+    from ...data.scheduler import read_status
+    return read_status(request.app.state.settings.market_dir)
+
+
 @router.get("/securities")
 def search_securities(request: Request, q: str = "", limit: int = Query(20, ge=1, le=100)):
     return _guard(_store(request).search, q, limit)
