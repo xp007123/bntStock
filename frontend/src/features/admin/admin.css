@@ -1,13 +1,14 @@
 @import '../patterns/patterns.css';
 
-.admin { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
-.admin-msg { font-size: 13px; background: var(--accent-soft); border-radius: var(--radius); padding: 6px 10px; margin-bottom: 10px; }
-.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.admin-table th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
-.admin-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
-.admin-table b { font-weight: 500; margin-right: 6px; }
+.admin { display: flex; flex-direction: column; gap: 20px; max-width: 1080px; }
+.admin .pt-head { margin-bottom: 0; }
+.admin-msg { font-size: 13px; background: var(--accent-softer); border-radius: var(--r-sm); padding: 8px 14px; margin-bottom: 12px; color: var(--ink); }
+.admin-table th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line-strong); }
+.admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-table b { font-weight: 600; color: var(--ink); margin-right: 8px; }
 .admin-table .ops { display: flex; gap: 6px; }
-.admin-table .btn { padding: 3px 10px; font-size: 12px; }
-.sync-kv { display: grid; grid-template-columns: 80px 1fr; gap: 4px 12px; font-size: 13px; margin: 0 0 12px; }
+.admin-table .btn { padding: 3px 12px; font-size: 12px; box-shadow: none; }
+.sync-kv { display: grid; grid-template-columns: 80px 1fr; gap: 6px 12px; font-size: 13px; margin: 0 0 14px; }
 .sync-kv dt { color: var(--muted); }
-.sync-kv dd { margin: 0; }
+.sync-kv dd { margin: 0; color: var(--ink); }

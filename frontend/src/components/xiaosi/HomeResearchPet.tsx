@@ -11,8 +11,8 @@ const moments: { motion: string; poses: StateId[] }[] = [
 ]
 
 /** Homepage ambient personality. Actual task status always takes precedence. */
-export default function HomeResearchPet({ size = 164, status = 'idle', motion = true, onWink }: {
-  size?: number; status?: PetStatus; motion?: boolean; onWink?: () => void
+export default function HomeResearchPet({ size = 164, status = 'idle', motion = true, onWink, followPointer = false }: {
+  size?: number; status?: PetStatus; motion?: boolean; onWink?: () => void; followPointer?: boolean
 }) {
   const [step, setStep] = useState(0)
   const [active, setActive] = useState(false)
@@ -39,6 +39,6 @@ export default function HomeResearchPet({ size = 164, status = 'idle', motion = 
   }, [active, ambient, pose, step])
   return <span className={`home-xiaosi ${ambient ? `home-xiaosi-${moment.motion}` : ''} ${active ? '' : 'home-xiaosi-paused'}`}
     data-motion={ambient ? moment.motion : 'task'} style={{ width: size, height: size }}>
-    <span className="home-xiaosi-body"><ResearchPet frontFacing size={size} status={status} motion={active} followPointer={false} pose={ambient ? pose : undefined} /></span>
+    <span className="home-xiaosi-body"><ResearchPet frontFacing size={size} status={status} motion={active} followPointer={followPointer} pose={ambient ? pose : undefined} /></span>
   </span>
 }

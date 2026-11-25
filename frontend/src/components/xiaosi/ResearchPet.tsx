@@ -11,7 +11,7 @@ const states: Record<PetStatus, StateId> = {
 export const statusLabels: Record<PetStatus, string> = {
   idle: '随时开始', thinking: '正在理解问题', researching: '正在研究', waiting: '等待你的确认', complete: '研究已完成', error: '研究已暂停',
 }
-const ink = '#e65336'
+const ink = '#fb5e0d'
 const frontExpression = { ...EXPRESSIONS[0], gaze: { yaw: 0, pitch: 0, roll: 0 } }
 
 /** React adapter for the pinned bloub engine. Animation is driven only by UI status. */

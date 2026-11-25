@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { type Adjust, useDaily, useFinancials, useSecurity } from '../../api/client'
 import KLineChart from '../../components/KLineChart'
-import StockSearch from '../../components/StockSearch'
+import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import { dailyChange } from '../../lib/indicators'
 import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import { FinancialCard, ValuationCard } from './FinancialPanels'
@@ -18,7 +18,6 @@ export const DEFAULT_STOCK = 'sh600519'
 
 export default function StockPage() {
   const { code = DEFAULT_STOCK } = useParams()
-  const navigate = useNavigate()
   const [adjust, setAdjust] = useState<Adjust>('qfq')
   const [range, setRange] = useState(250)
   const security = useSecurity(code)
@@ -30,10 +29,6 @@ export default function StockPage() {
 
   return (
     <div className="stock-page">
-      <div className="stock-toolbar">
-        <StockSearch onPick={c => navigate(`/stocks/${c}`)} />
-      </div>
-
       {security.isError ? (
         <div className="card state error">没有找到 {code}，请换一个代码搜索。</div>
       ) : (
@@ -46,7 +41,7 @@ export default function StockPage() {
               </div>
               <div className="quote">
                 <b className={`num ${trendClass(chg)}`}>{fmtPrice(last?.close)}</b>
-                <span className={`num ${trendClass(chg)}`}>{fmtPct(chg)}</span>
+                <span className={`num chg ${trendClass(chg)}`}>{fmtPct(chg)}</span>
                 <span className="muted">{last?.date ?? ''}</span>
               </div>
             </header>
@@ -78,9 +73,11 @@ export default function StockPage() {
               </dl>
             </div>
             <ValuationCard fin={fin.data} />
-            <div className="card ask-xiaosi">
-              <div className="card-title">问小四</div>
-              <p className="muted">下一阶段可以在这里直接问：这只票未来上涨的概率、场外期权值不值。</p>
+            <div className="ask-xiaosi">
+              <div className="ask-xiaosi-who"><HomeResearchPet size={40} /><b>拿这只票问小四</b></div>
+              <p>类似的走势以前出现过多少次，后来是涨是跌，最坏会怎样。</p>
+              <Link className="btn primary" to={`/ask/stock?code=${code}&h=21`}>接下来 1 个月，涨的可能大吗？</Link>
+              <Link className="btn" to={`/ask/option?code=${code}&h=63&fee=7.5`}>它的 3 个月期权值不值？</Link>
             </div>
             <p className="footnote muted">
               数据版本 {daily.data?.data_version ?? '—'} · {ADJUSTS.find(a => a.id === adjust)?.label}。

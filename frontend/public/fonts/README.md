@@ -1,5 +1,13 @@
 # 字体
 
-`noto-serif-sc-600-subset.woff2`：思源宋体（Noto Serif SC）600 字重，子集为 GB2312 一级常用字 3,755 个、ASCII、常用中文标点及前端源码中出现的字符。由 `C:/Windows/Fonts/NotoSerifSC-VF.ttf` 用 fontTools 实例化并裁剪生成。
+## 当前使用
 
-许可：SIL Open Font License 1.1（见 OFL.txt），版权 © 2017-2023 Adobe。允许修改、裁剪与随软件分发；不得单独售卖字体本身。
+`outfit-latin-wght.woff2`：Outfit 可变字体（字重 100–900），只含拉丁字母、数字和常用符号，32 KB。来自 `@fontsource-variable/outfit` 的 latin 子集，未改动。数字支持等宽对齐（`font-variant-numeric: tabular-nums`）。
+
+用途：页面上所有数字和拉丁字母。中文用系统黑体（苹方 / 微软雅黑），不另外下载。
+
+许可：SIL Open Font License 1.1（见 OFL-Outfit.txt），版权 © 2021 The Outfit Project Authors。允许随软件分发；不得单独售卖字体本身。
+
+## 不再引用
+
+`noto-serif-sc-600-subset.woff2`（思源宋体子集，688 KB，许可见 OFL.txt）：V2 设计的标题字体。V3 设计不再引用它，文件暂时保留；确认采用 V3 后可以删除。

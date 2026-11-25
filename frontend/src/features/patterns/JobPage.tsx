@@ -147,10 +147,8 @@ function Report({ job, result }: { job: Job; result: StudyResult }) {
         <section className="report-verdict">
           <Verdict label={`${v.horizon} 个交易日后在涨的比例`} value={v.value} dots={v.dots}
                    dotsCaption={<>每 100 次里<br />大约有 <b>{Math.round(v.dots)} 次</b>在涨</>}
-                   plain={v.plain} note={v.notes.join(' · ')} />
-          <p className={`verdict-tag tone-${v.tone}`}>
-            {v.tone === 'same' ? '结论：和随便买差不多' : v.tone === 'good' ? '结论：比随便买略好' : '结论：比随便买还差'}
-          </p>
+                   plain={v.plain} note={v.notes.join(' · ')}
+                   tag={v.tone === 'same' ? '结论：和随便买差不多' : v.tone === 'good' ? '结论：比随便买略好' : '结论：比随便买还差'} />
         </section>
       ) : <p className="state">没有足够的历史样本，算不出结论。</p>}
 
@@ -173,7 +171,7 @@ function Report({ job, result }: { job: Job; result: StudyResult }) {
                 <tr key={r.horizon}>
                   <td>{r.horizon} 天</td>
                   <td className="num">{r.valid.toLocaleString()}{r.unavailable > 0 && <small className="muted"> / 排除 {r.unavailable}</small>}</td>
-                  <td className="num">{fmtPct(r.win_rate, 1, false)}</td>
+                  <td className="num"><span className="winbar" aria-hidden="true"><i style={{ width: `${Math.max(0, Math.min(1, r.win_rate ?? 0)) * 100}%` }} /></span>{fmtPct(r.win_rate, 1, false)}</td>
                   <td className={`num ${trendClass(r.mean)}`}>{fmtPct(r.mean)}</td>
                   <td className={`num ${trendClass(r.median)}`}>{fmtPct(r.median)}</td>
                   <td className={`num ${trendClass(r.p10)}`}>{fmtPct(r.p10)}</td>

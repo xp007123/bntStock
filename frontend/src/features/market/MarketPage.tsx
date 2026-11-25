@@ -13,14 +13,17 @@ export default function MarketPage() {
 
   return (
     <div className="market">
-      <h2 className="section-title">指数概览 <span className="muted">{indices.data?.[0]?.date ?? ''}</span></h2>
+      <header className="page-head fade-in">
+        <h1>大盘</h1>
+        <p className="muted">主要指数{indices.data?.[0]?.date ? ` ${indices.data[0].date} 收盘` : ''}。点一个指数看它近一年的日 K。</p>
+      </header>
       {indices.isError ? <div className="card state error">指数读取失败</div> : (
-        <div className="index-cards">
+        <div className="index-cards stagger">
           {(indices.data ?? []).map(i => (
             <button key={i.code} className={`index-card ${i.code === code ? 'on' : ''}`} onClick={() => setCode(i.code)} aria-pressed={i.code === code}>
               <span>{i.name}</span>
               <b className="num">{fmtPrice(i.close)}</b>
-              <small className={`num ${trendClass(i.change)}`}>{fmtPct(i.change)}</small>
+              <em className={`num chg ${trendClass(i.change)}`}>{fmtPct(i.change)}</em>
             </button>
           ))}
         </div>

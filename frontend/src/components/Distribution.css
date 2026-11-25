@@ -1,9 +1,25 @@
-.dist-zones { display: flex; height: 10px; gap: 2px; margin-bottom: 10px; }
-.dist-zones i { display: block; height: 100%; }
-.dist-zone-labels { display: flex; gap: 2px; margin-bottom: 20px; font-size: 12px; color: var(--muted); }
+.dist-zones { display: flex; height: 14px; gap: 3px; margin-bottom: 10px; }
+.dist-zones i { display: block; height: 100%; border-radius: var(--r-pill); min-width: 4px; }
+.dist-zone-labels { display: flex; gap: 3px; margin-bottom: 24px; font-size: 12px; color: var(--muted); }
 .dist-zone-labels span { overflow: hidden; white-space: nowrap; }
-.dist-zone-labels b { font: 600 16px var(--serif); color: var(--ink); margin-right: 6px; }
+.dist-zone-labels b { font-size: 18px; font-weight: 600; color: var(--ink); margin-right: 6px; }
 .dist-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.dist-axis { fill: var(--faint); font: 11px var(--font); }
-.dist-hover { margin-top: 6px; font-size: 12px; color: var(--muted); min-height: 20px; }
+.dist-chart rect { transition: opacity var(--t-fast) var(--ease); }
+.dist-axis { fill: var(--muted); font: 11px var(--font); }
+.dist-line-label { fill: var(--ink); font: 600 12px var(--font); }
+.dist-hover { margin-top: 8px; font-size: 12px; color: var(--muted); min-height: 20px; }
 .dist-hover b { color: var(--ink); }
+
+/* 色条与柱子联动 */
+.dist-zones i { transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); cursor: default; }
+.dist-zones i:hover { transform: scaleY(1.3); }
+.dist-zones i.dim { opacity: .25; }
+.dist-zone-labels span { transition: opacity var(--t-fast) var(--ease); }
+.dist-zone-labels span.dim { opacity: .35; }
+
+/* 入场：柱子从零线长出来，回本线随后落下 */
+.dist-bar { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-grow .5s var(--ease) both; }
+@keyframes bar-grow { from { transform: scaleY(0); } to { transform: none; } }
+.dist-line { animation: line-drop .4s .55s var(--ease) both; }
+@keyframes line-drop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dist-bar, .dist-line { animation: none; } }

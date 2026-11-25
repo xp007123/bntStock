@@ -1,48 +1,86 @@
-.jd { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
-.jd-head h1 { font-size: 30px; }
-.jd-head p { margin-top: 6px; }
-.jd-record { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 24px; border-top: 1px solid var(--ink); padding-top: 14px; }
-.jd-record div { display: flex; flex-direction: column; }
-.jd-record span { font-size: 12px; letter-spacing: .1em; color: var(--muted); }
-.jd-record b { font: 600 30px/1.3 var(--serif); color: var(--ink); }
-.jd-record small { font-size: 12px; color: var(--muted); }
-.jd-record p { grid-column: 1 / -1; margin-top: 10px; font-size: 13px; color: var(--muted); }
-.jd-empty { display: flex; gap: 28px; align-items: center; padding: 32px; background: var(--surface); border: 1px solid var(--line); }
-.jd-empty h2 { font-size: 20px; margin-bottom: 6px; }
-.jd-empty p { margin-bottom: 16px; max-width: 520px; }
-.jd-empty .btn { text-decoration: none; }
-.jd-list h2 { font-size: 17px; margin-bottom: 10px; display: flex; gap: 8px; align-items: baseline; }
-.jd-list h2 .muted { font: 13px var(--font); }
-.jd-list ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.jd-list li a { display: grid; grid-template-columns: 1fr 240px auto; gap: 20px; align-items: center; padding: 16px 4px; border-bottom: 1px solid var(--line); text-decoration: none; }
-.jd-list li a:hover b { text-decoration: underline; text-underline-offset: 4px; }
-.jd-main { display: flex; flex-direction: column; gap: 2px; }
-.jd-main b { font: 600 17px var(--serif); color: var(--ink); }
-.jd-main b .muted { font: 13px var(--font); }
-.jd-main > span.muted { font-size: 13px; }
-.jd-side { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.jd-side b { font: 600 22px var(--serif); }
-.jd-progress { height: 4px; background: var(--line); }
-.jd-progress i { display: block; height: 100%; background: var(--ink); }
+.jd { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
 
-.jd-detail { max-width: 760px; margin: 0 auto; }
-.jd-card { position: relative; margin-top: 12px; background: var(--surface) var(--grain); padding: 36px 40px 30px; box-shadow: var(--lift); }
-.jd-card > .seal { position: absolute; right: 34px; top: 30px; }
-.jd-card h1 { font-size: 30px; margin-top: 10px; }
-.jd-card h1 .muted { font: 14px var(--font); }
-.jd-q { margin-top: 6px; font: 400 16px/1.7 var(--serif); color: var(--ink-2); max-width: 520px; }
-.jd-vs { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--ink); margin-top: 28px; }
-.jd-vs div { padding: 14px 0 6px; display: flex; flex-direction: column; }
-.jd-vs div + div { padding-left: 24px; border-left: 1px solid var(--line); }
-.jd-vs span { font-size: 12px; letter-spacing: .12em; color: var(--muted); }
-.jd-vs b { font: 600 54px/1.15 var(--serif); color: var(--ink); }
-.jd-vs b.up { color: var(--up); }
-.jd-vs b.down { color: var(--down); }
-.jd-vs small { font-size: 13px; color: var(--muted); }
-.jd-path { margin-top: 22px; }
-.jd-path svg { display: block; width: 100%; height: auto; }
-.jd-path p { font-size: 12px; margin-top: 4px; }
-.jd-voice { display: grid; grid-template-columns: 44px 1fr; gap: 14px; margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
-.jd-voice p { font: 400 16px/1.9 var(--serif); color: var(--ink-2); }
-.jd-voice .muted { font: 13px/1.8 var(--font); }
-.jd-foot { margin-top: 18px; font-size: 12px; line-height: 1.8; }
+/* 档案：给出的概率 和 实际成真 两条对着看 */
+.jd-record { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 40px; align-items: center; padding: 24px 28px; }
+.jd-record-n { display: flex; flex-direction: column; }
+.jd-record-n span, .jd-record-bars span { font-size: 12px; font-weight: 500; color: var(--muted); }
+.jd-record-n b { font-size: 48px; font-weight: 600; line-height: 1.1; color: var(--ink); }
+.jd-record-n b i { font-style: normal; font-size: 16px; font-weight: 500; color: var(--muted); }
+.jd-record-bars { display: flex; flex-direction: column; gap: 12px; }
+.jd-record-bars > div { display: grid; grid-template-columns: 150px minmax(0, 1fr) 56px; gap: 14px; align-items: center; }
+.jd-record-bars b { font-size: 20px; font-weight: 600; color: var(--ink); text-align: right; }
+.jd-record-bars .progress { height: 12px; }
+.progress.night i { background: var(--ink); }
+.jd-record p { grid-column: 1 / -1; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+.jd-empty { display: flex; gap: 28px; align-items: center; padding: 32px 36px; }
+.jd-empty h2 { font-size: 20px; margin-bottom: 6px; }
+.jd-empty p { margin-bottom: 18px; max-width: 520px; }
+
+.jd-list h2 { font-size: 17px; margin-bottom: 12px; display: flex; gap: 8px; align-items: center; }
+.jd-list h2 .muted { font-size: 12px; font-weight: 600; min-width: 24px; line-height: 22px; text-align: center; border-radius: var(--r-pill); background: var(--bg-deep); }
+.jd-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.jd-list li a { display: grid; grid-template-columns: auto minmax(0, 1fr) 250px auto; gap: 20px; align-items: center; padding: 16px 20px 16px 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); text-decoration: none; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.jd-list li a:hover { border-color: var(--line-strong); box-shadow: var(--lift); transform: translateY(-1px); }
+.jd-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.jd-main b { font-size: 16px; font-weight: 600; color: var(--ink); }
+.jd-main b .muted { font-size: 13px; font-weight: 400; }
+.jd-main > span.muted { font-size: 13px; }
+.jd-side { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.jd-side b { font-size: 24px; font-weight: 600; line-height: 1.2; }
+.jd-go { color: var(--faint); transition: color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.jd-list li a:hover .jd-go { color: var(--accent); transform: translateX(2px); }
+
+/* 一个判断：左边墨黑“当时”，右边“实际” */
+.jd-detail { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.jd-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding-right: 12px; }
+.jd-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.jd-top h1 { font-size: 32px; line-height: 1.3; }
+.jd-top h1 .muted { font-size: 15px; font-weight: 400; }
+.jd-q { margin-top: 6px; font-size: 16px; line-height: 1.7; color: var(--ink-2); max-width: 600px; }
+.jd-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.jd-vs > div { padding: 22px 28px 24px; display: flex; flex-direction: column; border-radius: var(--r-xl); }
+.jd-vs span { font-size: 13px; font-weight: 500; letter-spacing: .06em; }
+.jd-vs b { font-size: 84px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+.jd-vs small { font-size: 13px; }
+.jd-then { background: var(--ember), var(--night); color: var(--on-night); box-shadow: var(--lift); }
+.jd-then span, .jd-then small { color: var(--on-night-muted); }
+.jd-then b i { font-style: normal; font-size: 36px; font-weight: 500; color: var(--accent); margin-left: 4px; }
+.jd-now { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.jd-now span, .jd-now small { color: var(--muted); }
+.jd-now b { color: var(--ink); }
+.jd-now b.up { color: var(--up); }
+.jd-now b.down { color: var(--down); }
+.jd-now.waiting { background: var(--hatch), var(--surface-warm); border-style: dashed; border-color: var(--line-strong); box-shadow: none; }
+.jd-now.waiting b { color: var(--faint); }
+.jd-now.waiting .progress { margin: 2px 0 10px; background: var(--bg-deep); }
+.jd-path svg { display: block; width: 100%; height: auto; overflow: visible; }
+.jd-path p { font-size: 12px; margin-top: 8px; }
+.jd-voice { display: grid; grid-template-columns: 52px 1fr; gap: 14px; align-items: start; }
+.jd-voice p { font-size: 15px; line-height: 1.9; color: var(--ink); padding-top: 4px; }
+.jd-voice .muted { display: block; margin-top: 8px; font-size: 13px; line-height: 1.8; }
+.jd-foot { font-size: 12px; line-height: 1.8; padding: 0 4px; }
+
+@media (max-width: 860px) {
+  .jd-list li a { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .jd-side { grid-column: 2; }
+  .jd-vs, .jd-record { grid-template-columns: 1fr; }
+  .jd-vs b { font-size: 64px; }
+}
+
+/* ---- 揭晓 ---- */
+.jd-now { position: relative; overflow: hidden; }
+/* 封条：盖在真实结果上，揭晓时从左到右揭开 */
+.jd-cover { position: absolute; inset: 0; padding: 22px 28px 24px; display: flex; flex-direction: column; background: var(--hatch), var(--surface-warm); clip-path: inset(0 0 0 100%); transition: clip-path .7s var(--ease); }
+.jd-cover b { color: var(--faint) !important; }
+.jd-now.covered .jd-cover { clip-path: inset(0); transition: none; }
+/* 走势线：一天一天画出来 */
+.jd-line { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 0ms cubic-bezier(.45, .05, .35, 1); }
+.stage-wait .jd-line { stroke-dashoffset: 1; }
+.jd-end { transition: opacity .3s var(--ease), r .3s var(--ease); }
+.stage-wait .jd-end, .stage-draw .jd-end { opacity: 0; }
+.jd-replay { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; font-size: 12px; font-weight: 500; color: var(--muted); padding: 3px 10px; border-radius: var(--r-pill); transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.jd-replay:hover { background: var(--accent-soft); color: var(--accent-ink); }
+/* 列表里还没点开看过的到期判断 */
+.jd-due { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); box-shadow: var(--glow); }
+@media (prefers-reduced-motion: reduce) { .jd-cover, .jd-line { transition: none; } }

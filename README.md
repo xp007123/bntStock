@@ -7,6 +7,7 @@
 本仓库是新版四象智投，取代旧版（`backtest-engine`），计算核心与页面结构来自 PatternLab。
 
 - 产品与架构说明：[docs/产品与架构说明-V1.md](docs/产品与架构说明-V1.md)
+- 视觉规范：[docs/视觉规范-V3.md](docs/视觉规范-V3.md)
 
 当前状态：M1 进行中。已完成行情快照与接口、首页、个股看盘、指数概览、形态测试（与 PatternLab 全市场对数一致，含增减条件与对比）、研究记录、登录与后台审核、iFinD 每日同步、财务数据与估值。
 
@@ -45,7 +46,8 @@ python -m venv .venv
 导入财务数据（按披露时点，约 1 分钟）：
 
 ```powershell
-.\.venv\Scripts\python -m sixiang.data.financial_import --source <PatternLab>ppuntime\data-store\snapshotsaseline-bundled-20261118inancial
+.\.venv\Scripts\python -m sixiang.data.financial_import --source <PatternLab>pp
+untime\data-store\snapshotsaseline-bundled-20261118inancial
 ```
 
 启动后端（http://127.0.0.1:8000，接口文档 /api/docs）：

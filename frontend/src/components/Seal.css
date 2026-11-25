@@ -1,3 +1,4 @@
+/* 封存印：焦橙圆角方章，墨黑字，略微歪一点。四象智投的标志性符号。 */
 .seal {
   --size: 64px;
   width: var(--size);
@@ -6,20 +7,35 @@
   place-items: center;
   flex-shrink: 0;
   background: var(--accent);
-  color: var(--accent-ink);
-  font: 700 calc(var(--size) * .26)/1.05 var(--serif);
+  color: var(--on-accent);
+  font: 700 calc(var(--size) * .25)/1.12 var(--font);
+  letter-spacing: .06em;
+  text-indent: .06em;
   text-align: center;
-  transform: rotate(-6deg);
+  border-radius: 28%;
+  transform: rotate(-8deg);
   position: relative;
-  box-shadow: inset 0 0 0 3px var(--accent), inset 0 0 0 4px #fff6f1aa;
+  box-shadow: 0 calc(var(--size) * .12) calc(var(--size) * .36) calc(var(--size) * -.14) #fb5e0d99;
 }
-.seal::after { content: ""; position: absolute; inset: 0; background: var(--grain); mix-blend-mode: screen; opacity: .9; pointer-events: none; }
-.seal.ghost { background: transparent; color: var(--faint); box-shadow: inset 0 0 0 1.5px var(--faint); }
+.seal::after { content: ""; position: absolute; inset: 7%; border-radius: 24%; border: 1.5px dashed #19030059; pointer-events: none; }
+.seal.ghost { background: var(--hatch); color: var(--faint); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .seal.ghost::after { display: none; }
 .seal.stamp { animation: seal-stamp .42s var(--ease) both; }
 @keyframes seal-stamp {
-  0% { transform: rotate(-6deg) scale(1.9); opacity: 0; }
-  60% { transform: rotate(-6deg) scale(.94); opacity: 1; }
-  100% { transform: rotate(-6deg) scale(1); }
+  0% { transform: rotate(-8deg) scale(1.9); opacity: 0; }
+  60% { transform: rotate(-8deg) scale(.92); opacity: 1; }
+  100% { transform: rotate(-8deg) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) { .seal.stamp { animation: none; } }
+
+/* 盖下去的一圈印泥 */
+.seal.stamp::before { content: ""; position: absolute; inset: -6%; border-radius: 30%; border: 2px solid var(--accent); opacity: 0; animation: seal-ring .7s .22s var(--ease) both; pointer-events: none; }
+@keyframes seal-ring { 0% { opacity: .7; transform: scale(.9); } 100% { opacity: 0; transform: scale(1.7); } }
+/* 翻面：已封存 → 已揭晓 */
+.seal.flip { animation: seal-flip .5s var(--ease) both; }
+@keyframes seal-flip {
+  0% { transform: rotate(-8deg) rotateY(0); }
+  50% { transform: rotate(-8deg) rotateY(90deg) scale(1.08); }
+  100% { transform: rotate(-8deg) rotateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { .seal.stamp::before, .seal.flip { animation: none; } }

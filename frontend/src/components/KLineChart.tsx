@@ -75,7 +75,7 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross', lineStyle: { color: C.axis, type: 'dashed' } },
-        backgroundColor: C.surface, borderColor: C.grid, textStyle: { color: C.ink, fontSize: 12 },
+        backgroundColor: C.surface, borderColor: C.grid, borderRadius: 12, padding: [10, 14], textStyle: { color: C.ink, fontSize: 12 },
         formatter: (params: { dataIndex: number }[]) => {
           const i = params[0]?.dataIndex
           const b = bars[i]
@@ -97,7 +97,7 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
       ],
       dataZoom: [
         { type: 'inside', xAxisIndex: showVolume ? [0, 1] : [0], start, end },
-        { type: 'slider', xAxisIndex: showVolume ? [0, 1] : [0], start, end, height: 18, bottom: 4, borderColor: C.grid, showDetail: false },
+        { type: 'slider', xAxisIndex: showVolume ? [0, 1] : [0], start, end, height: 18, bottom: 4, borderColor: C.grid, showDetail: false, fillerColor: P.accent + '26', handleStyle: { color: P.surface, borderColor: P.accent }, moveHandleStyle: { color: P.accent }, dataBackground: { lineStyle: { color: P.faint }, areaStyle: { color: P.line } }, selectedDataBackground: { lineStyle: { color: P.accent }, areaStyle: { color: P.accent + '33' } }, brushSelect: false },
       ],
       series: [
         {
@@ -105,12 +105,12 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
           itemStyle: { color: C.surface, color0: C.down, borderColor: C.up, borderColor0: C.down, borderWidth: 1 },
           markPoint: markData.length ? {
             symbol: 'pin', symbolOffset: [0, -4], data: markData,
-            label: { color: '#fff', fontSize: 10 }, animation: false, tooltip: { show: false },
+            label: { color: P.ink, fontSize: 10, fontWeight: 600 }, animation: false, tooltip: { show: false },
           } : undefined,
         },
         ...MA.map((m, k) => ({
           type: 'line', name: `MA${m.n}`, data: series.ma[k], showSymbol: false, smooth: false,
-          lineStyle: { width: 1.5, color: m.hex }, emphasis: { disabled: true },
+          lineStyle: { width: 1.2, color: m.hex }, emphasis: { disabled: true },
         })),
         ...(showVolume ? [{
           type: 'bar', name: '成交量', xAxisIndex: 1, yAxisIndex: 1,

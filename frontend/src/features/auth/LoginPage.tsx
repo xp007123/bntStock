@@ -8,7 +8,7 @@ import './auth.css'
 
 type Mode = 'login' | 'register'
 
-/** 登录首页：左侧介绍与小四，右侧登录 / 注册。注册后需管理员审核。 */
+/** 登录首页：左侧墨黑主视觉与小四，右侧登录 / 注册。注册后需管理员审核。不放任何示意数字。 */
 export default function LoginPage() {
   const me = useMe()
   const [params] = useSearchParams()
@@ -20,11 +20,12 @@ export default function LoginPage() {
     <main className="landing">
       <section className="story">
         <header>
-          <span className="brand"><span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>四象智投</span>
-          <span className="eyebrow">私域内测 · 邀请制</span>
+          <span className="brand"><span className="brand-mark on-night" aria-hidden="true"><i /><i /><i /><i /></span>四象智投</span>
+          <span className="story-tag">私域内测 · 邀请制</span>
         </header>
         <div className="hero fade-in">
-          <span className="eyebrow">A 股投研 · 用历史数据算概率</span>
+          <div className="hero-xiaosi"><HomeResearchPet size={140} /></div>
+          <span className="hero-kicker">A 股投研 · 用历史数据算概率</span>
           <h1>心里有数，<br />再<em>出手</em>。</h1>
           <p className="lede">说出你的判断，小四用 2007 年以来的全部日线替你算一算：这种情况以前出现过多少次，后来是涨是跌，最坏会怎样。</p>
           <div className="asks">
@@ -37,23 +38,18 @@ export default function LoginPage() {
       </section>
 
       <aside className="side">
+        <div className="auth-card fade-in">
+          <h2>{mode === 'login' ? '欢迎回来' : '申请加入'}</h2>
+          <div className="seg auth-tabs" role="tablist">
+            <button role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>登录</button>
+            <button role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>申请注册</button>
+          </div>
+          {mode === 'login' ? <LoginForm next={next} /> : <RegisterForm onDone={() => setMode('login')} />}
+        </div>
         <div className="keeper fade-in">
-          <HomeResearchPet size={60} />
-          <p><b>小四</b>替你算概率，也替你保管每一个判断。<br />到期那天，结果和当初的判断会一起摆在你面前。</p>
+          <Seal size={48}>已<br />封存</Seal>
+          <p><b>小四</b>替你算概率，也替你保管每一个判断。到期那天，结果和当初的判断会一起摆在你面前。</p>
         </div>
-        <article className="specimen fade-in" aria-label="判断卡示意">
-          <span className="eyebrow">问方法 · 示意</span>
-          <h3>缩量回踩 20 日线</h3>
-          <div className="big"><b className="num">54%</b><span>10 天后在涨的比例<br />随便买一只是 51%</span></div>
-          <p>17 年里出现过 3,812 次 · 熊市里只有 41% · 最近两年在变弱</p>
-          <Seal size={56}>已<br />封存</Seal>
-          <span className="tag">到期揭晓</span>
-        </article>
-        <div className="auth-tabs" role="tablist">
-          <button role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>登录</button>
-          <button role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>申请注册</button>
-        </div>
-        {mode === 'login' ? <LoginForm next={next} /> : <RegisterForm onDone={() => setMode('login')} />}
       </aside>
     </main>
   )
@@ -88,7 +84,7 @@ function LoginForm({ next }: { next: string }) {
         <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
       </label>
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <button className="btn primary" disabled={busy || !account || !password}>{busy ? '正在进入…' : '进入四象智投'}</button>
+      <button className="btn primary lg" disabled={busy || !account || !password}>{busy ? '正在进入…' : '进入四象智投'}</button>
       <p className="auth-hint">用户名或手机号都能登录。忘了密码，找管理员重置就行。</p>
     </form>
   )
@@ -141,7 +137,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         {err('confirm')}
       </label>
       {error && !['username', 'phone', 'password', 'confirm'].includes(error.field ?? '') && <p className="auth-error" role="alert">{error.message}</p>}
-      <button className="btn primary" disabled={busy || Object.values(form).some(v => !v)}>{busy ? '提交中…' : '提交注册'}</button>
+      <button className="btn primary lg" disabled={busy || Object.values(form).some(v => !v)}>{busy ? '提交中…' : '提交注册'}</button>
       <p className="auth-hint">提交后由管理员审核，通过后就能登录。</p>
     </form>
   )

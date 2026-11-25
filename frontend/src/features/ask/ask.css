@@ -1,47 +1,84 @@
-.ask-doc { max-width: 760px; margin: 0 auto; padding: 12px 0 72px; }
-.ask-doc.thinking { display: flex; align-items: center; gap: 16px; padding-top: 120px; color: var(--muted); font: 400 16px/1.8 var(--serif); }
-.ask-crumb { display: flex; align-items: center; gap: 10px; }
-.ask-question { font: 500 30px/1.45 var(--serif); margin: 16px 0 14px; }
-.ask-question::before { content: "“"; color: var(--accent); }
-.ask-question::after { content: "”"; color: var(--accent); }
-.ask-terms { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--muted); padding-bottom: 26px; margin-bottom: 30px; border-bottom: 1px solid var(--line); }
-.ask-terms b { color: var(--ink-2); font-weight: 500; margin-left: 6px; }
-.ask-terms i { font-style: normal; margin-left: 6px; }
+.ask-doc { display: flex; flex-direction: column; gap: 24px; }
+.ask-blank { display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 120px; color: var(--muted); font-size: 16px; text-align: center; }
+.ask-blank .state { padding: 0; }
 
-.ask-facts { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); margin-top: 28px; }
-.ask-facts div { padding: 14px 16px 16px 0; display: flex; flex-direction: column; }
-.ask-facts div + div { padding-left: 20px; border-left: 1px solid var(--line); }
-.ask-facts span { font-size: 12px; letter-spacing: .1em; color: var(--muted); }
-.ask-facts b { font: 600 26px/1.3 var(--serif); color: var(--ink); margin-top: 4px; }
+.ask-head { display: flex; flex-direction: column; gap: 12px; }
+.ask-question { font-size: 30px; line-height: 1.4; max-width: 900px; }
+.ask-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ask-terms > span:not(.tag) { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); }
+.ask-terms b { color: var(--ink); font-weight: 500; }
+.ask-terms i { font-style: normal; }
+
+.ask-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.ask-main, .ask-rail { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.ask-rail { position: sticky; top: 84px; }
+
+/* 三个关键数：白色小卡 */
+.ask-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ask-facts div { padding: 16px 20px 18px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+.ask-facts span { font-size: 12px; font-weight: 500; color: var(--muted); }
+.ask-facts b { font-size: 30px; font-weight: 600; line-height: 1.3; color: var(--ink); margin-top: 2px; }
 .ask-facts b.up { color: var(--up); }
 .ask-facts b.down { color: var(--down); }
 .ask-facts small { font-size: 12px; color: var(--muted); }
 
-.ask-voice { display: grid; grid-template-columns: 52px 1fr; gap: 16px; padding: 32px 0; border-bottom: 1px solid var(--line); }
-.ask-voice p { font: 400 17px/1.95 var(--serif); color: var(--ink-2); }
-.ask-voice small { display: block; margin-top: 8px; font: 12px var(--font); color: var(--faint); letter-spacing: .04em; }
-.ask-follow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 18px; }
-.ask-follow .eyebrow { margin-right: 4px; }
-.ask-follow button { border: 1px solid var(--line); background: var(--surface); padding: 5px 14px; font-size: 13px; color: var(--ink-2); transition: border-color .22s var(--ease); }
-.ask-follow button:hover { border-color: var(--ink); color: var(--ink); }
-.ask-follow-link { font-size: 13px; color: var(--muted); margin-left: 4px; text-underline-offset: 3px; }
-
-.ask-section h2 { font-size: 16px; margin: 40px 0 16px; }
-.ask-compare { margin-top: 10px; font-size: 13px; color: var(--muted); }
-.ask-compare b { font: 600 14px var(--serif); color: var(--ink); }
+.ask-section { padding: 24px 28px; }
+.ask-section h2 { font-size: 17px; margin-bottom: 18px; }
+.ask-compare { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.ask-compare .tag { margin-right: 8px; }
+.ask-compare b { font-size: 14px; font-weight: 600; color: var(--ink); }
 .ask-compare b.up { color: var(--up); }
 .ask-compare b.down { color: var(--down); }
 .ask-evidence { list-style: none; margin: 0; padding: 0; }
-.ask-evidence li { display: grid; grid-template-columns: 120px 1fr; gap: 2px 20px; padding: 13px 0; border-top: 1px solid var(--line); }
-.ask-evidence li:last-child { border-bottom: 1px solid var(--line); }
-.ask-evidence b { font: 600 15px var(--serif); color: var(--ink); }
+.ask-evidence li { display: grid; grid-template-columns: 112px 1fr; gap: 2px 20px; padding: 14px 0; border-top: 1px solid var(--line); }
+.ask-evidence li:first-child { border-top: 0; padding-top: 0; }
+.ask-evidence li:last-child { padding-bottom: 0; }
+.ask-evidence b { font-size: 14px; font-weight: 600; color: var(--ink); }
 .ask-evidence p { font-size: 14px; }
-.ask-evidence code { grid-column: 2; font: 12px/1.5 var(--mono); color: var(--faint); }
+.ask-evidence code { grid-column: 2; font: 12px/1.5 var(--mono); color: var(--faint); word-break: break-all; }
 .ask-evidence li.pending b, .ask-evidence li.pending p { color: var(--faint); }
+.ask-method { font-size: 12px; line-height: 1.9; color: var(--muted); padding: 0 4px; }
 
-.ask-keep { margin-top: 44px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; padding: 28px 32px; background: var(--surface); box-shadow: var(--lift); }
-.ask-keep h3 { font-size: 21px; margin-bottom: 8px; }
-.ask-keep p { font-size: 14px; color: var(--muted); max-width: 470px; margin-bottom: 16px; }
-.ask-keep p a { color: var(--ink); text-underline-offset: 3px; }
-.ask-keep .btn.primary { height: 42px; padding: 0 22px; }
-.ask-method { margin-top: 36px; font-size: 12px; line-height: 1.9; color: var(--faint); }
+/* 小四说：一张暖色的话 */
+.ask-voice { padding: 20px 22px 22px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.ask-voice-who { display: flex; align-items: center; gap: 10px; margin: -4px 0 8px -6px; }
+.ask-voice-who b { font-size: 15px; color: var(--ink); }
+.ask-voice > p { font-size: 15px; line-height: 1.9; color: var(--ink); }
+.ask-voice > small { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.ask-follow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.ask-follow .eyebrow { width: 100%; }
+.ask-follow button { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-pill); padding: 5px 14px; font-size: 13px; color: var(--ink-2); transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.ask-follow button:hover { border-color: var(--accent); background: var(--accent-softer); color: var(--accent-ink); }
+.ask-follow-link { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted); text-decoration: none; padding: 5px 6px; }
+.ask-follow-link:hover { color: var(--ink); }
+
+/* 封存：全站最用心的一个按钮 */
+.ask-keep { position: relative; padding: 24px 22px 22px; border-radius: var(--r-lg); background: linear-gradient(160deg, var(--accent-soft), var(--accent-softer) 60%); border: 1px solid #fb5e0d33; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.ask-keep .seal { position: absolute; right: 18px; top: 18px; }
+.ask-keep h3 { font-size: 18px; line-height: 1.4; max-width: 190px; }
+.ask-keep p { font-size: 13px; line-height: 1.75; color: var(--ink-2); margin-top: 4px; }
+.ask-keep p b { color: var(--ink); font-weight: 600; }
+.ask-keep .btn { width: 100%; margin-top: 6px; }
+.ask-keep-error { color: var(--up) !important; }
+
+@media (max-width: 1180px) {
+  .ask-grid { grid-template-columns: 1fr; }
+  .ask-rail { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (max-width: 760px) {
+  .ask-rail, .ask-facts { grid-template-columns: 1fr; }
+  .ask-evidence li { grid-template-columns: 1fr; }
+  .ask-evidence code { grid-column: 1; }
+}
+
+/* 等待：小四正在做的事，一句换一句 */
+.ask-step { display: inline-block; color: var(--ink); font-weight: 600; margin-left: 4px; animation: fade var(--t) var(--ease) both; }
+
+/* 接着问：旧结果先压暗，新结果到了再亮回来 */
+.ask-facts div, .ask-section, .ask-voice > p { transition: opacity var(--t) var(--ease); }
+.ask-facts.pending div, .ask-section.pending, .ask-voice > p.pending { opacity: .5; }
+
+/* 封存：飞过去的那一块橙色 */
+.seal-flyer { position: fixed; z-index: 50; background: var(--accent); box-shadow: var(--glow); pointer-events: none; }
+.ask-kept { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; animation-delay: .3s; }
+.ask-keep.done { background: linear-gradient(160deg, var(--accent-soft), var(--surface) 75%); }

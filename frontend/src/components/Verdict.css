@@ -1,14 +1,39 @@
-.verdict { display: grid; grid-template-columns: auto 1fr; gap: 10px 44px; align-items: end; padding: 8px 0 4px; }
-.verdict-label { grid-column: 1 / -1; }
-.verdict-figure { font: 600 96px/.9 var(--serif); color: var(--ink); letter-spacing: -.02em; }
-.verdict-figure small { font-size: 38px; margin-left: 4px; }
-.verdict-figure.up { color: var(--up); }
-.verdict-figure.down { color: var(--down); }
-.verdict-dots { display: flex; align-items: flex-end; gap: 16px; padding-bottom: 6px; }
-.verdict-dots .grid { display: grid; grid-template-columns: repeat(10, 7px); gap: 4px; }
-.verdict-dots .grid i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
-.verdict-dots .grid i.on { background: var(--accent); }
-.verdict-dots .cap { font-size: 13px; line-height: 1.7; color: var(--muted); max-width: 220px; }
-.verdict-dots .cap b { font: 600 15px var(--serif); color: var(--ink); }
-.verdict-plain { grid-column: 1 / -1; margin-top: 14px; font: 600 20px/1.6 var(--serif); color: var(--ink); }
-.verdict-plain span { display: block; font: 400 13px/1.7 var(--font); color: var(--muted); margin-top: 6px; }
+/* 结论卡：全站唯一的墨黑大卡，一屏只出现一次 */
+.verdict {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 48px;
+  align-items: end;
+  padding: 28px 36px 32px;
+  border-radius: var(--r-xl);
+  background: var(--ember), var(--night);
+  color: var(--on-night);
+  box-shadow: var(--lift);
+  overflow: hidden;
+}
+.verdict-head { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.verdict-label { font-size: 13px; font-weight: 500; letter-spacing: .06em; color: var(--on-night-muted); }
+.verdict-tag { font-size: 13px; font-weight: 600; padding: 4px 14px; border-radius: var(--r-pill); background: var(--on-night-line); color: var(--on-night); backdrop-filter: blur(6px); white-space: nowrap; }
+.verdict-figure { font: 600 128px/.92 var(--font); letter-spacing: -.03em; color: var(--on-night); }
+.verdict-figure small { font-size: 48px; font-weight: 500; margin-left: 6px; color: var(--accent); letter-spacing: 0; }
+.verdict-figure.up { color: #ff6b7e; }
+.verdict-figure.down { color: #4fd3a0; }
+.verdict-dots { display: flex; align-items: flex-end; gap: 18px; padding-bottom: 8px; }
+.verdict-dots .grid { display: grid; grid-template-columns: repeat(10, 9px); gap: 5px; }
+.verdict-dots .grid i { width: 9px; height: 9px; border-radius: 50%; background: var(--on-night-line); }
+.verdict-dots .grid i.on { background: var(--accent); animation: dot-on .3s var(--ease) both; }
+@keyframes dot-on { from { background: var(--on-night-line); transform: scale(.4); } to { background: var(--accent); transform: none; } }
+.verdict-dots .cap { font-size: 13px; line-height: 1.7; color: var(--on-night-muted); max-width: 200px; }
+.verdict-dots .cap b { font-size: 16px; font-weight: 600; color: var(--on-night); }
+.verdict-plain { grid-column: 1 / -1; margin-top: 16px; padding-top: 20px; border-top: 1px solid var(--on-night-line); font: 600 20px/1.6 var(--font); color: var(--on-night); max-width: 760px; }
+.verdict-plain span { display: block; font: 400 13px/1.7 var(--font); color: var(--on-night-muted); margin-top: 6px; }
+@media (max-width: 760px) {
+  .verdict { grid-template-columns: 1fr; padding: 24px; }
+  .verdict-figure { font-size: 96px; }
+}
+@media (prefers-reduced-motion: reduce) { .verdict-dots .grid i.on { animation: none; } }
+
+/* 新结果还在算：旧数字压暗，不消失 */
+.verdict-figure, .verdict-dots, .verdict-plain { transition: opacity var(--t) var(--ease); }
+.verdict.pending .verdict-figure, .verdict.pending .verdict-dots, .verdict.pending .verdict-plain { opacity: .45; }
+.verdict-dots .grid i { transition: background var(--t) var(--ease); }

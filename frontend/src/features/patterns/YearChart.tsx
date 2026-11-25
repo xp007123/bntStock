@@ -24,9 +24,10 @@ export default function YearChart({ rows, horizon }: { rows: YearRow[]; horizon:
     const data = rows.filter(r => r.horizon === horizon)
     chart.current?.setOption({
       animation: false,
+      textStyle: { fontFamily: P.sans },
       grid: { left: 48, right: 12, top: 12, bottom: 28 },
       tooltip: {
-        trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: P.surface, borderColor: P.line, textStyle: { color: P.ink, fontSize: 12 },
+        trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: P.surface, borderColor: P.line, borderRadius: 12, padding: [10, 14], textStyle: { color: P.ink, fontSize: 12 },
         formatter: (p: { dataIndex: number }[]) => {
           const r = data[p[0].dataIndex]
           return `<b>${r.year} 年</b><br/>平均涨跌 ${fmtPct(r.mean)}<br/>在涨的比例 ${fmtPct(r.win_rate, 1, false)}<br/>算了 ${r.valid} 次`
@@ -36,7 +37,7 @@ export default function YearChart({ rows, horizon }: { rows: YearRow[]; horizon:
       yAxis: { type: 'value', axisLabel: { color: P.muted, formatter: (v: number) => `${(v * 100).toFixed(0)}%` }, splitLine: { lineStyle: { color: P.line } } },
       series: [{
         type: 'bar', barMaxWidth: 22,
-        data: data.map(r => ({ value: r.mean, itemStyle: { color: (r.mean ?? 0) >= 0 ? P.up : P.down, borderRadius: (r.mean ?? 0) >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4] } })),
+        data: data.map(r => ({ value: r.mean, itemStyle: { color: (r.mean ?? 0) >= 0 ? P.up : P.down, borderRadius: (r.mean ?? 0) >= 0 ? [6, 6, 0, 0] : [0, 0, 6, 6] } })),
       }],
     }, true)
   }, [rows, horizon])

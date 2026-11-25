@@ -1,27 +1,34 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { LogOut, Shield } from 'lucide-react'
-import { logout, useDataVersion, useMe } from '../api/client'
+import { Activity, CandlestickChart, History, LogOut, type LucideIcon, MessageCircle, Shapes, Shield, Stamp } from 'lucide-react'
+import { logout, useDataVersion, useJudgments, useMe } from '../api/client'
+import StockSearch from '../components/StockSearch'
+import HomeResearchPet from '../components/xiaosi/HomeResearchPet'
 import './AppLayout.css'
 
-const NAV = [
-  { to: '/', label: '问小四', end: true },
-  { to: '/stocks', label: '看盘' },
-  { to: '/patterns', label: '形态' },
-  { to: '/judgments', label: '我的判断' },
-  { to: '/records', label: '我的研究' },
-  { to: '/market', label: '大盘' },
+type Item = { to: string; label: string; icon: LucideIcon; match?: (path: string) => boolean }
+const GROUPS: { title: string; items: Item[] }[] = [
+  { title: '问', items: [
+    { to: '/', label: '问小四', icon: MessageCircle, match: p => p === '/' || p.startsWith('/ask') },
+    { to: '/judgments', label: '我的判断', icon: Stamp },
+  ] },
+  { title: '验证方法', items: [
+    { to: '/patterns', label: '形态', icon: Shapes },
+    { to: '/records', label: '我的研究', icon: History },
+  ] },
+  { title: '行情', items: [
+    { to: '/stocks', label: '看盘', icon: CandlestickChart },
+    { to: '/market', label: '大盘', icon: Activity },
+  ] },
 ]
 
-function DataBadge() {
+/** 小四手里的数据截至哪天：数字有出处，放在导航底部随时能看到。 */
+function DataNote() {
   const { data, isError } = useDataVersion()
-  if (isError) return <span className="data-badge warn"><i />数据未就绪</span>
-  if (!data) return <span className="data-badge"><i />读取数据版本…</span>
-  return (
-    <span className="data-badge" title={`数据版本 ${data.id}\n${data.adjustment}`}>
-      <i className="ok" />日线截至 {data.data_end}
-    </span>
-  )
+  if (isError) return <span className="data-note warn"><i />数据未就绪</span>
+  if (!data) return <span className="data-note"><i />读取数据版本…</span>
+  return <span className="data-note" title={`数据版本 ${data.id}\n${data.adjustment}`}><i className="ok" />日线截至 {data.data_end}</span>
 }
 
 function UserMenu() {
@@ -32,29 +39,83 @@ function UserMenu() {
   return (
     <div className="user-menu">
       {me.data.is_admin && <NavLink to="/admin" className="icon-link" title="管理后台"><Shield size={15} />管理</NavLink>}
-      <span className="user-name">{me.data.username}</span>
-      <button className="icon-link" title="退出登录" onClick={async () => { await logout(); qc.clear(); navigate('/login', { replace: true }) }}>
-        <LogOut size={15} />退出
+      <span className="user-chip"><i aria-hidden="true">{me.data.username.slice(0, 1).toUpperCase()}</i>{me.data.username}</span>
+      <button className="icon-link" title="退出登录" aria-label="退出登录" onClick={async () => { await logout(); qc.clear(); navigate('/login', { replace: true }) }}>
+        <LogOut size={15} />
       </button>
     </div>
   )
 }
 
 export default function AppLayout() {
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const judgments = useJudgments()
+  const sealed = judgments.data?.items.filter(j => j.status === 'sealed').length ?? 0
+
+  // 封存数变了（刚封存了一个）：数字跳一下
+  const before = useRef<number | null>(null)
+  const [bump, setBump] = useState(0)
+  useEffect(() => {
+    if (!judgments.data) return
+    if (before.current !== null && sealed > before.current) setBump(b => b + 1)
+    before.current = sealed
+  }, [sealed, judgments.data])
+
+  // 墨黑的选中块在菜单项之间滑过去，而不是瞬间跳
+  const nav = useRef<HTMLElement>(null)
+  const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  useLayoutEffect(() => {
+    const place = () => {
+      const on = nav.current?.querySelector<HTMLElement>('a.on')
+      if (!on || !nav.current) return setPill(null)
+      const a = on.getBoundingClientRect(), n = nav.current.getBoundingClientRect()
+      setPill({ x: a.left - n.left, y: a.top - n.top, w: a.width, h: a.height })
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [pathname])
+
   return (
     <div className="app">
-      <header className="topbar">
-        <NavLink to="/" className="brand" aria-label="四象智投首页">
+      <aside className="sidebar">
+        <Link to="/" className="brand" aria-label="四象智投首页">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>
-          四象智投
-        </NavLink>
-        <nav aria-label="主导航">
-          {NAV.map(n => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}</NavLink>)}
+          <span className="brand-text"><b>四象智投</b><small>心里有数，再出手</small></span>
+        </Link>
+
+        <nav aria-label="主导航" ref={nav}>
+          <i className="nav-pill" aria-hidden="true" style={pill ? { transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h, opacity: 1 } : { opacity: 0 }} />
+          {GROUPS.map(g => (
+            <div key={g.title} className="nav-group">
+              <span className="nav-title">{g.title}</span>
+              {g.items.map(n => {
+                const active = n.match ? n.match(pathname) : pathname.startsWith(n.to)
+                return (
+                  <NavLink key={n.to} to={n.to} className={active ? 'on' : ''} aria-current={active ? 'page' : undefined} title={n.label}>
+                    <n.icon size={17} /><span>{n.label}</span>
+                    {n.to === '/judgments' && sealed > 0 && <em key={bump} className={bump ? 'bump' : ''} title={`${sealed} 个判断封存中`}>{sealed}</em>}
+                  </NavLink>
+                )
+              })}
+            </div>
+          ))}
         </nav>
-        <DataBadge />
-        <UserMenu />
-      </header>
-      <main className="page"><Outlet /></main>
+
+        <div className="side-pet">
+          <HomeResearchPet size={44} />
+          <div><b>小四</b><DataNote /></div>
+        </div>
+      </aside>
+
+      <div className="main">
+        <header className="topbar">
+          <StockSearch onPick={c => navigate(`/stocks/${c}`)} placeholder="搜股票看 K 线：代码或名称，如 600519 / 茅台" />
+          <UserMenu />
+        </header>
+        <main className="page"><Outlet /></main>
+      </div>
     </div>
   )
 }

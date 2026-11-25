@@ -5,7 +5,7 @@ import { displayCode } from '../lib/format'
 import './StockSearch.css'
 
 /** 按代码或名称搜索股票。键盘上下选择，回车确认。 */
-export default function StockSearch({ onPick }: { onPick: (code: string) => void }) {
+export default function StockSearch({ onPick, placeholder = '输入代码或名称，如 600519 / 茅台' }: { onPick: (code: string) => void; placeholder?: string }) {
   const [q, setQ] = useState('')
   const [debounced, setDebounced] = useState('')
   const [open, setOpen] = useState(false)
@@ -29,7 +29,7 @@ export default function StockSearch({ onPick }: { onPick: (code: string) => void
       <Search size={16} className="muted" />
       <input
         value={q}
-        placeholder="输入代码或名称，如 600519 / 茅台"
+        placeholder={placeholder}
         aria-label="搜索股票"
         role="combobox"
         aria-expanded={open && hits.length > 0}
