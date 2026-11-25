@@ -17,6 +17,7 @@ import { motionOff, useRolling } from '../../lib/motion'
 import { useRemember } from '../../lib/recent'
 import { stanceChoices, stanceText } from '../../lib/stance'
 import { horizonText, optionHorizons, stockHorizons } from './horizons'
+import InviteCard from '../rooms/InviteCard'
 import './ask.css'
 
 /** 小四的回答：先结论（大数字 + 一句大白话），再证据；右边一直能看到小四的话和“封存”。 */
@@ -160,6 +161,7 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
             </div>
           </section>
 
+          {!index && <InviteCard code={a.code} name={a.name} />}
           {!index && <SealPanel key={`${a.kind}-${a.code}-${a.horizon}-${a.fee}`} a={a} disabled={pending} onSealed={sealedNow} />}
         </aside>
       </div>

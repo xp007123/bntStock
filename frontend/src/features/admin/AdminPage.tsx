@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { type AdminUser, ApiError, resetUserPassword, runSync, setUserStatus, useAdminUsers, useMe, useSyncStatus } from '../../api/client'
+import SubNav, { ADMIN_TABS } from '../../components/SubNav'
 import './admin.css'
 
 const TABS = [
@@ -29,6 +30,7 @@ export default function AdminPage() {
 
   return (
     <div className="admin">
+      <SubNav items={ADMIN_TABS} />
       <header className="pt-head"><h1>管理后台</h1><p className="muted">审核注册用户；用户忘记密码时在这里重置。</p></header>
 
       <section className="card">

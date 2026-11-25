@@ -374,3 +374,57 @@ export const useSignals = () =>
     queryKey: ['watch-signals'], queryFn: () => get<Signals>('/watchlist/signals'),
     refetchInterval: q => (q.state.data && q.state.data.methods_ready < q.state.data.methods_total ? 5000 : false),
   })
+
+// ---------------------------------------------------------------- 群聊（见 docs/群聊-需求与架构.md）
+
+export type Persona = {
+  id: string; name: string; title: string; lens: string; tagline: string; role: 'guest' | 'host'; color: string
+  beliefs: string[]; asks: string[]; avoids: string[]; lines: string[]; version: number; disclaimer: string
+}
+export type PersonaList = { available: boolean; host: Persona; items: Persona[]; default: string[]; disclaimer: string }
+export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaList>('/personas'), staleTime: 60_000 })
+
+/** 数据卡：角色查了数据时挂在消息下面，内容由后端按引擎结果给，不是模型写的 */
+export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' } & Record<string, any>
+export type RoomMessage = {
+  seq: number; role: 'host' | 'guest' | 'user' | 'system'; persona_id: string | null; name: string; text: string
+  reply_to: number | null; cards: RoomCard[]; action?: string | null; created_at: string | null
+}
+export type RoomInfo = {
+  id: number; title: string; topic: { kind: string; code: string; name: string }; members: string[]
+  status: 'idle' | 'playing' | 'interrupted'; created_at: string; updated_at: string
+}
+export type RoomDetail = RoomInfo & { messages: RoomMessage[]; playing: boolean }
+export type RoomListItem = RoomInfo & { last: { name: string; text: string } | null; count: number }
+export type RoomEvent =
+  | { type: 'message'; message: RoomMessage }
+  | { type: 'typing'; persona: string; name: string }
+  | { type: 'delta'; persona: string; text: string }
+  | { type: 'skipped'; persona: string }
+  | { type: 'status'; status: string }
+  | { type: 'scene_end'; status: string; limit?: boolean }
+  | { type: 'members'; members: string[] }
+
+export const openRoom = (code: string, members?: string[]) => post<{ id: number }>('/rooms', { code, members })
+export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => get<{ items: RoomListItem[] }>('/rooms'), staleTime: 0 })
+export const getRoom = (id: number | string) => get<RoomDetail>(`/rooms/${id}`)
+export const sayInRoom = (id: number | string, text: string) => post<{ ok: boolean }>(`/rooms/${id}/say`, { text })
+export const continueRoom = (id: number | string) => post<{ ok: boolean }>(`/rooms/${id}/continue`, {})
+export const setRoomMembers = (id: number | string, change: { add?: string; remove?: string }) => post<{ members: string[] }>(`/rooms/${id}/members`, change)
+
+// ---- 管理端 · 角色管理
+export type AdminPersona = Persona & { enabled: boolean; in_default: boolean; sort: number; builtin: boolean; custom: boolean; saved_versions: number }
+export type AdminPersonaDetail = AdminPersona & {
+  content: string; builtin_version: number | null
+  versions: { version: number; note: string | null; created_at: string; created_by: number | null }[]
+}
+export type AdminPersonaList = { items: AdminPersona[]; tools: { name: string; description: string }[]; template: string; available: boolean }
+export const useAdminPersonas = () => useQuery({ queryKey: ['admin-personas'], queryFn: () => get<AdminPersonaList>('/admin/personas'), staleTime: 0 })
+export const getAdminPersona = (id: string) => get<AdminPersonaDetail>(`/admin/personas/${id}`)
+export const getPersonaVersion = (id: string, version: number) => get<{ version: number; content: string }>(`/admin/personas/${id}/versions/${version}`)
+export const savePersona = (id: string | null, content: string, note: string) =>
+  post<AdminPersonaDetail>(id ? `/admin/personas/${id}/versions` : '/admin/personas', { content, note })
+export const switchPersonaVersion = (id: string, version: number | null) => post<AdminPersonaDetail>(`/admin/personas/${id}/use`, { version })
+export const configurePersona = (id: string, s: { enabled?: boolean; in_default?: boolean; sort?: number }) => post<AdminPersonaDetail>(`/admin/personas/${id}/settings`, s)
+export const tryPersona = (content: string, code: string, cue = '') =>
+  post<{ ok: boolean; text: string; note?: string; data?: string[]; stock?: string; seconds?: number }>('/admin/personas/try', { content, code, cue })

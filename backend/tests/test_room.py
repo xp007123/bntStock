@@ -235,7 +235,8 @@ def test_model_down_room_stays_quiet(client: TestClient):
     client.app.state.rooms.model = FakeModel(default="")       # 模型一句话都说不出来
     rid = client.post("/api/rooms", json={"code": "sh600519"}).json()["id"]
     room = wait_idle(client, rid)
-    assert room["messages"] == [] and room["status"] == "idle"      # 没有报错消息，群只是安静
+    # 没有报错：小四说一句固定的话，告诉用户过会儿再试
+    assert [(m["role"], m["action"]) for m in room["messages"]] == [("host", "quiet")] and room["status"] == "idle"
     client.app.state.rooms.model = None
     assert client.get("/api/personas").json()["available"] is False
     assert client.post("/api/rooms", json={"code": "sh600519"}).status_code == 422

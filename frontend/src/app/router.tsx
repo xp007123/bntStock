@@ -12,6 +12,10 @@ import StockPage, { DEFAULT_STOCK } from '../features/stocks/StockPage'
 import MarketPage from '../features/market/MarketPage'
 import RecordsPage from '../features/records/RecordsPage'
 import WatchPage from '../features/watch/WatchPage'
+import RoomPage from '../features/rooms/RoomPage'
+import RoomsPage from '../features/rooms/RoomsPage'
+import PersonasPage from '../features/rooms/PersonasPage'
+import PersonaAdminPage from '../features/admin/PersonaAdminPage'
 import PatternsPage from '../features/patterns/PatternsPage'
 import NewPatternPage from '../features/patterns/NewPatternPage'
 import JobPage from '../features/patterns/JobPage'
@@ -36,7 +40,11 @@ export const router = createBrowserRouter([
       { path: 'records', element: <RecordsPage /> },
       { path: 'market', element: <MarketPage /> },
       { path: 'watch', element: <WatchPage /> },
+      { path: 'rooms', element: <RoomsPage /> },
+      { path: 'rooms/:id', element: <RoomPage /> },
+      { path: 'personas', element: <PersonasPage /> },
       { path: 'admin', element: <RequireAuth admin><AdminPage /></RequireAuth> },
+      { path: 'admin/personas', element: <RequireAuth admin><PersonaAdminPage /></RequireAuth> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

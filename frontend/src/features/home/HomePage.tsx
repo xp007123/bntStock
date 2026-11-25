@@ -9,6 +9,7 @@ import { isRevealed } from '../../lib/motion'
 import { horizonText } from '../ask/horizons'
 import JobList from '../patterns/JobList'
 import AskPanel from './AskPanel'
+import SubNav, { ASK_TABS } from '../../components/SubNav'
 import WatchlistCard from './WatchlistCard'
 import SignalsCard from '../watch/SignalsCard'
 import { forget, useRecent } from '../../lib/recent'
@@ -28,6 +29,7 @@ export default function HomePage() {
   const picked = () => { setNod(true); window.setTimeout(() => setNod(false), 1600) }
   return (
     <section className="home">
+      <SubNav items={ASK_TABS} />
       <header className="home-hello fade-in">
         <h1><span>{greeting()}，</span>{me.data?.username}</h1>
         <h1>今天想验证什么？</h1>

@@ -11,7 +11,7 @@ type Item = { to: string; label: string; short?: string; icon: LucideIcon; match
 // 四项：问、看结果、验证方法（方法库 + 我验证过的）、行情（个股 + 大盘）。后两项的两页在页内切换。
 const GROUPS: { title: string; items: Item[] }[] = [
   { title: '', items: [
-    { to: '/', label: '问小四', icon: MessageCircle, match: p => p === '/' || p.startsWith('/ask') },
+    { to: '/', label: '问小四', icon: MessageCircle, match: p => p === '/' || p.startsWith('/ask') || p.startsWith('/rooms') || p.startsWith('/personas') },
     { to: '/judgments', label: '我的判断', short: '判断', icon: Stamp },
     { to: '/patterns', label: '验证方法', short: '方法', icon: FlaskConical, match: p => p.startsWith('/patterns') || p.startsWith('/records') },
     { to: '/watch', label: '行情', icon: CandlestickChart, match: p => p.startsWith('/watch') || p.startsWith('/stocks') || p.startsWith('/market') },

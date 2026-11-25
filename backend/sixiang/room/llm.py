@@ -8,11 +8,15 @@ import asyncio
 import inspect
 import json
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Protocol
 
-import httpx
+try:
+    import httpx
+except ImportError:      # 服务器上还没装这个依赖：群聊不开通，其他功能照常
+    httpx = None
 
 OnText = Callable[[str], Awaitable[None] | None]
 
@@ -167,10 +171,37 @@ class FakeModel:
         return Reply(text=str(item))
 
 
-def from_env() -> DeepSeek | None:
+class DemoModel:
+    """演示模型：不联网、不花钱，一个字一个字地吐几句固定的话，偶尔查一次数据。
+    只用于本地开发界面（设 SIXIANG_LLM_DEMO=1）。线上不要开。"""
+
+    name = "demo"
+    LINES = ["这事我有不同看法。\n先看数，再下结论。", "你说的我只同意一半。", "别急，这个位置我还得再看看。\n历史上这种时候，多半没那么简单。",
+             "这话我不服。", "我可能是错的，但我还是这么看。"]
+
+    def __init__(self, delay: float = 0.03):
+        self.delay, self._n = delay, 0
+
+    async def chat(self, messages, tools=None, *, temperature=None, max_tokens=None, on_text=None) -> Reply:
+        self._n += 1
+        system = messages[0]["content"] if messages else ""
+        asked = any(m.get("role") == "tool" for m in messages)
+        code = re.search(r"股票：[^（]*（([a-z]{2}\d{6})）", system)
+        if tools and not asked and code and self._n % 3 == 1:        # 每三次有一次先查数据，好看数据卡
+            return Reply(tool_calls=[ToolCall(f"demo{self._n}", "stock_outlook", json.dumps({"code": code.group(1)}))])
+        text = "我查了，数在这儿。\n不到一半，别太乐观。" if asked else self.LINES[self._n % len(self.LINES)]
+        for ch in text:
+            await asyncio.sleep(self.delay)
+            await _emit(on_text, ch)
+        return Reply(text=text, usage={"prompt_tokens": 0, "completion_tokens": 0}, seconds=round(len(text) * self.delay, 2))
+
+
+def from_env() -> ChatModel | None:
     """没配密钥就返回 None：群聊入口不显示，其他功能不受影响。"""
+    if os.environ.get("SIXIANG_LLM_DEMO") == "1":
+        return DemoModel()
     key = os.environ.get("SIXIANG_LLM_API_KEY", "").strip()
-    if not key:
+    if not key or httpx is None:
         return None
     return DeepSeek(key, model=os.environ.get("SIXIANG_LLM_MODEL", "deepseek-flash"),
                     base_url=os.environ.get("SIXIANG_LLM_BASE_URL", "https://api.deepseek.com"),

@@ -8,6 +8,7 @@ import WatchStar from '../../components/WatchStar'
 import { dailyChange } from '../../lib/indicators'
 import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import { FinancialCard, ValuationCard } from './FinancialPanels'
+import InviteCard from '../rooms/InviteCard'
 import './StockPage.css'
 
 const ADJUSTS: { id: Adjust; label: string }[] = [
@@ -82,6 +83,7 @@ export default function StockPage() {
               <Link className="btn primary" to={`/ask/stock?code=${code}&h=21`}>接下来 1 个月，涨的可能大吗？</Link>
               <Link className="btn" to={`/ask/option?code=${code}&h=63&fee=7.5`}>它的 3 个月期权值不值？</Link>
             </div>
+            <InviteCard code={code} name={security.data?.name ?? code} />
             <p className="footnote muted">
               数据版本 {daily.data?.data_version ?? '—'} · {ADJUSTS.find(a => a.id === adjust)?.label}。
               仅日线收盘数据，不含盘中走势。

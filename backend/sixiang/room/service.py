@@ -20,6 +20,7 @@ from .store import RoomStore
 log = logging.getLogger("sixiang.room")
 MAX_MEMBERS = 6
 LIMIT_LINE = "今天聊得够多了，嗓子都哑了。明天接着来。"
+QUIET_LINE = "信号不太好，大家都没出声。过一会儿再点“让他们聊起来”试试。"
 
 
 class RoomError(ValueError):
@@ -164,7 +165,10 @@ class RoomService:
 
         # 用户在一场戏中间说话：当前这条说完就停，先处理用户的话
         interrupted = lambda: any(c["kind"] == "say" for c in self._inbox.get(rid, []))  # noqa: E731
-        await actor.play(scene, room, cast, host, self.model, ctx, emit, interrupted)
+        made = await actor.play(scene, room, cast, host, self.model, ctx, emit, interrupted)
+        if made == 0 and not interrupted():
+            # 整场没有一个人说得出话（多半是模型连不上）：小四说一句固定的话，不让用户对着空群干等
+            await keep(room.add("host", host.name, QUIET_LINE, persona_id=host.id, meta={"action": "quiet"}))
         self._pub(rid, "scene_end", status="idle")
 
     async def _refresh_brief(self, rid: int, room) -> None:
