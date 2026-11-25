@@ -1,0 +1,71 @@
+/* 四象智投 · 设计语言 V2（见 docs/设计原则与品牌调性.md） */
+:root {
+  --paper: #f7f5f0;
+  --paper-card: #fffdf9;
+  --paper-deep: #efece4;
+  --ink: #1d211e;
+  --ink-2: #3a3f3b;
+  --ink-3: #7b8179;
+  --ink-4: #a9ada3;
+  --rule: #e2ded4;
+  --cinnabar: #c8442f;
+  --cinnabar-soft: #f6e7e1;
+  --up: #c23a30;
+  --down: #2a7a4b;
+  --flat: #948e83;
+
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.32 0 0 0 0 0.25 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper) var(--grain);
+  color: var(--ink-2);
+  font: 15px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+.serif { font-family: var(--serif); }
+.num { font-variant-numeric: tabular-nums; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* 标识：四象（四格），左上与右下为实色 */
+.mark { display: inline-grid; grid-template-columns: repeat(2, 7px); gap: 3px; vertical-align: middle; }
+.mark i { width: 7px; height: 7px; background: var(--ink); }
+.mark i:nth-child(2), .mark i:nth-child(3) { background: var(--cinnabar); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font: 600 17px/1 var(--serif); letter-spacing: .12em; color: var(--ink); text-decoration: none; }
+
+/* 小号大写标签 */
+.eyebrow { font-size: 12px; letter-spacing: .24em; color: var(--ink-3); }
+.rule { height: 1px; background: var(--rule); border: 0; margin: 0; }
+
+/* 按钮：主按钮用墨色，朱色只留给印章与强调 */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 22px;
+       border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer;
+       font-size: 14px; letter-spacing: .08em; transition: background .22s var(--ease), color .22s var(--ease); }
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn.solid { background: var(--ink); color: var(--paper); }
+.btn.solid:hover { background: #000; }
+
+/* 朱印 */
+.seal { --size: 64px; width: var(--size); height: var(--size); display: inline-grid; place-items: center; flex-shrink: 0;
+        background: var(--cinnabar); color: #fff6f1; font: 700 calc(var(--size) * .26)/1.05 var(--serif);
+        text-align: center; letter-spacing: .02em; transform: rotate(-6deg); position: relative;
+        box-shadow: inset 0 0 0 3px var(--cinnabar), inset 0 0 0 4px #fff6f1aa; }
+.seal::after { content: ""; position: absolute; inset: 0; background: var(--grain); mix-blend-mode: screen; opacity: .9; }
+.seal.ghost { background: transparent; color: var(--ink-4); box-shadow: inset 0 0 0 1.5px var(--ink-4); }
+.seal.ghost::after { display: none; }
+.seal.stamp { animation: stamp .42s var(--ease) both; }
+@keyframes stamp { 0% { transform: rotate(-6deg) scale(1.9); opacity: 0; } 60% { transform: rotate(-6deg) scale(.94); opacity: 1; } 100% { transform: rotate(-6deg) scale(1); } }
+
+.fade-in { animation: fade .6s var(--ease) both; }
+@keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .seal.stamp, .fade-in { animation: none; } }
+
+.proto-note { position: fixed; right: 16px; bottom: 12px; font-size: 11px; color: var(--ink-4); letter-spacing: .08em; }

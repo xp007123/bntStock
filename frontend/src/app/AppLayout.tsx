@@ -6,10 +6,10 @@ import './AppLayout.css'
 
 const NAV = [
   { to: '/', label: '问小四', end: true },
-  { to: '/stocks', label: '个股看盘' },
-  { to: '/patterns', label: '形态测试' },
-  { to: '/records', label: '研究记录' },
-  { to: '/market', label: '全 A 行情' },
+  { to: '/stocks', label: '看盘' },
+  { to: '/patterns', label: '形态' },
+  { to: '/records', label: '我的研究' },
+  { to: '/market', label: '大盘' },
 ]
 
 function DataBadge() {

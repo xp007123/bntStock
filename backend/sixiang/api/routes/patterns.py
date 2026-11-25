@@ -75,7 +75,7 @@ def variant(request: Request, jid: str, change: dict = Body(...), user: User = D
     if base["status"] != "completed":
         raise HTTPException(409, "原研究尚未完成")
     snap = request.app.state.market.snapshot()
-    if base["data_version"] != snap.version_id:
+    if not snap.same_market(base["data_version"]):
         raise HTTPException(409, "原研究来自旧数据，请先用最新数据重跑，再增减条件对比")
     try:
         rule, detail = variant_rule(base, change, snap.data_end)
@@ -98,7 +98,10 @@ def compare(request: Request, left: str, right: str, user: User = Depends(curren
     metas = [_job(request, j, user) for j in (left, right)]
     if any(m["status"] != "completed" for m in metas):
         raise HTTPException(409, "两条研究都完成后才能对比")
-    return compare_jobs(metas[0], metas[1], _jobs(request).result(left), _jobs(request).result(right))
+    snap = request.app.state.market.snapshot()
+    dv = [m["data_version"] for m in metas]
+    same = dv[0] == dv[1] or (snap.same_market(dv[0]) and snap.same_market(dv[1]))
+    return compare_jobs(metas[0], metas[1], _jobs(request).result(left), _jobs(request).result(right), same_data=same)
 
 
 @router.get("/library")
@@ -160,7 +163,7 @@ def events(request: Request, jid: str, offset: int = Query(0, ge=0), limit: int 
 def explain(request: Request, jid: str, code: str, date: str | None = None, user: User = Depends(current_user)):
     meta = _job(request, jid, user)
     snap = request.app.state.market.snapshot()
-    if snap.version_id != meta["data_version"]:
+    if not snap.same_market(meta["data_version"]):
         raise HTTPException(409, "该研究使用旧数据版本；可查看原报告，重新运行后可在 K 线上查看入选原因")
     try:
         return explain_stock(snap, meta["rule"], code.lower(), date)

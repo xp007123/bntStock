@@ -47,7 +47,7 @@ def import_financials(source: Path, market_dir: Path, workers: int | None = None
                     log(f"  财务 {i}/{len(dirs)}  用时 {time.time() - started:.0f}s")
 
     rows = write_parquet(frames(), staged / "financials.parquet")
-    manifest = {**base, "id": version_id, "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+    manifest = {**base, "id": version_id, "market_version": base.get("market_version", base_id), "created_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
                 "source": {**base.get("source", {}), "financial": {"kind": "patternlab-bundled", "path": str(source), "base_version": base_id}},
                 "financials": {"stocks": stocks, "rows": rows, "errors": errors[:50], "error_count": len(errors),
                                "point_in_time": "按披露日与 available_from 过滤；保留全部修订"}}

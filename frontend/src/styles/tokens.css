@@ -1,24 +1,33 @@
-/* 四象智投设计变量（沿用旧版 ResearchHome 暖色设计，见 docs/产品与架构说明 6.1） */
+/* 四象智投设计变量 V2（见 docs/设计原则与品牌调性.md）：纸、墨、一点朱 */
+@font-face {
+  font-family: "Sixiang Serif";
+  src: local("Noto Serif SC SemiBold"), local("NotoSerifSC-SemiBold"),
+       url("/fonts/noto-serif-sc-600-subset.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
-  --bg: #fafaf8;
-  --side: #f0f1ed;
-  --surface: #ffffff;
-  --line: #e4e6df;
-  --line-strong: #d6d9cf;
-  --ink: #272b28;
-  --ink-2: #4a5048;
+  /* 纸 */
+  --bg: #f7f5f0;
+  --side: #efece4;
+  --surface: #fffdf9;
+  /* 墨 */
+  --ink: #1d211e;
+  --ink-2: #3a3f3b;
   --muted: #7b8179;
-  --faint: #afb4a5;
+  --faint: #a9ada3;
+  --line: #e2ded4;
+  --line-strong: #cfc9bc;
+  /* 朱：只用于印章与关键强调；按钮用墨色 */
+  --accent: #c8442f;
+  --accent-ink: #fff6f1;
+  --accent-soft: #f6e7e1;
 
-  /* 主色只用于可交互元素；数据里的红色一律表示涨 */
-  --accent: #e65336;
-  --accent-ink: #ffffff;
-  --accent-soft: #fbede7;
-
-  /* 行情：红涨绿跌 */
-  --up: #d23b33;
-  --down: #1e8a4c;
+  /* 行情：红涨绿跌（数据里的红色只表示涨） */
+  --up: #c23a30;
+  --down: #2a7a4b;
   --flat: #948e83;
 
   /* 指标线（已校验色盲区分；黄色对比度低，必须配文字标签） */
@@ -26,9 +35,13 @@
   --series-2: #eda100;
   --series-3: #6250d6;
 
-  --radius: 16px;
-  --radius-sm: 10px;
-  --shadow: 0 4px 12px #33442203, 0 14px 35px #33442203;
-  --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --radius: 4px;
+  --radius-sm: 4px;
+  --shadow: 0 1px 0 var(--line);
+  --lift: 0 1px 0 var(--line), 0 24px 48px -32px #3a32223d;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --serif: "Sixiang Serif", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.32 0 0 0 0 0.25 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }

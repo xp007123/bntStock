@@ -1,7 +1,7 @@
 @import '../patterns/patterns.css';
 
 .admin { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
-.admin-msg { font-size: 13px; background: var(--accent-soft); border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; }
+.admin-msg { font-size: 13px; background: var(--accent-soft); border-radius: var(--radius); padding: 6px 10px; margin-bottom: 10px; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .admin-table th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
 .admin-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); }

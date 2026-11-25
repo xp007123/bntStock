@@ -5,7 +5,7 @@
 .stock-head .code { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 6px; }
 .stock-head p { font-size: 12px; margin-top: 2px; }
 .quote { display: flex; align-items: baseline; gap: 10px; }
-.quote b { font-size: 26px; font-weight: 600; }
+.quote b { font: 600 30px/1.2 var(--serif); }
 .quote .muted { font-size: 12px; }
 .stock-controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 10px; }
 .stock-side { display: flex; flex-direction: column; gap: 14px; }

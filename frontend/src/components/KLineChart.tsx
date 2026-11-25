@@ -6,16 +6,17 @@ import { CanvasRenderer } from 'echarts/renderers'
 import type { Bar } from '../api/client'
 import { sma } from '../lib/indicators'
 import { fmtBig, fmtPct, fmtPrice } from '../lib/format'
+import { PALETTE as P } from '../lib/palette'
 import './KLineChart.css'
 
 echarts.use([CandlestickChart, BarChart, LineChart, GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent, MarkPointComponent, CanvasRenderer])
 
 const MA = [
-  { n: 5, color: 'var(--series-1)', hex: '#2a78d6' },
-  { n: 10, color: 'var(--series-2)', hex: '#eda100' },
-  { n: 20, color: 'var(--series-3)', hex: '#6250d6' },
+  { n: 5, color: 'var(--series-1)', hex: P.series[0] },
+  { n: 10, color: 'var(--series-2)', hex: P.series[1] },
+  { n: 20, color: 'var(--series-3)', hex: P.series[2] },
 ]
-const C = { up: '#d23b33', down: '#1e8a4c', grid: '#e4e6df', axis: '#7b8179', surface: '#ffffff', ink: '#272b28' }
+const C = { up: P.up, down: P.down, grid: P.line, axis: P.muted, surface: P.surface, ink: P.ink }
 
 type Props = {
   bars: Bar[]
@@ -62,13 +63,13 @@ export default function KLineChart({ bars, height = 420, showVolume = true, aria
     const markSet = new Set(marks ?? [])
     const markData = bars.flatMap((b, i) => markSet.has(b.date) ? [{
       coord: [i, b.high], value: b.date === focus ? '入选' : '',
-      itemStyle: { color: b.date === focus ? '#e65336' : '#e6533699' },
+      itemStyle: { color: b.date === focus ? P.accent : P.accent + '99' },
       symbolSize: b.date === focus ? 30 : 14,
     }] : [])
     const priceGrid = showVolume ? { left: 8, right: 56, top: 12, height: '64%' } : { left: 8, right: 56, top: 12, bottom: 48 }
     chart.current.setOption({
       animation: false,
-      textStyle: { fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", sans-serif' },
+      textStyle: { fontFamily: P.sans },
       grid: showVolume ? [priceGrid, { left: 8, right: 56, top: '76%', height: '14%' }] : [priceGrid],
       axisPointer: { link: [{ xAxisIndex: 'all' }], label: { backgroundColor: C.ink } },
       tooltip: {

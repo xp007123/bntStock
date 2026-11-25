@@ -7,6 +7,8 @@ import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/for
 import { conditionText } from './ruleText'
 import { STATUS } from './JobList'
 import YearChart from './YearChart'
+import Verdict from '../../components/Verdict'
+import { patternVerdict } from './verdict'
 import CaseViewer from './CaseViewer'
 import VariantPanel from './VariantPanel'
 import './patterns.css'
@@ -32,9 +34,8 @@ export default function JobPage() {
         </p>
       </header>
       <Lineage job={job.data} />
-      <Conditions job={job.data} />
-      {done && <Toolbar job={job.data} />}
-      {done ? (result.data ? <Report job={job.data} result={result.data} /> : <div className="state">读取结果…</div>) : <Progress job={job.data} />}
+      {done ? (result.data ? <Report job={job.data} result={result.data} /> : <div className="state">读取结果…</div>)
+            : <><Conditions job={job.data} /><Progress job={job.data} /></>}
     </div>
   )
 }
@@ -62,7 +63,8 @@ function Toolbar({ job }: { job: Job }) {
   const version = useDataVersion()
   const jobs = useJobs()
   const navigate = useNavigate()
-  const stale = !!version.data && version.data.id !== job.data_version
+  // 只更新财务等附属数据时行情版本不变，不算旧数据
+  const stale = !!version.data && version.data.id !== job.data_version && version.data.market_version !== job.data_version
   const others = (jobs.data ?? []).filter(j => j.status === 'completed' && j.id !== job.id)
   const rerun = async () => {
     setError('')
@@ -109,7 +111,7 @@ function Toolbar({ job }: { job: Job }) {
 function Conditions({ job }: { job: Job }) {
   return (
     <section className="card">
-      <div className="card-title">实际条件 <span className="muted">冷却 {job.rule.cooldown} 根 · 观察 {job.rule.horizons?.join(' / ')} 日</span></div>
+      <div className="card-title">用的是哪些条件 <span className="muted">全部同时满足才算出现一次 · 同一只股票 {job.rule.cooldown} 天内只算一次</span></div>
       <ol className="cond-list">
         {job.rule.conditions.map((c, i) => <li key={i}><b>{c.label}</b><code>{conditionText(c)}</code></li>)}
       </ol>
@@ -137,24 +139,39 @@ function Report({ job, result }: { job: Job; result: StudyResult }) {
   const [horizon, setHorizon] = useState(horizons.includes(10) ? 10 : horizons[horizons.length - 1])
   const [current, setCurrent] = useState<Case | null>(null)
   const open = (c: Case) => { setCurrent(c); requestAnimationFrame(() => document.getElementById('case')?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }
+  const v = patternVerdict(result.summary, result.years)
 
   return (
     <>
+      {v ? (
+        <section className="report-verdict">
+          <Verdict label={`${v.horizon} 个交易日后在涨的比例`} value={v.value} dots={v.dots}
+                   dotsCaption={<>每 100 次里<br />大约有 <b>{Math.round(v.dots)} 次</b>在涨</>}
+                   plain={v.plain} note={v.notes.join(' · ')} />
+          <p className={`verdict-tag tone-${v.tone}`}>
+            {v.tone === 'same' ? '结论：和随便买差不多' : v.tone === 'good' ? '结论：比随便买略好' : '结论：比随便买还差'}
+          </p>
+        </section>
+      ) : <p className="state">没有足够的历史样本，算不出结论。</p>}
+
+      <Conditions job={job} />
+      <Toolbar job={job} />
+
       <section className="stat-tiles">
-        <div><span>历史事件</span><b className="num">{result.deduplicated_events.toLocaleString()}</b><small>原始信号 {result.raw_signals.toLocaleString()}，去重后</small></div>
-        <div><span>涉及股票</span><b className="num">{result.stocks.toLocaleString()}</b><small>扫描 {result.scanned.toLocaleString()} 只</small></div>
-        <div><span>今日符合</span><b className="num">{result.selected.length}</b><small>{job.data_end}</small></div>
+        <div><span>历史上出现过</span><b className="num">{result.deduplicated_events.toLocaleString()} 次</b><small>同一只股票 {job.rule.cooldown} 天内只算一次</small></div>
+        <div><span>涉及股票</span><b className="num">{result.stocks.toLocaleString()} 只</b><small>一共查了 {result.scanned.toLocaleString()} 只</small></div>
+        <div><span>今天符合</span><b className="num">{result.selected.length} 只</b><small>{job.data_end} 收盘后</small></div>
       </section>
 
       <section className="card">
-        <div className="card-title">历史表现 <span className="muted">信号次日开盘买入，持有 N 个交易日后收盘；未扣费</span></div>
+        <div className="card-title">拿几天，结果怎样 <span className="muted">出现后第二天开盘买入，拿满 N 个交易日按收盘算；没扣手续费</span></div>
         <div className="table-wrap">
           <table className="sum-table">
-            <thead><tr><th>持有期</th><th>有效样本</th><th>上涨比例</th><th>平均收益</th><th>中位收益</th><th>最差 10%</th><th>最好 10%</th><th>相对同期平均</th></tr></thead>
+            <thead><tr><th>拿几天</th><th>算了多少次</th><th>在涨的比例</th><th>平均涨跌</th><th>一半好于</th><th>运气最差的十分之一</th><th>运气最好的十分之一</th><th>比随便买</th></tr></thead>
             <tbody>
               {result.summary.map(r => (
                 <tr key={r.horizon}>
-                  <td>{r.horizon} 日</td>
+                  <td>{r.horizon} 天</td>
                   <td className="num">{r.valid.toLocaleString()}{r.unavailable > 0 && <small className="muted"> / 排除 {r.unavailable}</small>}</td>
                   <td className="num">{fmtPct(r.win_rate, 1, false)}</td>
                   <td className={`num ${trendClass(r.mean)}`}>{fmtPct(r.mean)}</td>
@@ -167,21 +184,21 @@ function Report({ job, result }: { job: Job; result: StudyResult }) {
             </tbody>
           </table>
         </div>
-        <p className="muted footnote">“相对同期平均”：同一天、同样过滤条件下全部合格股票的等权平均收益之差，不是指数，也不是可交易组合。</p>
+        <p className="muted footnote">“比随便买”：和同一天、同样条件下的所有股票平均相比，多赚或少赚多少。它不是指数，也不是能直接照着买的组合。</p>
       </section>
 
       <section className="card">
         <div className="card-title">
-          逐年表现
-          <div className="seg" role="group" aria-label="持有期">
-            {horizons.map(h => <button key={h} aria-pressed={horizon === h} onClick={() => setHorizon(h)}>{h} 日</button>)}
+          每一年的表现 <span className="muted">有的方法只在某几年灵</span>
+          <div className="seg" role="group" aria-label="拿几天">
+            {horizons.map(h => <button key={h} aria-pressed={horizon === h} onClick={() => setHorizon(h)}>拿 {h} 天</button>)}
           </div>
         </div>
         <YearChart rows={result.years} horizon={horizon} />
       </section>
 
       <section className="card">
-        <div className="card-title">今日符合 <span className="muted">{job.data_end} 收盘后满足全部条件，按成交额排序</span></div>
+        <div className="card-title">今天符合的股票 <span className="muted">{job.data_end} 收盘后满足全部条件，按成交额排序；不是买入建议</span></div>
         {result.selected.length === 0 ? <p className="muted">今天没有股票满足全部条件。</p> : (
           <div className="table-wrap">
             <table className="list-table">
@@ -207,7 +224,7 @@ function Report({ job, result }: { job: Job; result: StudyResult }) {
       <Events job={job} horizons={horizons} onOpen={open} />
 
       <section className="card method">
-        <div className="card-title">口径与局限</div>
+        <div className="card-title">怎么算的、有哪些局限</div>
         <p>{result.method}</p>
         <p>{result.reference}</p>
         <ul>{result.limitations.map(l => <li key={l}>{l}</li>)}</ul>

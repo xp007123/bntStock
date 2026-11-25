@@ -4,77 +4,83 @@
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font: 14px/1.6 var(--font);
+  background: var(--bg) var(--grain);
+  color: var(--ink-2);
+  font: 14px/1.7 var(--font);
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-button:disabled { cursor: not-allowed; opacity: .5; }
-:focus-visible { outline: 3px solid #e6533680; outline-offset: 2px; }
+button:disabled { cursor: not-allowed; opacity: .45; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--serif); color: var(--ink); font-weight: 600; letter-spacing: .02em; }
 a { color: inherit; }
 
+.serif { font-family: var(--serif); }
 .num { font-variant-numeric: tabular-nums; }
 .up { color: var(--up); }
 .down { color: var(--down); }
 .muted { color: var(--muted); }
+.eyebrow { font-size: 12px; letter-spacing: .2em; color: var(--muted); }
 
+/* 卡片：纸面 + 细线，不用投影 */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px 18px;
+  padding: 18px 22px;
 }
 .card-title {
-  font-size: 15px;
-  font-weight: 600;
+  font: 600 16px/1.4 var(--serif);
+  color: var(--ink);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
+.card-title .muted { font: 400 12px/1.4 var(--font); }
 
+/* 按钮：主按钮墨色实底，次按钮细墨线 */
 .btn {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--surface);
   border-radius: var(--radius-sm);
   padding: 6px 14px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  color: var(--ink-2);
+  transition: border-color .22s var(--ease), background .22s var(--ease), color .22s var(--ease);
 }
-.btn:hover:not(:disabled) { border-color: var(--line-strong); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); letter-spacing: .06em; }
+.btn.primary:hover:not(:disabled) { background: #000; color: var(--bg); }
 
-.seg {
-  display: inline-flex;
-  background: var(--side);
-  border-radius: 999px;
-  padding: 3px;
-  gap: 2px;
-}
+/* 分段选择：下划线式 */
+.seg { display: inline-flex; gap: 2px; border-bottom: 1px solid var(--line); }
 .seg button {
   border: 0;
   background: transparent;
-  border-radius: 999px;
-  padding: 3px 12px;
-  color: var(--ink-2);
-  font-size: 13px;
-}
-.seg button[aria-pressed='true'] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px #0000000d; }
-
-.state {
-  padding: 40px 16px;
-  text-align: center;
+  padding: 4px 10px 6px;
   color: var(--muted);
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed='true'] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+
+.state { padding: 40px 16px; text-align: center; color: var(--muted); }
 .state.error { color: var(--up); }
 
-.brand-mark { display: grid; grid-template-columns: repeat(2, 8px); gap: 3px; }
-.brand-mark i { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
-.brand-mark i:nth-child(2), .brand-mark i:nth-child(3) { opacity: .45; }
+/* 标识：四象 */
+.brand-mark { display: inline-grid; grid-template-columns: repeat(2, 7px); gap: 3px; }
+.brand-mark i { width: 7px; height: 7px; background: var(--ink); }
+.brand-mark i:nth-child(2), .brand-mark i:nth-child(3) { background: var(--accent); }
+
+.fade-in { animation: fade .5s var(--ease) both; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }

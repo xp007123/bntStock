@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>问期权 · 四象智投</title>
+<link rel="stylesheet" href="xiaosi.css">
+<link rel="stylesheet" href="base.css">
+<style>
+  .top { display: flex; align-items: center; gap: 40px; padding: 22px 48px; border-bottom: 1px solid var(--rule); }
+  .top nav { display: flex; gap: 28px; font-size: 14px; }
+  .top nav a { text-decoration: none; color: var(--ink-3); padding-bottom: 4px; }
+  .top nav a.on { color: var(--ink); border-bottom: 1px solid var(--ink); }
+  .top .meta { margin-left: auto; font-size: 12px; color: var(--ink-4); letter-spacing: .06em; }
+
+  .doc { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; }
+  .crumb { display: flex; align-items: center; gap: 10px; }
+  .question { font: 500 32px/1.45 var(--serif); color: var(--ink); margin: 18px 0 14px; letter-spacing: .02em; }
+  .question::before { content: "“"; color: var(--cinnabar); margin-right: 2px; }
+  .question::after { content: "”"; color: var(--cinnabar); }
+  .terms { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--ink-3); padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
+  .terms b { color: var(--ink-2); font-weight: 500; margin-left: 6px; }
+
+  .verdict { display: grid; grid-template-columns: auto 1fr; gap: 10px 48px; align-items: end; padding: 44px 0 32px; }
+  .verdict .label { grid-column: 1 / -1; }
+  .verdict .figure { font: 600 112px/.9 var(--serif); color: var(--ink); letter-spacing: -.02em; }
+  .verdict .figure small { font-size: 44px; margin-left: 4px; }
+  .dots { display: flex; align-items: flex-end; gap: 18px; padding-bottom: 6px; }
+  .dots .grid { display: grid; grid-template-columns: repeat(10, 7px); gap: 4px; }
+  .dots .grid i { width: 7px; height: 7px; border-radius: 50%; background: var(--rule); }
+  .dots .grid i.on { background: var(--cinnabar); }
+  .dots .cap { font-size: 13px; line-height: 1.7; color: var(--ink-3); max-width: 200px; }
+  .dots .cap b { font: 600 15px var(--serif); color: var(--ink); }
+  .verdict .plain { grid-column: 1 / -1; margin: 18px 0 0; font: 500 21px/1.6 var(--serif); color: var(--ink); }
+  .verdict .plain span { display: block; font: 400 13px/1.7 var(--sans); color: var(--ink-3); margin-top: 6px; }
+
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); }
+  .facts div { padding: 16px 16px 18px 0; }
+  .facts div + div { padding-left: 20px; border-left: 1px solid var(--rule); }
+  .facts span { font-size: 12px; letter-spacing: .12em; color: var(--ink-3); }
+  .facts b { display: block; font: 600 26px/1.3 var(--serif); color: var(--ink); margin-top: 4px; }
+  .facts small { font-size: 12px; color: var(--ink-3); }
+  .facts b.up { color: var(--up); } .facts b.down { color: var(--down); }
+
+  .voice { display: grid; grid-template-columns: 52px 1fr; gap: 18px; padding: 36px 0; border-bottom: 1px solid var(--rule); }
+  .voice p { margin: 0; font: 400 17px/1.95 var(--serif); color: var(--ink-2); }
+  .voice p b { color: var(--ink); font-weight: 600; }
+  .voice small { display: block; margin-top: 10px; font-size: 12px; color: var(--ink-4); letter-spacing: .06em; }
+  .follow { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 18px; }
+  .follow .eyebrow { margin-right: 6px; }
+  .follow button { border: 1px solid var(--rule); background: var(--paper-card); padding: 6px 14px; font-size: 13px; color: var(--ink-2); cursor: pointer;
+                   transition: border-color .22s var(--ease), color .22s var(--ease); }
+  .follow button:hover { border-color: var(--ink); color: var(--ink); }
+  .zones { display: flex; height: 10px; margin-bottom: 10px; gap: 2px; }
+  .zones i { display: block; height: 100%; }
+  .zone-labels { display: flex; gap: 2px; margin-bottom: 22px; font-size: 12px; color: var(--ink-3); }
+  .zone-labels span { overflow: hidden; white-space: nowrap; }
+  .zone-labels b { font: 600 16px var(--serif); color: var(--ink); margin-right: 6px; }
+
+  section h2 { font: 600 14px/1.4 var(--serif); letter-spacing: .04em; color: var(--ink); margin: 44px 0 16px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart .axis { fill: var(--ink-4); font: 11px var(--sans); }
+  .legend { display: flex; gap: 20px; font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+  .tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--paper); font-size: 12px; padding: 6px 9px; opacity: 0; transition: opacity .12s; }
+
+  .evidence { list-style: none; margin: 0; padding: 0; }
+  .evidence li { display: grid; grid-template-columns: 120px 1fr; gap: 4px 20px; padding: 14px 0; border-top: 1px solid var(--rule); }
+  .evidence li:last-child { border-bottom: 1px solid var(--rule); }
+  .evidence b { font: 600 15px var(--serif); color: var(--ink); }
+  .evidence p { margin: 0; font-size: 14px; }
+  .evidence code { grid-column: 2; font: 12px/1.5 ui-monospace, Consolas, monospace; color: var(--ink-4); }
+
+  .keep { margin-top: 48px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; padding: 32px 36px; background: var(--paper-card); box-shadow: 0 1px 0 var(--rule), 0 24px 48px -32px #3a32223d; }
+  .keep h3 { font: 600 22px/1.4 var(--serif); color: var(--ink); margin: 0 0 8px; }
+  .keep p { margin: 0 0 18px; font-size: 14px; color: var(--ink-3); max-width: 460px; }
+  .keep .seal { --size: 92px; }
+  .keep.sealed .btn { display: none; }
+  .keep .after { display: none; font-size: 14px; color: var(--ink-2); }
+  .keep.sealed .after { display: block; }
+  .method { margin-top: 40px; font-size: 12px; line-height: 1.9; color: var(--ink-4); }
+
+  /* 手机：私域用户多在微信里打开 */
+  @media (max-width: 640px) {
+    .top { padding: 14px 20px; gap: 16px; }
+    .top nav { display: none; }
+    .doc { padding: 28px 20px 72px; }
+    .question { font-size: 23px; }
+    .terms { gap: 4px 16px; font-size: 12px; }
+    .verdict { grid-template-columns: 1fr; gap: 14px; padding: 32px 0 24px; }
+    .verdict .figure { font-size: 92px; }
+    .verdict .plain { margin-top: 4px; font-size: 18px; }
+    .facts { grid-template-columns: 1fr; }
+    .facts div, .facts div + div { padding: 12px 0; border-left: 0; display: grid; grid-template-columns: 1fr auto; align-items: baseline; }
+    .facts div + div { border-top: 1px solid var(--rule); }
+    .facts b { grid-row: span 2; margin: 0; font-size: 22px; }
+    .voice { grid-template-columns: 40px 1fr; gap: 12px; }
+    .voice p { font-size: 16px; }
+    .follow { grid-column: 1 / -1; }
+    .evidence li { grid-template-columns: 1fr; }
+    .evidence code { grid-column: 1; }
+    .keep { grid-template-columns: 1fr; padding: 24px 22px; position: relative; }
+    .keep .seal { position: absolute; right: 18px; top: 18px; --size: 64px; }
+    .keep h3 { padding-right: 76px; }
+    .zone-labels { flex-direction: column; gap: 2px; }
+    .zone-labels span { width: auto !important; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="login.html"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>四象智投</a>
+  <nav><a class="on" href="#">问小四</a><a href="#">看盘</a><a href="#">形态</a><a href="#">我的判断</a></nav>
+  <span class="meta">日线截至 2026-11-24</span>
+</header>
+
+<main class="doc">
+  <div class="crumb fade-in"><div data-xiaosi data-size="34" aria-hidden="true"></div><span class="eyebrow">小四 · 问期权</span></div>
+  <h1 class="question fade-in">比亚迪 3 个月平值看涨，期权费 7.5%，值不值得买？</h1>
+  <div class="terms fade-in">
+    <span>标的<b>002594 比亚迪</b></span><span>结构<b>100% 平值看涨</b></span><span>期限<b>63 个交易日</b></span><span>费率<b>7.5%</b></span><span>样本<b>2008–2026 · 4,312 个起点</b></span>
+  </div>
+
+  <div class="verdict fade-in" style="animation-delay:.1s">
+    <span class="eyebrow label">回本的概率</span>
+    <div class="figure num">31<small>%</small></div>
+    <div class="dots" aria-label="每 100 个类似的 3 个月里，有 31 个回本">
+      <div class="grid" id="dots" aria-hidden="true"></div>
+      <span class="cap">每 100 个类似的 3 个月里<br>有 <b>31 个</b>回本</span>
+    </div>
+    <p class="plain">大约每 3 次，有 1 次能回本。
+      <span>回本：3 个月后的涨幅超过期权费 7.5%。作为对照，不挑时点、随便哪 3 个月买，回本概率是 28%。</span>
+    </p>
+  </div>
+
+  <div class="facts fade-in" style="animation-delay:.15s">
+    <div><span>平均下来</span><b class="down num">−1.2%</b><small>扣掉期权费后，占本金</small></div>
+    <div><span>运气最差的十分之一</span><b class="down num">−7.5%</b><small>期权费全部损失</small></div>
+    <div><span>运气最好的十分之一</span><b class="up num">+18.6%</b><small>扣掉期权费后</small></div>
+  </div>
+
+  <div class="voice fade-in" style="animation-delay:.2s">
+    <div data-xiaosi data-size="52" aria-hidden="true"></div>
+    <p>按历史算，这个费率<b>略贵</b>。回本概率比随便买高 3 个点，主要来自板块近期走强；但期限内有年报预告，波动可能比平常大，最好和最坏的情形都会更极端。
+      <small>以上是历史统计，不构成买卖建议。</small>
+    </p>
+    <div class="follow" aria-label="接着问">
+      <span class="eyebrow">接着问</span>
+      <button>换成 6 个月呢？</button><button>费率 6% 呢？</button><button>只看最近 3 年呢？</button>
+    </div>
+  </div>
+
+  <section>
+    <h2>4,312 个类似的 3 个月，结果分成三种</h2>
+    <div class="zones" id="zones" aria-hidden="true"></div>
+    <div class="zone-labels" id="zoneLabels"></div>
+    <div class="chart" id="hist"></div>
+  </section>
+
+  <section>
+    <h2>证据</h2>
+    <ul class="evidence">
+      <li><b>走势与概率</b><p>63 日涨跌分布，4,312 个起点；近一年波动率 31.6%，处于历史 62% 分位。</p><code>return_distribution · 数据 ifind-20261124-fin</code></li>
+      <li><b>基本面与估值</b><p>市盈率 TTM 21.4，处于近 5 年 38% 分位；三季报归母净利润同比 +12%。</p><code>financials · 截至 2026-11-24 已披露</code></li>
+      <li><b>事件与风险</b><p>期限内有年报预告窗口（1 月下旬）；无大额限售解禁。</p><code>lockup.schedule · news.search</code></li>
+      <li><b>市场环境</b><p>大盘处于震荡区间，汽车板块近 20 日强于大盘。</p><code>market.regime · 截至 2026-11-24</code></li>
+    </ul>
+  </section>
+
+  <div class="keep" id="keep">
+    <div>
+      <h3>把这个判断交给小四保管</h3>
+      <p>封存后不再改动。2027 年 2 月 24 日到期那天，小四会把实际结果和今天的判断放在一起给你看。这期间不用盯盘。</p>
+      <button class="btn solid" id="sealBtn">封存这个判断</button>
+      <div class="after">已封存。到期揭晓：<b class="serif">2027-02-24</b> · 你可以在“我的判断”里随时查看。</div>
+    </div>
+    <span class="seal ghost" id="seal">待<br>封存</span>
+  </div>
+
+  <p class="method">口径：不复权价格；以每个交易日收盘为起点、第 63 个交易日收盘为终点，计算 100% 平值看涨期权的到期收益（max(涨幅, 0) − 费率）。不含交易成本与报价差异；不同时点的样本互相重叠，不是独立样本。数据版本 ifind-20261124-fin。</p>
+</main>
+<div class="tip" id="tip"></div>
+<span class="proto-note">设计样板 · 示意数据</span>
+<script src="xiaosi.js"></script>
+<script src="answer.js"></script>
+</body>
+</html>

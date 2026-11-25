@@ -56,12 +56,14 @@ def test_import_api_and_sync_carry(fin_source: Path, source: Path, tmp_path: Pat
     import_baseline(source, data / "market", "v0", workers=1, log=lambda *_: None)
     manifest = import_financials(fin_source, data / "market", workers=1, log=lambda *_: None)
     assert manifest["id"] == "v0-fin" and manifest["financials"]["stocks"] == 1
+    assert manifest["market_version"] == "v0"          # 日线未变，已有研究不必重跑
     assert versions.current_version_id(data / "market") == "v0-fin"
     # 行情文件以硬链接或复制复用
     assert (data / "market" / "versions" / "v0-fin" / "daily.parquet").exists()
 
     c = TestClient(create_app(Settings(data_dir=data, frontend_dist=tmp_path / "none")))
     login_as_admin(c)
+    assert c.get("/api/data/version").json()["market_version"] == "v0"
     f = c.get("/api/securities/sz000001/financials").json()
     assert f["available"] and f["asof"] == "2026-11-18" and f["reports"][0]["values"]["R_np_atoopc"] == 95
     v = f["valuation"]

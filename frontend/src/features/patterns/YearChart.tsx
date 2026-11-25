@@ -5,6 +5,7 @@ import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/comp
 import { CanvasRenderer } from 'echarts/renderers'
 import type { YearRow } from '../../api/client'
 import { fmtPct } from '../../lib/format'
+import { PALETTE as P } from '../../lib/palette'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
@@ -25,17 +26,17 @@ export default function YearChart({ rows, horizon }: { rows: YearRow[]; horizon:
       animation: false,
       grid: { left: 48, right: 12, top: 12, bottom: 28 },
       tooltip: {
-        trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: '#fff', borderColor: '#e4e6df', textStyle: { color: '#272b28', fontSize: 12 },
+        trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: P.surface, borderColor: P.line, textStyle: { color: P.ink, fontSize: 12 },
         formatter: (p: { dataIndex: number }[]) => {
           const r = data[p[0].dataIndex]
-          return `<b>${r.year} 年</b><br/>平均 ${fmtPct(r.mean)}<br/>上涨比例 ${fmtPct(r.win_rate, 1, false)}<br/>有效样本 ${r.valid}`
+          return `<b>${r.year} 年</b><br/>平均涨跌 ${fmtPct(r.mean)}<br/>在涨的比例 ${fmtPct(r.win_rate, 1, false)}<br/>算了 ${r.valid} 次`
         },
       },
-      xAxis: { type: 'category', data: data.map(r => r.year), axisLine: { lineStyle: { color: '#e4e6df' } }, axisTick: { show: false }, axisLabel: { color: '#7b8179' } },
-      yAxis: { type: 'value', axisLabel: { color: '#7b8179', formatter: (v: number) => `${(v * 100).toFixed(0)}%` }, splitLine: { lineStyle: { color: '#e4e6df' } } },
+      xAxis: { type: 'category', data: data.map(r => r.year), axisLine: { lineStyle: { color: P.line } }, axisTick: { show: false }, axisLabel: { color: P.muted } },
+      yAxis: { type: 'value', axisLabel: { color: P.muted, formatter: (v: number) => `${(v * 100).toFixed(0)}%` }, splitLine: { lineStyle: { color: P.line } } },
       series: [{
         type: 'bar', barMaxWidth: 22,
-        data: data.map(r => ({ value: r.mean, itemStyle: { color: (r.mean ?? 0) >= 0 ? '#d23b33' : '#1e8a4c', borderRadius: (r.mean ?? 0) >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4] } })),
+        data: data.map(r => ({ value: r.mean, itemStyle: { color: (r.mean ?? 0) >= 0 ? P.up : P.down, borderRadius: (r.mean ?? 0) >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4] } })),
       }],
     }, true)
   }, [rows, horizon])

@@ -69,6 +69,7 @@ export const runSync = () => post<{ state: string }>('/admin/data/sync', {})
 
 export type DataVersion = {
   id: string
+  market_version: string
   data_end: string
   created_at: string
   source: string

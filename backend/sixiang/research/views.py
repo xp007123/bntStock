@@ -11,10 +11,10 @@ COMPARE_KEYS = ("start", "asof", "markets", "min_bars", "exclude_st", "cooldown"
 NOTE = "同区间历史事件对照，不是独立样本外验证；更多条件通常减少样本，不能仅凭最高收益选择参数。"
 
 
-def compare(left: dict, right: dict, left_result: dict, right_result: dict) -> dict:
-    """left/right 为任务元数据，*_result 为完整结果（含 events）。"""
+def compare(left: dict, right: dict, left_result: dict, right_result: dict, same_data: bool | None = None) -> dict:
+    """left/right 为任务元数据，*_result 为完整结果（含 events）。same_data：两边是否用同一份日线行情。"""
     differences = [k for k in COMPARE_KEYS if left["rule"].get(k) != right["rule"].get(k)]
-    if left["data_version"] != right["data_version"]:
+    if not (same_data if same_data is not None else left["data_version"] == right["data_version"]):
         differences.append("data_version")
     if left_result["errors"] or right_result["errors"]:
         differences.append("coverage_errors")

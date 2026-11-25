@@ -80,7 +80,7 @@ class JobManager:
         digest = rule_hash(rule)
         with self._lock:
             for m in sorted(self._jobs.values(), key=lambda j: j["created"], reverse=True):
-                if (m["rule_hash"] == digest and m["data_version"] == snap.version_id and m.get("owner") == owner
+                if (m["rule_hash"] == digest and snap.same_market(m["data_version"]) and m.get("owner") == owner
                         and m["status"] in ("completed", *ACTIVE)):
                     return {**m, "reused": True}
             jid = uuid.uuid4().hex[:12]
@@ -101,7 +101,7 @@ class JobManager:
             return
         try:
             snap = self.market.snapshot()
-            if snap.version_id != meta["data_version"]:
+            if not snap.same_market(meta["data_version"]):
                 raise JobError("行情数据已更新，请重新提交以使用新数据")
             meta.update(status="running", message="扫描全市场")
             started = time.time()

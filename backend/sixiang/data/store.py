@@ -40,6 +40,14 @@ class _Snapshot:
     def data_end(self) -> str:
         return self.manifest["data_end"]
 
+    @property
+    def market_version(self) -> str:
+        """日线行情的版本。只更新财务等附属数据时不变，已有研究不必重跑。"""
+        return self.manifest.get("market_version", self.version_id)
+
+    def same_market(self, version_id: str) -> bool:
+        return version_id in (self.version_id, self.market_version)
+
 
 def _index_row_groups(meta: pq.FileMetaData) -> dict[str, list[int]]:
     col = meta.schema.to_arrow_schema().get_field_index("code")
@@ -89,7 +97,7 @@ class MarketStore:
     def version(self) -> dict:
         snap, _ = self._current()
         m = snap.manifest
-        return {"id": m["id"], "data_end": m["data_end"], "created_at": m["created_at"],
+        return {"id": m["id"], "market_version": m.get("market_version", m["id"]), "data_end": m["data_end"], "created_at": m["created_at"],
                 "source": m["source"]["kind"], "counts": m["counts"], "adjustment": m["adjustment"]}
 
     # ---- 证券 ----

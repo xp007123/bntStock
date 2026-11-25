@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, login, register, useMe } from '../../api/client'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
+import Seal from '../../components/Seal'
 import './auth.css'
 
 type Mode = 'login' | 'register'
@@ -16,29 +17,45 @@ export default function LoginPage() {
   if (me.data) return <Navigate to={next} replace />
 
   return (
-    <div className="auth-page">
-      <section className="auth-intro">
-        <div className="auth-brand"><span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>四象智投</div>
-        <div className="auth-pet"><HomeResearchPet size={150} /></div>
-        <h1>用历史数据，<br />给你的判断算概率。</h1>
-        <ul>
-          <li><b>问个股</b>这只票未来上涨的概率有多大</li>
-          <li><b>问期权</b>这个期限和费率的场外期权值不值</li>
-          <li><b>问方法</b>你的买入方法在历史上灵不灵</li>
-        </ul>
-        <p className="auth-note">数字来自历史数据计算，不构成投资建议。</p>
+    <main className="landing">
+      <section className="story">
+        <header>
+          <span className="brand"><span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>四象智投</span>
+          <span className="eyebrow">私域内测 · 邀请制</span>
+        </header>
+        <div className="hero fade-in">
+          <span className="eyebrow">A 股投研 · 用历史数据算概率</span>
+          <h1>心里有数，<br />再<em>出手</em>。</h1>
+          <p className="lede">说出你的判断，小四用 2007 年以来的全部日线替你算一算：这种情况以前出现过多少次，后来是涨是跌，最坏会怎样。</p>
+          <div className="asks">
+            <div><b>问个股</b><span>这只票还能涨吗</span></div>
+            <div><b>问期权</b><span>这个期权费值不值</span></div>
+            <div><b>问方法</b><span>我这招到底灵不灵</span></div>
+          </div>
+        </div>
+        <footer><span>数字来自历史统计，不构成投资建议</span><span>数据每个交易日收盘后更新</span></footer>
       </section>
 
-      <section className="auth-panel">
-        <div className="auth-card">
-          <div className="auth-tabs" role="tablist">
-            <button role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>登录</button>
-            <button role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>注册</button>
-          </div>
-          {mode === 'login' ? <LoginForm next={next} /> : <RegisterForm onDone={() => setMode('login')} />}
+      <aside className="side">
+        <div className="keeper fade-in">
+          <HomeResearchPet size={60} />
+          <p><b>小四</b>替你算概率，也替你保管每一个判断。<br />到期那天，结果和当初的判断会一起摆在你面前。</p>
         </div>
-      </section>
-    </div>
+        <article className="specimen fade-in" aria-label="判断卡示意">
+          <span className="eyebrow">问方法 · 示意</span>
+          <h3>缩量回踩 20 日线</h3>
+          <div className="big"><b className="num">54%</b><span>10 天后在涨的比例<br />随便买一只是 51%</span></div>
+          <p>17 年里出现过 3,812 次 · 熊市里只有 41% · 最近两年在变弱</p>
+          <Seal size={56}>已<br />封存</Seal>
+          <span className="tag">到期揭晓</span>
+        </article>
+        <div className="auth-tabs" role="tablist">
+          <button role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>登录</button>
+          <button role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>申请注册</button>
+        </div>
+        {mode === 'login' ? <LoginForm next={next} /> : <RegisterForm onDone={() => setMode('login')} />}
+      </aside>
+    </main>
   )
 }
 
@@ -71,8 +88,8 @@ function LoginForm({ next }: { next: string }) {
         <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
       </label>
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <button className="btn primary" disabled={busy || !account || !password}>{busy ? '登录中…' : '登录'}</button>
-      <p className="auth-hint">忘记密码？请联系管理员重置。</p>
+      <button className="btn primary" disabled={busy || !account || !password}>{busy ? '正在进入…' : '进入四象智投'}</button>
+      <p className="auth-hint">用户名或手机号都能登录。忘了密码，找管理员重置就行。</p>
     </form>
   )
 }
@@ -98,7 +115,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 
   if (done) return (
     <div className="auth-done">
-      <b>注册已提交</b>
+      <b>申请已提交</b>
       <p>管理员审核通过后，就可以用用户名或手机号登录了。</p>
       <button className="btn primary" onClick={onDone}>返回登录</button>
     </div>
@@ -125,7 +142,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       </label>
       {error && !['username', 'phone', 'password', 'confirm'].includes(error.field ?? '') && <p className="auth-error" role="alert">{error.message}</p>}
       <button className="btn primary" disabled={busy || Object.values(form).some(v => !v)}>{busy ? '提交中…' : '提交注册'}</button>
-      <p className="auth-hint">提交后由管理员审核，通过后即可登录。</p>
+      <p className="auth-hint">提交后由管理员审核，通过后就能登录。</p>
     </form>
   )
 }

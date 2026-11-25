@@ -69,7 +69,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             file = (dist / path).resolve()
             if path and file.is_file() and dist in file.parents:
                 return FileResponse(file)
-            return FileResponse(dist / "index.html")
+            # 入口页不缓存，发布后用户立刻拿到新版本；带哈希的静态资源可长期缓存
+            return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache"})
 
     return app
 

@@ -1,0 +1,14 @@
+.verdict { display: grid; grid-template-columns: auto 1fr; gap: 10px 44px; align-items: end; padding: 8px 0 4px; }
+.verdict-label { grid-column: 1 / -1; }
+.verdict-figure { font: 600 96px/.9 var(--serif); color: var(--ink); letter-spacing: -.02em; }
+.verdict-figure small { font-size: 38px; margin-left: 4px; }
+.verdict-figure.up { color: var(--up); }
+.verdict-figure.down { color: var(--down); }
+.verdict-dots { display: flex; align-items: flex-end; gap: 16px; padding-bottom: 6px; }
+.verdict-dots .grid { display: grid; grid-template-columns: repeat(10, 7px); gap: 4px; }
+.verdict-dots .grid i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.verdict-dots .grid i.on { background: var(--accent); }
+.verdict-dots .cap { font-size: 13px; line-height: 1.7; color: var(--muted); max-width: 220px; }
+.verdict-dots .cap b { font: 600 15px var(--serif); color: var(--ink); }
+.verdict-plain { grid-column: 1 / -1; margin-top: 14px; font: 600 20px/1.6 var(--serif); color: var(--ink); }
+.verdict-plain span { display: block; font: 400 13px/1.7 var(--font); color: var(--muted); margin-top: 6px; }
