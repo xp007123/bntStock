@@ -10,7 +10,7 @@ from sixiang.data import versions
 from sixiang.data.baseline_import import import_baseline
 from sixiang.data.ifind import from_ths, to_ths
 from sixiang.data.ifind_sync import SyncError, default_end, sync
-from sixiang.data.scheduler import next_run
+from sixiang.data.scheduler import missed_today, next_run
 from sixiang.data.store import MarketStore
 
 from .conftest import write_daily
@@ -115,3 +115,27 @@ def test_code_conversion_and_dates():
     assert default_end(dt.datetime(2026, 11, 25, 16, 0, tzinfo=cn)) == dt.date(2026, 11, 25)
     fri = dt.datetime(2026, 11, 27, 18, 0, tzinfo=cn)
     assert next_run(dt.time(17, 30), fri).weekday() == 0  # 周五收盘后 → 下周一
+
+
+def test_missed_today_catch_up():
+    at = dt.time(18, 30)
+    wed_evening = dt.datetime(2026, 11, 25, 19, 2)
+    assert missed_today(at, wed_evening, {"state": "never"})                       # 晚上发布，今天还没同步 → 补
+    assert missed_today(at, wed_evening, {"state": "ok", "finished_at": "2026-11-24T18:31:00+08:00"})
+    assert missed_today(at, wed_evening, {"state": "running", "finished_at": None})  # 上次同步中途进程退出
+    assert not missed_today(at, wed_evening, {"state": "ok", "finished_at": "2026-11-25T18:32:00+08:00"})
+    assert not missed_today(at, dt.datetime(2026, 11, 25, 10, 0), {"state": "never"})  # 还没到点
+    assert not missed_today(at, dt.datetime(2026, 11, 28, 20, 0), {"state": "never"})  # 周六
+
+
+def test_prune_keeps_newest_and_current(tmp_path: Path):
+    market = tmp_path / "market"
+    for i, vid in enumerate(["v1", "v2", "v3", "v4"]):
+        d = versions.version_path(market, vid)
+        d.mkdir(parents=True)
+        versions.write_manifest(d, {"id": vid, "created_at": f"2026-11-2{i}T18:00:00+08:00"})
+    (market / "CURRENT").write_text("v2", encoding="utf-8")  # 当前版本不是最新的（例如回滚过）
+    removed = versions.prune(market, keep=2)
+    assert sorted(removed) == ["v1"]
+    assert sorted(p.name for p in versions.versions_dir(market).iterdir()) == ["v2", "v3", "v4"]
+    assert versions.prune(market, keep=0) == []  # 最少保留 2 个 + 当前
