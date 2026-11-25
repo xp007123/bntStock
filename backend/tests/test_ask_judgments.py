@@ -103,3 +103,50 @@ def test_settlement(app, client: TestClient):
     other = TestClient(app)
     other.post("/api/auth/login", json={"account": "路人甲", "password": "abcdef"})
     assert other.get(f"/api/judgments/{j['id']}").status_code == 404
+
+
+def test_stance_and_record(app, client: TestClient):
+    """封存时表态；揭晓后档案里能看到“我说对几次、小四对几次、意见不同时谁对”。"""
+    from sqlalchemy import update
+    from sixiang.auth.db import judgments
+    assert client.post("/api/judgments", json={"kind": "stock", "code": "sh600519", "horizon": 20, "stance": "maybe"}).status_code == 422
+    plain = client.post("/api/judgments", json={"kind": "stock", "code": "sh600000", "horizon": 20}).json()
+    assert plain["prediction"]["stance"] is None
+    sf = load(app.state.market.snapshot(), "sh600519")
+    earlier = sf.df.date.iloc[-31].strftime("%Y-%m-%d")
+    made = {}
+    for stance in ("yes", "no", "follow"):
+        j = client.post("/api/judgments", json={"kind": "stock", "code": "sh600519", "horizon": 20, "stance": stance}).json()
+        assert j["prediction"]["stance"] == stance
+        made[stance] = j
+        with app.state.auth.engine.begin() as conn:
+            conn.execute(update(judgments).where(judgments.c.id == j["id"]).values(asof=earlier))
+    data = client.get("/api/judgments").json()
+    rec = data["record"]
+    hit = next(j for j in data["items"] if j["id"] == made["yes"]["id"])["outcome"]["hit"]
+    lean = made["yes"]["prediction"]["prob"] >= 0.5
+    # 三条已揭晓；其中表过“会 / 不会”的两条进入“我自己”的统计，“听小四的”不算
+    assert rec["settled"] == 3 and rec["own"]["n"] == 2
+    assert rec["own"]["right"] == 1                       # 一条说会、一条说不会，必然对一条
+    assert rec["own"]["xiaosi_right"] == (2 if lean == hit else 0)
+    assert rec["own"]["differ"] == 1 and rec["own"]["differ_right"] == (0 if lean == hit else 1)
+
+
+def test_watchlist(app, client: TestClient):
+    assert client.get("/api/watchlist").json()["items"] == []
+    got = client.post("/api/watchlist/SH600519").json()
+    assert [i["code"] for i in got["items"]] == ["sh600519"]
+    row = got["items"][0]
+    a = analyze(load(app.state.market.snapshot(), "sh600519"), 21)
+    assert row["name"] == "贵州茅台" and row["prob"] == pytest.approx(a["similar"]["up_prob"]) and row["base_prob"] == pytest.approx(a["all"]["up_prob"])
+    assert row["close"] == pytest.approx(a["close"]) and row["date"] == a["asof"]
+    client.post("/api/watchlist/sh600519")                # 重复添加不报错、不重复
+    client.post("/api/watchlist/sz000001")
+    assert [i["code"] for i in client.get("/api/watchlist").json()["items"]] == ["sh600519", "sz000001"]
+    assert client.post("/api/watchlist/sz999999").status_code == 404
+    assert [i["code"] for i in client.post("/api/watchlist/sh600519/remove").json()["items"]] == ["sz000001"]
+    # 各人的自选互不可见
+    app.state.auth.register("路人乙", "13711113333", "abcdef", "abcdef", status="active")
+    other = TestClient(app)
+    other.post("/api/auth/login", json={"account": "路人乙", "password": "abcdef"})
+    assert other.get("/api/watchlist").json()["items"] == []

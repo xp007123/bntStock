@@ -299,17 +299,48 @@ export const useAsk = (kind: AskKind, code: string, horizon: number, fee?: numbe
     staleTime: 10 * 60_000,
   })
 
+/** 封存时用户自己的看法：会涨（期权：能回本）/ 不会 / 听小四的 */
+export type Stance = 'yes' | 'no' | 'follow'
 export type Judgment = {
   id: number; kind: AskKind; code: string; name: string; horizon: number; fee: number | null; asof: string
   data_version: string; question: string; status: 'sealed' | 'settled'; due_estimate: string; created_at: string; settled_at: string | null
   prediction: { prob: number; base_prob: number; mean: number; p10: number; p90: number; median: number; plain: string; voice: string
-                price?: string | null; close: number; similar_n: number; elapsed?: number }
+                price?: string | null; close: number; similar_n: number; elapsed?: number; stance?: Stance | null }
   outcome: null | { done: boolean; return: number; hit: boolean; payoff: number | null; position: string; start_date: string; end_date: string
                     start_close: number; end_close: number; path: number[] }
 }
-export type JudgmentRecord = { settled: number; hits?: number; hit_rate?: number; expected_rate?: number }
-export const sealJudgment = (body: { kind: AskKind; code: string; horizon: number; fee?: number }) => post<Judgment>('/judgments', body)
+export type JudgmentRecord = {
+  settled: number; hits?: number; hit_rate?: number; expected_rate?: number
+  /** 自己表过态的那些：我说对几次、同一批里小四的倾向对几次、意见不同几次、其中我对几次 */
+  own?: { n: number; right: number; xiaosi_right: number; differ: number; differ_right: number }
+}
+export const sealJudgment = (body: { kind: AskKind; code: string; horizon: number; fee?: number; stance?: Stance }) => post<Judgment>('/judgments', body)
 export const useJudgments = () =>
   useQuery({ queryKey: ['judgments'], queryFn: () => get<{ items: Judgment[]; record: JudgmentRecord }>('/judgments') })
 export const useJudgment = (id: string) =>
   useQuery({ queryKey: ['judgment', id], queryFn: () => get<Judgment>(`/judgments/${id}`), retry: false })
+
+// ---------------------------------------------------------------- 自选股
+
+export type WatchItem = {
+  code: string; name: string; date: string | null; close: number | null; change: number | null; horizon: number
+  /** 和现在相似的时候，之后 horizon 个交易日在涨的比例；base_prob 是不挑时候的比例 */
+  prob: number | null; base_prob: number | null; similar_n: number | null; note: string | null
+}
+export type WatchlistView = { items: WatchItem[]; horizon: number; data_end: string; data_version: string }
+export const useWatchlist = () => useQuery({ queryKey: ['watchlist'], queryFn: () => get<WatchlistView>('/watchlist') })
+export const addWatch = (code: string) => post<WatchlistView>(`/watchlist/${code}`, {})
+export const removeWatch = (code: string) => post<WatchlistView>(`/watchlist/${code}/remove`, {})
+
+// ---------------------------------------------------------------- 方法库（内置模板，系统统一算好）
+
+export type Method = {
+  index: number; name: string; description: string; conditions: number
+  status: JobStatus | 'unavailable'; job?: string; progress?: number; data_end?: string; message?: string
+  summary?: SummaryRow[]; years?: YearRow[]; events?: number; selected?: number
+}
+export const useMethods = () =>
+  useQuery({
+    queryKey: ['pattern-methods'], queryFn: () => get<{ methods: Method[] }>('/patterns/methods'),
+    refetchInterval: q => (q.state.data?.methods.some(m => m.status === 'queued' || m.status === 'running') ? 3000 : false),
+  })

@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { type Adjust, useDaily, useFinancials, useSecurity } from '../../api/client'
 import KLineChart from '../../components/KLineChart'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
+import SubNav, { MARKET_TABS } from '../../components/SubNav'
+import WatchStar from '../../components/WatchStar'
 import { dailyChange } from '../../lib/indicators'
 import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import { FinancialCard, ValuationCard } from './FinancialPanels'
@@ -29,6 +31,7 @@ export default function StockPage() {
 
   return (
     <div className="stock-page">
+      <SubNav items={MARKET_TABS} />
       {security.isError ? (
         <div className="card state error">没有找到 {code}，请换一个代码搜索。</div>
       ) : (
@@ -36,7 +39,7 @@ export default function StockPage() {
           <section className="card stock-main" aria-label="K 线">
             <header className="stock-head">
               <div>
-                <h1>{security.data?.name ?? '…'} <span className="code num">{displayCode(code)}</span></h1>
+                <h1>{security.data?.name ?? '…'} <span className="code num">{displayCode(code)}</span><WatchStar code={code} /></h1>
                 <p className="muted">{security.data?.sector ?? '未分类'} · 上市以来 {security.data?.rows ?? '—'} 个交易日</p>
               </div>
               <div className="quote">

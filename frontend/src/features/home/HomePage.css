@@ -130,3 +130,36 @@
   .home-card { padding: 16px; }
   .home-side { grid-template-columns: 1fr; }
 }
+
+/* ---- 我的自选 ---- */
+.watch button.more { border: 0; background: none; cursor: pointer; }
+.watch-add { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.watch-add .stock-search { flex: 1; width: auto; background: var(--bg); }
+.watch-error { font-size: 13px; color: var(--up); margin-bottom: 8px; }
+.watch-empty { font-size: 13px; max-width: 520px; }
+.watch-list { list-style: none; margin: 0 -8px; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+.watch-list li { position: relative; }
+.watch-list a { display: flex; flex-direction: column; gap: 8px; padding: 12px 34px 12px 8px; border-radius: var(--r); text-decoration: none; transition: background var(--t-fast) var(--ease); }
+.watch-list a:hover { background: var(--bg); }
+.watch-name { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.watch-name b { font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.watch-name span { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.watch-name em { font-style: normal; font-weight: 600; margin-left: 4px; }
+.watch-prob { display: flex; flex-direction: column; gap: 6px; }
+/* 橙色条是“相似的时候”在涨的比例；竖线是平时的比例 */
+.watch-bar { position: relative; height: 8px; border-radius: var(--r-pill); background: var(--bg-deep); }
+.watch-bar i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--accent); }
+.watch-bar u { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+.watch-prob span { font-size: 12px; color: var(--muted); }
+.watch-prob b { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0 6px 0 2px; }
+.watch-note { font-size: 12px; }
+.watch-x { position: absolute; right: 4px; top: 10px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: var(--faint); display: grid; place-items: center; opacity: 0; transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.watch-list li:hover .watch-x, .watch-x:focus-visible { opacity: 1; }
+.watch-x:hover { background: var(--bg-deep); color: var(--ink); }
+.watch .footnote { font-size: 12px; line-height: 1.7; margin-top: 10px; }
+.ask-first { font-size: 13px; }
+@media (hover: none) { .watch-x { opacity: 1; } }
+@media (max-width: 760px) {
+  .watch-list { grid-template-columns: 1fr; }
+  .watch-add { flex-direction: column; align-items: stretch; }
+}

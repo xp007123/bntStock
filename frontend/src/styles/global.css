@@ -178,3 +178,15 @@ table { font-variant-numeric: tabular-nums; }
 @media (hover: none) {
   .tpl-card:hover, .index-card:hover, .jd-list li a:hover { transform: none; box-shadow: var(--shadow); }
 }
+
+/* 页内二级切换（验证方法、行情） */
+.subnav { margin-bottom: 16px; align-self: flex-start; }
+.subnav a { padding: 5px 16px; font-size: 13px; color: var(--muted); border-radius: var(--r-pill); text-decoration: none; white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.subnav a:hover { color: var(--ink); }
+.subnav a.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px #1903001f; }
+
+/* 加自选 */
+.watch-star { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; margin-left: 10px; height: 28px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--surface); font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.watch-star:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-ink); }
+.watch-star.on { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); }
+@media (max-width: 760px) { .subnav { margin-bottom: 12px; } .subnav a { padding: 8px 16px; } }

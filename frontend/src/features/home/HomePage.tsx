@@ -9,6 +9,7 @@ import { isRevealed } from '../../lib/motion'
 import { horizonText } from '../ask/horizons'
 import JobList from '../patterns/JobList'
 import AskPanel from './AskPanel'
+import WatchlistCard from './WatchlistCard'
 import '../patterns/patterns.css'
 import './HomePage.css'
 
@@ -41,6 +42,7 @@ export default function HomePage() {
             <div className="hero-pet"><HomeResearchPet size={168} followPointer status={nod ? 'complete' : 'idle'} /></div>
             <AskPanel onPick={picked} />
           </section>
+          <WatchlistCard />
           <JobsCard />
         </div>
 

@@ -23,7 +23,7 @@ export default function NewPatternPage() {
   const rule = edited ?? template
   const params = useMemo(() => (rule ? extractParams(rule) : []), [rule])
   if (templates.isLoading) return <div className="state">读取模板…</div>
-  if (!template || !rule) return <div className="card state error">模板不存在。<Link to="/patterns">返回形态测试</Link></div>
+  if (!template || !rule) return <div className="card state error">模板不存在。<Link to="/patterns">返回方法库</Link></div>
 
   const changed = edited !== null && JSON.stringify(edited.conditions) !== JSON.stringify(template.conditions)
   const run = async () => {
@@ -41,7 +41,7 @@ export default function NewPatternPage() {
 
   return (
     <div className="pt-new">
-      <Link to="/patterns" className="back muted"><ArrowLeft size={15} />形态测试</Link>
+      <Link to="/patterns" className="back muted"><ArrowLeft size={15} />方法库</Link>
       <header className="pt-head">
         <h1>{template.name}{changed && <span className="tag">已调整</span>}</h1>
         <p className="muted">{template.description}</p>

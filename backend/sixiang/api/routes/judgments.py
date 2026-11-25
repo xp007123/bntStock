@@ -18,6 +18,7 @@ class SealBody(BaseModel):
     code: str
     horizon: int = Field(ge=1, le=250)
     fee: float | None = Field(default=None, gt=0, lt=1)
+    stance: Literal["yes", "no", "follow"] | None = None   # 用户自己的看法：会 / 不会 / 听小四的
 
 
 @router.post("")
@@ -26,7 +27,7 @@ def seal(body: SealBody, request: Request, user: User = Depends(current_user)):
     if body.kind == "option" and body.fee is None:
         raise HTTPException(422, "期权判断需要期权费")
     answer = build_answer(request, body.kind, body.code, body.horizon, body.fee if body.kind == "option" else None)
-    return request.app.state.judgments.seal(user.id, answer)
+    return request.app.state.judgments.seal(user.id, answer, body.stance)
 
 
 @router.get("")

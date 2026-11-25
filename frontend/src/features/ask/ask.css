@@ -109,3 +109,11 @@
   .ask-keep { padding: 20px 16px 16px; }
   .ask-blank { padding-top: 72px; }
 }
+
+/* ---- 封存前表态：点一下 ---- */
+.ask-stance { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 4px; }
+.ask-stance span { width: 100%; font-size: 13px; font-weight: 600; color: var(--ink); }
+.ask-stance button { flex: 1 1 auto; min-height: 38px; padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid #fb5e0d47; background: var(--surface); font-size: 13px; font-weight: 500; color: var(--ink-2); white-space: nowrap; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.ask-stance button:hover { border-color: var(--ink); color: var(--ink); }
+.ask-stance button[aria-checked='true'] { background: var(--ink); border-color: var(--ink); color: var(--on-night); font-weight: 600; }
+.ask-terms .watch-star { margin-left: 0; }

@@ -21,11 +21,11 @@ export default function JobPage() {
   const done = job.data?.status === 'completed'
   const result = useJobResult(id, done)
 
-  if (job.isError) return <div className="card state error">研究不存在。<Link to="/patterns">返回形态测试</Link></div>
+  if (job.isError) return <div className="card state error">研究不存在。<Link to="/patterns">返回方法库</Link></div>
   if (!job.data) return <div className="state">读取研究…</div>
   return (
     <div className="pt-report">
-      <Link to="/patterns" className="back muted"><ArrowLeft size={15} />形态测试</Link>
+      <Link to="/patterns" className="back muted"><ArrowLeft size={15} />方法库</Link>
       <header className="pt-head">
         <h1>{job.data.name}</h1>
         <p className="muted">

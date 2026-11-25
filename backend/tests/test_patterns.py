@@ -154,3 +154,22 @@ def test_variant_compare_library(client: TestClient):
     pid = lib["patterns"][0]["id"]
     assert client.post(f"/api/patterns/library/patterns/{pid}/remove").status_code == 200
     assert client.post(f"/api/patterns/library/patterns/{pid}/remove").status_code == 404
+
+
+def test_method_library(client: TestClient):
+    """方法库：第一次查看时系统自动排队计算内置模板，算完后所有人都能直接看到结论。"""
+    first = client.get("/api/patterns/methods").json()["methods"]
+    assert len(first) == len(TEMPLATES) and first[0]["name"] == "放量突破"
+    for m in first:
+        assert m["status"] in ("queued", "running", "completed") and m["job"]
+        _wait(client, m["job"])
+    done = client.get("/api/patterns/methods").json()["methods"]
+    assert [m["job"] for m in done] == [m["job"] for m in first]            # 不重复计算
+    assert all(m["status"] == "completed" and "summary" in m and "years" in m for m in done), [(m["name"], m["status"], m.get("message")) for m in done]
+    # 系统算的结果不出现在个人的研究记录里，但普通用户可以打开
+    assert client.get("/api/patterns/jobs").json() == [] or all(not j.get("system") for j in client.get("/api/patterns/jobs").json())
+    client.app.state.auth.register("路人丙", "13711114444", "abcdef", "abcdef", status="active")
+    other = TestClient(client.app)
+    other.post("/api/auth/login", json={"account": "路人丙", "password": "abcdef"})
+    assert other.get("/api/patterns/jobs").json() == []
+    assert other.get(f"/api/patterns/jobs/{done[0]['job']}/result").status_code == 200

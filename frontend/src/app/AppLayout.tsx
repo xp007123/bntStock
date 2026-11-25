@@ -1,25 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Activity, CandlestickChart, History, LogOut, type LucideIcon, MessageCircle, Shapes, Shield, Stamp } from 'lucide-react'
+import { CandlestickChart, FlaskConical, LogOut, type LucideIcon, MessageCircle, Shield, Stamp } from 'lucide-react'
 import { logout, useDataVersion, useJudgments, useMe } from '../api/client'
 import StockSearch from '../components/StockSearch'
 import HomeResearchPet from '../components/xiaosi/HomeResearchPet'
 import './AppLayout.css'
 
 type Item = { to: string; label: string; short?: string; icon: LucideIcon; match?: (path: string) => boolean }
+// 四项：问、看结果、验证方法（方法库 + 我验证过的）、行情（个股 + 大盘）。后两项的两页在页内切换。
 const GROUPS: { title: string; items: Item[] }[] = [
-  { title: '问', items: [
+  { title: '', items: [
     { to: '/', label: '问小四', icon: MessageCircle, match: p => p === '/' || p.startsWith('/ask') },
     { to: '/judgments', label: '我的判断', short: '判断', icon: Stamp },
-  ] },
-  { title: '验证方法', items: [
-    { to: '/patterns', label: '形态', icon: Shapes },
-    { to: '/records', label: '我的研究', short: '研究', icon: History },
-  ] },
-  { title: '行情', items: [
-    { to: '/stocks', label: '看盘', icon: CandlestickChart },
-    { to: '/market', label: '大盘', icon: Activity },
+    { to: '/patterns', label: '验证方法', short: '方法', icon: FlaskConical, match: p => p.startsWith('/patterns') || p.startsWith('/records') },
+    { to: '/stocks', label: '行情', icon: CandlestickChart, match: p => p.startsWith('/stocks') || p.startsWith('/market') },
   ] },
 ]
 
@@ -89,7 +84,7 @@ export default function AppLayout() {
           <i className="nav-pill" aria-hidden="true" style={pill ? { transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h, opacity: 1 } : { opacity: 0 }} />
           {GROUPS.map(g => (
             <div key={g.title} className="nav-group">
-              <span className="nav-title">{g.title}</span>
+              {g.title && <span className="nav-title">{g.title}</span>}
               {g.items.map(n => {
                 const active = n.match ? n.match(pathname) : pathname.startsWith(n.to)
                 return (

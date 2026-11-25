@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useIndexDaily, useIndices } from '../../api/client'
 import KLineChart from '../../components/KLineChart'
+import SubNav, { MARKET_TABS } from '../../components/SubNav'
 import { fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import './MarketPage.css'
 
@@ -13,6 +14,7 @@ export default function MarketPage() {
 
   return (
     <div className="market">
+      <SubNav items={MARKET_TABS} />
       <header className="page-head fade-in">
         <h1>大盘</h1>
         <p className="muted">主要指数{indices.data?.[0]?.date ? ` ${indices.data[0].date} 收盘` : ''}。点一个指数看它近一年的日 K。</p>

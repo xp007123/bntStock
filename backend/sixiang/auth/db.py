@@ -98,3 +98,14 @@ judgments = Table(
     Column("created_at", DateTime(), nullable=False),
     Column("settled_at", DateTime()),
 )
+
+# ---------------------------------------------------------------- 自选股（按用户）
+
+watchlist = Table(
+    "watchlist", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("user_id", Integer, nullable=False, index=True),
+    Column("code", String(12), nullable=False),
+    Column("created_at", DateTime(), nullable=False),
+    UniqueConstraint("user_id", "code"),
+)

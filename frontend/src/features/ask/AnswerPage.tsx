@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowUpRight } from 'lucide-react'
-import { type Answer, type AskKind, ApiError, type Judgment, sealJudgment, useAsk } from '../../api/client'
+import { ArrowLeft, ArrowUpRight, Share2 } from 'lucide-react'
+import { type Answer, type AskKind, ApiError, type Judgment, sealJudgment, type Stance, useAsk } from '../../api/client'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import type { PetStatus } from '../../components/xiaosi/ResearchPet'
 import Verdict from '../../components/Verdict'
 import Distribution from '../../components/Distribution'
 import Seal from '../../components/Seal'
+import ShareCard from '../../components/ShareCard'
+import WatchStar from '../../components/WatchStar'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
 import { motionOff, useRolling } from '../../lib/motion'
+import { stanceChoices, stanceText } from '../../lib/stance'
 import { horizonText, optionHorizons, stockHorizons } from './horizons'
 import './ask.css'
 
@@ -53,6 +56,8 @@ function Thinking({ kind }: { kind: AskKind }) {
   )
 }
 
+const weekday = (date: string) => '周' + '日一二三四五六'[new Date(date + 'T00:00:00').getDay()]
+
 function Fact({ label, value, note }: { label: string; value: number; note: string }) {
   const shown = useRolling(value)
   return <div><span>{label}</span><b className={`num ${trendClass(value)}`}>{fmtPct(shown, 1)}</b><small>{note}</small></div>
@@ -80,6 +85,7 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
           <span>期限<b>{horizonText(a.horizon)}（{a.horizon} 个交易日）</b></span>
           {option && <span>期权费<b>{(a.fee! * 100).toFixed(1)}%</b><i>100% 平值看涨</i></span>}
           <span>数据截至<b>{a.asof}</b></span>
+          <WatchStar code={a.code} />
         </div>
       </header>
 
@@ -147,6 +153,9 @@ function SealPanel({ a, disabled, onSealed }: { a: Answer; disabled: boolean; on
   const [sealed, setSealed] = useState<Judgment | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [stance, setStance] = useState<Stance | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const option = a.kind === 'option'
   const panel = useRef<HTMLElement>(null)
   const button = useRef<HTMLButtonElement>(null)
 
@@ -179,7 +188,7 @@ function SealPanel({ a, disabled, onSealed }: { a: Answer; disabled: boolean; on
   const seal = async () => {
     setBusy(true); setError('')
     try {
-      fly(await sealJudgment({ kind: a.kind, code: a.code, horizon: a.horizon, fee: a.fee ?? undefined }))
+      fly(await sealJudgment({ kind: a.kind, code: a.code, horizon: a.horizon, fee: a.fee ?? undefined, stance: stance ?? undefined }))
     } catch (e) { setError(e instanceof ApiError ? e.message : String(e)) } finally { setBusy(false) }
   }
   return (
@@ -188,13 +197,21 @@ function SealPanel({ a, disabled, onSealed }: { a: Answer; disabled: boolean; on
       <h3>把这个判断交给小四保管</h3>
       {sealed ? (
         <div className="ask-kept fade-in">
-          <p>已封存。大约 <b>{sealed.due_estimate}</b> 揭晓（第 {a.horizon} 个交易日收盘后）。这期间不用盯盘。</p>
+          <p>已封存{sealed.prediction.stance && <>，你的看法是“<b>{stanceText(sealed.prediction.stance, option)}</b>”</>}。大约 <b>{sealed.due_estimate}（{weekday(sealed.due_estimate)}）</b>揭晓，到那天回来看。这期间不用盯盘。</p>
           <Link to={`/judgments/${sealed.id}`} className="btn dark lg">去我的判断里看</Link>
+          <button className="btn" onClick={() => setSharing(true)}><Share2 size={15} />生成分享卡</button>
+          {sharing && <ShareCard j={sealed} onClose={() => setSharing(false)} />}
         </div>
       ) : (
         <>
-          <p>封存后不再改动。走满 {a.horizon} 个交易日那天，小四会把实际结果和今天的判断放在一起给你看。</p>
-          <button ref={button} className="btn primary lg" disabled={busy || disabled} onClick={seal}>{busy ? '封存中…' : '封存这个判断'}</button>
+          <p>封存后不再改动。走满 {a.horizon} 个交易日那天，小四会把实际结果、它的判断和你的看法放在一起给你看。</p>
+          <div className="ask-stance" role="radiogroup" aria-label="你自己怎么看">
+            <span>封存前，先说说你自己怎么看：</span>
+            {stanceChoices(option).map(c => (
+              <button key={c.id} role="radio" aria-checked={stance === c.id} onClick={() => setStance(c.id)}>{c.label}</button>
+            ))}
+          </div>
+          <button ref={button} className="btn primary lg" disabled={busy || disabled || !stance} onClick={seal}>{busy ? '封存中…' : stance ? '封存这个判断' : '先选一个看法'}</button>
           {error && <p className="ask-keep-error">{error}</p>}
         </>
       )}

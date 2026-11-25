@@ -44,13 +44,15 @@ class Judgments:
     def __init__(self, engine: Engine):
         self.engine = engine
 
-    def seal(self, user_id: int, answer: dict) -> dict:
+    def seal(self, user_id: int, answer: dict, stance: str | None = None) -> dict:
+        """stance：封存时用户自己的看法。yes = 会涨（期权：能回本），no = 不会，follow = 听小四的。"""
         a = answer["analysis"]
         sim = a["similar"]
         base = a["all"]["breakeven_prob"] if answer["kind"] == "option" else a["all"]["up_prob"]
         pred = {"prob": answer["verdict"]["value"] / 100, "base_prob": base, "mean": answer["facts"][0]["value"],
                 "p10": sim["p10"], "p90": sim["p90"], "median": sim["median"], "plain": answer["verdict"]["plain"],
-                "voice": answer["voice"], "price": answer.get("price"), "close": a["close"], "similar_n": sim["n"], "elapsed": 0}
+                "voice": answer["voice"], "price": answer.get("price"), "close": a["close"], "similar_n": sim["n"], "elapsed": 0,
+                "stance": stance if stance in ("yes", "no", "follow") else None}
         with self.engine.begin() as conn:
             jid = conn.execute(insert(judgments).values(
                 user_id=user_id, kind=answer["kind"], code=answer["code"], name=answer["name"], horizon=answer["horizon"],
@@ -117,5 +119,12 @@ class Judgments:
         if not items:
             return {"settled": 0}
         hits = sum(1 for j in items if j["outcome"]["hit"])
+        # 自己表过态的那些：我说对了几次；小四的倾向（概率过半算“会”）在同一批里对了几次；意见不同时谁对
+        own = [j for j in items if j["prediction"].get("stance") in ("yes", "no")]
+        mine = [(j["prediction"]["stance"] == "yes") == j["outcome"]["hit"] for j in own]
+        xiaosi = [(j["prediction"]["prob"] >= 0.5) == j["outcome"]["hit"] for j in own]
+        differ = [m for j, m in zip(own, mine) if (j["prediction"]["stance"] == "yes") != (j["prediction"]["prob"] >= 0.5)]
         return {"settled": len(items), "hits": hits, "hit_rate": hits / len(items),
-                "expected_rate": float(np.mean([j["prediction"]["prob"] for j in items]))}
+                "expected_rate": float(np.mean([j["prediction"]["prob"] for j in items])),
+                "own": {"n": len(own), "right": sum(mine), "xiaosi_right": sum(xiaosi),
+                        "differ": len(differ), "differ_right": sum(differ)}}

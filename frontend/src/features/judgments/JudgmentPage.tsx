@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Check, RotateCcw, Share2, X } from 'lucide-react'
 import { type Judgment, useJudgment } from '../../api/client'
 import Seal from '../../components/Seal'
+import ShareCard from '../../components/ShareCard'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
 import { isRevealed, markRevealed, motionOff } from '../../lib/motion'
+import { leanText, mineRight, stanceText, xiaosiRight } from '../../lib/stance'
 import { horizonText } from '../ask/horizons'
 import './judgments.css'
 
@@ -37,6 +39,9 @@ function Detail({ j }: { j: Judgment }) {
   const [stage, setStage] = useState<Stage>(() => (fresh() ? 'wait' : 'open'))
   const [face, setFace] = useState<'sealed' | 'settled'>(() => (!done || fresh() ? 'sealed' : 'settled'))
   const [flip, setFlip] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const mine = stanceText(j.prediction.stance, option)
+  const iWasRight = mineRight(j), xiaosiWasRight = xiaosiRight(j)
 
   useEffect(() => {
     if (!done) return
@@ -97,6 +102,21 @@ function Detail({ j }: { j: Judgment }) {
         )}
       </div>
 
+      {/* 你、小四、实际结果：三方对照。对错只在揭晓之后显示 */}
+      <div className="jd-views">
+        <div>
+          <span>你当时的看法</span>
+          <b>{mine ?? '没有表态'}</b>
+          {open && iWasRight != null && <em className={iWasRight ? 'ok' : 'no'}>{iWasRight ? <Check size={13} /> : <X size={13} />}{iWasRight ? '说对了' : '这次没说对'}</em>}
+          {open && done && j.prediction.stance === 'follow' && <em className="plain">跟小四一起</em>}
+        </div>
+        <div>
+          <span>小四的倾向</span>
+          <b>{leanText(j.prediction.prob, option)}</b>
+          {open && xiaosiWasRight != null && <em className={xiaosiWasRight ? 'ok' : 'no'}>{xiaosiWasRight ? <Check size={13} /> : <X size={13} />}{xiaosiWasRight ? '和结果一致' : '和结果相反'}</em>}
+        </div>
+      </div>
+
       {done && (
         <section className="card">
           <div className="card-title">封存期间是怎么走的
@@ -116,6 +136,12 @@ function Detail({ j }: { j: Judgment }) {
         {done && open && j.outcome ? <>{j.outcome.start_date} 收盘 {j.outcome.start_close.toFixed(2)} → {j.outcome.end_date} 收盘 {j.outcome.end_close.toFixed(2)}（不复权价；涨跌按复权计算）。</> : null}
         好结果不代表判断对，坏结果也不代表判断错；看的是很多次以后，概率说得准不准。
       </p>
+      {(!done || open) && (
+        <div className="jd-actions">
+          <button className="btn" onClick={() => setSharing(true)}><Share2 size={15} />生成分享卡</button>
+        </div>
+      )}
+      {sharing && <ShareCard j={j} onClose={() => setSharing(false)} />}
     </article>
   )
 }

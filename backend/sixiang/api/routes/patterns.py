@@ -11,7 +11,7 @@ from ...data.store import NoDataVersion
 from ...patterns.rules import DEFAULTS, FIELDS, FUNCS, OPS, TEMPLATES, RuleError, validate_rule
 from ...patterns.library import CATEGORIES, LIBRARY
 from ...patterns.study import explain_stock
-from ...research.jobs import JobError, JobManager
+from ...research.jobs import JobError, JobManager, rule_hash
 from ...research.views import compare as compare_jobs, sort_events, variant_rule
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
@@ -27,9 +27,42 @@ def _job(request: Request, jid: str, user: User) -> dict:
         meta = _jobs(request).get(jid)
     except KeyError as exc:
         raise HTTPException(404, "任务不存在") from exc
-    if meta.get("owner") != user.id and not user.is_admin:
+    if meta.get("owner") != user.id and not user.is_admin and not meta.get("system"):
         raise HTTPException(404, "任务不存在")
     return meta
+
+
+@router.get("/methods")
+def methods(request: Request):
+    """方法库：每个内置模板按默认参数由系统算一次，所有人共用，点开就有结论。
+
+    没算过（或行情更新后）在第一次有人查看时自动排队；算完之前返回进度。
+    """
+    jobs = _jobs(request)
+    try:
+        snap = request.app.state.market.snapshot()
+    except NoDataVersion as exc:
+        raise HTTPException(503, str(exc)) from exc
+    system = [m for m in jobs.list() if m.get("system") and snap.same_market(m["data_version"])]
+    out = []
+    for index, tpl in enumerate(TEMPLATES):
+        item = {"index": index, "name": tpl["name"], "description": tpl.get("description", ""), "conditions": len(tpl["conditions"])}
+        try:
+            digest = rule_hash(validate_rule(tpl, snap.data_end))
+            latest = next((m for m in system if m["rule_hash"] == digest), None)
+            if latest and latest["status"] == "failed":   # 算失败过：如实显示，不在每次查看时反复重排
+                out.append(item | {"job": latest["id"], "status": "failed", "message": latest.get("message", "")})
+                continue
+            meta = jobs.submit(tpl, owner=None, context={"system": True})
+        except (RuleError, NoDataVersion) as exc:
+            out.append(item | {"status": "unavailable", "message": str(exc)})
+            continue
+        item |= {"job": meta["id"], "status": meta["status"], "progress": meta["progress"], "data_end": meta["data_end"]}
+        if meta["status"] == "completed":
+            r = jobs.result(meta["id"])
+            item |= {"summary": r["summary"], "years": r["years"], "events": r["deduplicated_events"], "selected": len(r["selected"])}
+        out.append(item)
+    return {"methods": out}
 
 
 @router.get("/templates")

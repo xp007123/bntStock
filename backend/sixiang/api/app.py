@@ -21,7 +21,8 @@ from ..data.store import MarketStore
 from ..research.jobs import JobManager
 from ..research.library_store import UserLibrary
 from ..judgments import Judgments
-from .routes import admin, ask, auth, judgments, market, patterns
+from ..watchlist import Watchlist
+from .routes import admin, ask, auth, judgments, market, patterns, watchlist
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -49,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.auth = AuthService(engine)
     app.state.library = UserLibrary(engine)
     app.state.judgments = Judgments(engine)
+    app.state.watchlist = Watchlist(engine)
 
     @app.get("/api/health", tags=["system"])
     def health():
@@ -61,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(patterns.router, dependencies=[Depends(current_user)])
     app.include_router(ask.router, dependencies=[Depends(current_user)])
     app.include_router(judgments.router, dependencies=[Depends(current_user)])
+    app.include_router(watchlist.router, dependencies=[Depends(current_user)])
 
     dist = settings.frontend_dist
     if (dist / "index.html").exists():

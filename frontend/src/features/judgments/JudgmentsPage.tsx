@@ -4,6 +4,7 @@ import { type Judgment, useJudgments } from '../../api/client'
 import Seal from '../../components/Seal'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
 import { isRevealed } from '../../lib/motion'
+import { stanceText } from '../../lib/stance'
 import { horizonText } from '../ask/horizons'
 import './judgments.css'
 
@@ -30,6 +31,14 @@ export default function JudgmentsPage() {
             <div><span>实际成真（{rec.hits} 次）</span><div className="progress"><i style={{ width: `${Math.round((rec.hit_rate ?? 0) * 100)}%` }} /></div><b className="num">{Math.round((rec.hit_rate ?? 0) * 100)}%</b></div>
           </div>
           <p>次数多了以后，这两个数字越接近，说明小四给的概率越靠谱。单次的好坏说明不了什么。</p>
+          {rec.own && rec.own.n > 0 && (
+            <div className="jd-own">
+              <div><span>我自己表态</span><b className="num">{rec.own.n}<i> 次</i></b></div>
+              <div><span>我说对了</span><b className="num">{rec.own.right}<i> 次</i></b></div>
+              <div><span>同一批里小四的倾向对了</span><b className="num">{rec.own.xiaosi_right}<i> 次</i></b></div>
+              <div><span>我和小四看法不同</span><b className="num">{rec.own.differ}<i> 次</i></b><small>{rec.own.differ > 0 ? `其中我对了 ${rec.own.differ_right} 次` : '还没有分歧'}</small></div>
+            </div>
+          )}
         </section>
       )}
 
@@ -73,7 +82,7 @@ function Row({ j }: { j: Judgment }) {
         <div className="jd-main">
           <span className="eyebrow">{j.kind === 'option' ? '问期权' : '问个股'} · {j.asof} 封存</span>
           <b>{j.name} <span className="num muted">{displayCode(j.code)}</span> · {horizonText(j.horizon)}{j.kind === 'option' ? ` · 期权费 ${((j.fee ?? 0) * 100).toFixed(1)}%` : ''}</b>
-          <span className="muted">当时：{j.kind === 'option' ? '回本' : '上涨'}概率 {Math.round(j.prediction.prob * 100)}%</span>
+          <span className="muted">当时：{j.kind === 'option' ? '回本' : '上涨'}概率 {Math.round(j.prediction.prob * 100)}%{j.prediction.stance && <> · 我说{stanceText(j.prediction.stance, j.kind === 'option')}</>}</span>
         </div>
         {j.status === 'sealed' ? (
           <div className="jd-side">

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, X } from 'lucide-react'
-import { useSecurity } from '../../api/client'
+import { useJudgments, useSecurity } from '../../api/client'
 import StockSearch from '../../components/StockSearch'
 import { displayCode } from '../../lib/format'
 import { optionHorizons, stockHorizons } from '../ask/horizons'
@@ -21,6 +21,11 @@ export default function AskPanel({ onPick }: { onPick?: () => void }) {
   const [h, setH] = useState(21)
   const [fee, setFee] = useState('7.5')
   const sec = useSecurity(code || 'sh600519')
+  // 还没封存过判断的新用户：默认问 1 周，这样下周就能经历第一次揭晓
+  const judgments = useJudgments()
+  const firstTime = judgments.data?.items.length === 0
+  const touched = useRef(false)
+  useEffect(() => { if (firstTime && !touched.current) setH(v => (v === 21 ? 5 : v)) }, [firstTime])
   const feeNum = Number(fee)
   const feeOk = Number.isFinite(feeNum) && feeNum > 0 && feeNum < 100
   const horizons = tab === 'option' ? optionHorizons : stockHorizons
@@ -56,7 +61,7 @@ export default function AskPanel({ onPick }: { onPick?: () => void }) {
             <span className="ask-group">
               {tab === 'option' ? '买' : '接下来'}
               <span className="ask-select">
-                {horizons.map(o => <button key={o.value} aria-pressed={h === o.value} onClick={() => setH(o.value)}>{o.label.trim()}</button>)}
+                {horizons.map(o => <button key={o.value} aria-pressed={h === o.value} onClick={() => { touched.current = true; setH(o.value) }}>{o.label.trim()}</button>)}
               </span>
               {tab === 'option' && '的平值看涨'}<i className="ask-comma">，</i>
             </span>
@@ -70,6 +75,7 @@ export default function AskPanel({ onPick }: { onPick?: () => void }) {
             ) : <span>涨的可能大吗？</span>}
           </div>
           {tab === 'option' && !feeOk && <p className="ask-error">期权费请填 0 到 100 之间的数字</p>}
+          {tab === 'stock' && firstTime && h === 5 && <p className="muted ask-first">第一次用？先问 1 周的：封存之后，下周就能回来看揭晓。</p>}
           <button className="btn primary lg ask-go" disabled={!code || (tab === 'option' && !feeOk)} onClick={submit}>问小四<ArrowRight size={17} /></button>
         </div>
       )}
