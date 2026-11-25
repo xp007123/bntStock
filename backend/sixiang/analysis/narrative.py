@@ -1,0 +1,87 @@
+"""把引擎结果翻译成大白话（规则生成，不调用大模型；所有数字都来自引擎）。"""
+from __future__ import annotations
+
+SAME = 0.03          # 相似时候与平时的上涨概率差小于 3 个百分点：说“差不多”
+PRICE_BAND = 0.01    # 期权平均净结果在 ±1% 以内：说“大致合理”
+
+
+def horizon_text(h: int) -> str:
+    return {5: "1 周", 10: "2 周", 21: "1 个月", 42: "2 个月", 63: "3 个月", 126: "6 个月", 250: "1 年"}.get(h, f"{h} 个交易日")
+
+
+def pct(v: float, digits: int = 1, sign: bool = True) -> str:
+    s = f"{abs(v) * 100:.{digits}f}%"
+    return (("+" if v > 0 else "−" if v < 0 else "") if sign else "") + s
+
+
+def tens(p: float) -> int:
+    return max(0, min(10, round(p * 10)))
+
+
+def state_text(st: dict) -> str:
+    r20, pos, vp = st["r20"], st["pos60"], st["vol_percentile"]
+    move = f"最近 20 个交易日{'涨' if r20 >= 0 else '跌'}了 {pct(r20, sign=False)}"
+    where = f"股价在 60 日均线{'上方' if pos >= 0 else '下方'} {pct(pos, sign=False)}"
+    calm = "波动比历史上多数时候都小" if vp < .3 else "波动比历史上多数时候都大" if vp > .7 else "波动处在历史中间水平"
+    return f"{move}，{where}，{calm}"
+
+
+def stock_answer(a: dict, valuation: dict | None) -> dict:
+    h, sim, all_ = a["horizon"], a["similar"], a["all"]
+    p, base = sim["up_prob"], all_["up_prob"]
+    diff = p - base
+    tilt = ("现在这种走势对结果影响不大" if abs(diff) < SAME else
+            "历史上和现在相似的时候，之后更常涨" if diff > 0 else "历史上和现在相似的时候，之后更常跌")
+    voice = [f"{a['name']}{state_text(a['state'])}。", f"按历史看，{tilt}。"]
+    if a["state"]["vol_percentile"] > .7:
+        voice.append("眼下波动偏大，最好和最坏的情况都会比平时更极端。")
+    elif a["state"]["vol_percentile"] < .3:
+        voice.append("眼下波动偏小，结果通常不会太极端。")
+    if valuation:
+        if valuation.get("ttm_loss"):
+            voice.append("最近四个季度合计是亏损的，估值没法用市盈率衡量。")
+        elif valuation.get("pe_ttm"):
+            voice.append(f"按最新已披露的财报，市盈率 TTM 约 {valuation['pe_ttm']:.1f} 倍。")
+    if sim["n"] < 300:
+        voice.append(f"相似的历史时候只有 {sim['n']} 个，结论要打个折扣看。")
+    return {
+        "question": f"{a['name']}接下来{horizon_text(h)}，涨的可能大吗？",
+        "verdict": {"label": f"{horizon_text(h)}后在涨的比例", "value": round(p * 100), "dots": p * 100,
+                    "plain": f"和现在走势相似的历史时候里，大约每 10 次有 {tens(p)} 次在 {horizon_text(h)}后是涨的。",
+                    "note": f"不挑时候、随便哪天买，这个比例是 {round(base * 100)}%。"},
+        "facts": [
+            {"label": "平均下来", "value": sim["mean"], "note": f"{horizon_text(h)}后的平均涨跌"},
+            {"label": "运气最差的十分之一", "value": sim["p10"], "note": "跌得比这还多的情况占一成"},
+            {"label": "运气最好的十分之一", "value": sim["p90"], "note": "涨得比这还多的情况占一成"},
+        ],
+        "voice": "".join(voice),
+        "tone": "same" if abs(diff) < SAME else "good" if diff > 0 else "bad",
+    }
+
+
+def option_answer(a: dict, valuation: dict | None) -> dict:
+    h, fee, sim, all_ = a["horizon"], a["fee"], a["similar"], a["all"]
+    p, base, mean = sim["breakeven_prob"], all_["breakeven_prob"], sim["payoff_mean"]
+    price = "偏贵" if mean < -PRICE_BAND else "偏便宜" if mean > PRICE_BAND else "大致合理"
+    voice = [f"按历史算，这个期权费{price}：和现在相似的时候买入，扣掉期权费后平均{'亏' if mean < 0 else '赚'} {pct(mean, sign=False)}。",
+             f"{a['name']}{state_text(a['state'])}。"]
+    gap = p - base
+    if abs(gap) >= SAME:
+        voice.append(f"相似时候的回本概率比平时{'高' if gap > 0 else '低'} {abs(gap) * 100:.0f} 个百分点。")
+    voice.append("最坏的情况就是期权费全部损失；回本靠的是少数大涨的时候。")
+    if valuation and valuation.get("pe_ttm") and not valuation.get("ttm_loss"):
+        voice.append(f"最新市盈率 TTM 约 {valuation['pe_ttm']:.1f} 倍。")
+    return {
+        "question": f"{a['name']} {horizon_text(h)}平值看涨，期权费 {fee * 100:.1f}%，值不值？",
+        "verdict": {"label": "回本的概率", "value": round(p * 100), "dots": p * 100,
+                    "plain": f"和现在相似的历史时候里，大约每 10 次有 {tens(p)} 次能回本。",
+                    "note": f"回本：{horizon_text(h)}后涨幅超过期权费 {fee * 100:.1f}%。不挑时候、随便哪天买，回本概率是 {round(base * 100)}%。"},
+        "facts": [
+            {"label": "平均下来", "value": mean, "note": "扣掉期权费后，占本金"},
+            {"label": "运气最差的十分之一", "value": sim["payoff_p10"], "note": "期权费全部损失" if sim["payoff_p10"] <= -fee + 1e-9 else "扣掉期权费后"},
+            {"label": "运气最好的十分之一", "value": sim["payoff_p90"], "note": "扣掉期权费后"},
+        ],
+        "voice": "".join(voice),
+        "tone": "bad" if price == "偏贵" else "good" if price == "偏便宜" else "same",
+        "price": price,
+    }

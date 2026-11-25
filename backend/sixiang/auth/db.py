@@ -67,3 +67,26 @@ user_patterns = Table(
     Column("updated_at", DateTime(), nullable=False),
     UniqueConstraint("user_id", "fingerprint"),
 )
+
+
+# ---------------------------------------------------------------- 判断：封存与揭晓
+
+judgments = Table(
+    "judgments", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("user_id", Integer, nullable=False, index=True),
+    Column("kind", String(16), nullable=False),            # stock / option
+    Column("code", String(12), nullable=False),
+    Column("name", String(40), nullable=False),
+    Column("horizon", Integer, nullable=False),
+    Column("fee", String(16)),                              # 期权费（小数）
+    Column("asof", String(10), nullable=False),             # 封存时的行情日期（以该日收盘为起点）
+    Column("data_version", String(60), nullable=False),
+    Column("question", String(200), nullable=False),
+    Column("prediction_json", String(8000), nullable=False),
+    Column("status", String(12), nullable=False),           # sealed / settled
+    Column("due_estimate", String(10), nullable=False),     # 按工作日估算的揭晓日（不含节假日）
+    Column("outcome_json", String(16000)),
+    Column("created_at", DateTime(), nullable=False),
+    Column("settled_at", DateTime()),
+)

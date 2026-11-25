@@ -267,3 +267,49 @@ export type Financials = {
 }
 export const useFinancials = (code: string) =>
   useQuery({ queryKey: ['financials', code], queryFn: () => get<Financials>(`/securities/${code}/financials`), retry: false, staleTime: 10 * 60_000 })
+
+// ---------------------------------------------------------------- 问个股 / 问期权 / 我的判断
+
+export type DistStats = {
+  n: number; up_prob: number; mean: number; median: number; p10: number; p90: number
+  breakeven_prob?: number; payoff_mean?: number; payoff_p10?: number; payoff_p90?: number
+  zones: Record<string, number>
+  histogram: { from: number; to: number; n: number }[]
+}
+export type AskKind = 'stock' | 'option'
+export type Answer = {
+  kind: AskKind; code: string; name: string; horizon: number; fee: number | null; asof: string; close: number
+  data_version: string; question: string; tone: 'good' | 'bad' | 'same'; price?: string
+  verdict: { label: string; value: number; dots: number; plain: string; note: string }
+  facts: { label: string; value: number; note: string }[]
+  voice: string
+  evidence: { role: string; text: string; source: string }[]
+  pending_evidence: string[]
+  analysis: {
+    state: { r20: number; pos60: number; vol20: number; vol_percentile: number }
+    sample_range: [string, string]; all: DistStats; similar: DistStats; similar_k: number; method: string
+  }
+}
+export const useAsk = (kind: AskKind, code: string, horizon: number, fee?: number) =>
+  useQuery({
+    queryKey: ['ask', kind, code, horizon, fee],
+    queryFn: () => get<Answer>(`/ask/${kind}`, { code, horizon, fee }),
+    enabled: !!code && (kind === 'stock' || !!fee),
+    retry: false,
+    staleTime: 10 * 60_000,
+  })
+
+export type Judgment = {
+  id: number; kind: AskKind; code: string; name: string; horizon: number; fee: number | null; asof: string
+  data_version: string; question: string; status: 'sealed' | 'settled'; due_estimate: string; created_at: string; settled_at: string | null
+  prediction: { prob: number; base_prob: number; mean: number; p10: number; p90: number; median: number; plain: string; voice: string
+                price?: string | null; close: number; similar_n: number; elapsed?: number }
+  outcome: null | { done: boolean; return: number; hit: boolean; payoff: number | null; position: string; start_date: string; end_date: string
+                    start_close: number; end_close: number; path: number[] }
+}
+export type JudgmentRecord = { settled: number; hits?: number; hit_rate?: number; expected_rate?: number }
+export const sealJudgment = (body: { kind: AskKind; code: string; horizon: number; fee?: number }) => post<Judgment>('/judgments', body)
+export const useJudgments = () =>
+  useQuery({ queryKey: ['judgments'], queryFn: () => get<{ items: Judgment[]; record: JudgmentRecord }>('/judgments') })
+export const useJudgment = (id: string) =>
+  useQuery({ queryKey: ['judgment', id], queryFn: () => get<Judgment>(`/judgments/${id}`), retry: false })

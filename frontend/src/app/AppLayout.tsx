@@ -8,6 +8,7 @@ const NAV = [
   { to: '/', label: '问小四', end: true },
   { to: '/stocks', label: '看盘' },
   { to: '/patterns', label: '形态' },
+  { to: '/judgments', label: '我的判断' },
   { to: '/records', label: '我的研究' },
   { to: '/market', label: '大盘' },
 ]

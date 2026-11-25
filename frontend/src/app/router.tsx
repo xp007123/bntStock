@@ -3,6 +3,9 @@ import AppLayout from './AppLayout'
 import RequireAuth from './RequireAuth'
 import LoginPage from '../features/auth/LoginPage'
 import AdminPage from '../features/admin/AdminPage'
+import AnswerPage from '../features/ask/AnswerPage'
+import JudgmentsPage from '../features/judgments/JudgmentsPage'
+import JudgmentPage from '../features/judgments/JudgmentPage'
 import HomePage from '../features/home/HomePage'
 import StockPage, { DEFAULT_STOCK } from '../features/stocks/StockPage'
 import MarketPage from '../features/market/MarketPage'
@@ -18,6 +21,9 @@ export const router = createBrowserRouter([
     element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'ask/:kind', element: <AnswerPage /> },
+      { path: 'judgments', element: <JudgmentsPage /> },
+      { path: 'judgments/:id', element: <JudgmentPage /> },
       { path: 'stocks', element: <Navigate to={`/stocks/${DEFAULT_STOCK}`} replace /> },
       { path: 'stocks/:code', element: <StockPage /> },
       { path: 'patterns', element: <PatternsPage /> },
