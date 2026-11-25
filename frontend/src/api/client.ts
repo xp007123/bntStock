@@ -276,7 +276,7 @@ export type DistStats = {
   zones: Record<string, number>
   histogram: { from: number; to: number; n: number }[]
 }
-export type AskKind = 'stock' | 'option'
+export type AskKind = 'stock' | 'option' | 'index'
 export type Answer = {
   kind: AskKind; code: string; name: string; horizon: number; fee: number | null; asof: string; close: number
   data_version: string; question: string; tone: 'good' | 'bad' | 'same'; price?: string
@@ -288,13 +288,17 @@ export type Answer = {
   analysis: {
     state: { r20: number; pos60: number; vol20: number; vol_percentile: number }
     sample_range: [string, string]; all: DistStats; similar: DistStats; similar_k: number; method: string
+    /** 每个相似的起点：[日期, 之后 N 个交易日的涨跌]，按日期排序 */
+    similar_points: [string, number][]
+    /** 期权费 1%–15% 各自的回本比例（只有问期权时有） */
+    fee_curve: { fee: number; similar: number; all: number; payoff_mean: number }[] | null
   }
 }
 export const useAsk = (kind: AskKind, code: string, horizon: number, fee?: number) =>
   useQuery({
     queryKey: ['ask', kind, code, horizon, fee],
     queryFn: () => get<Answer>(`/ask/${kind}`, { code, horizon, fee }),
-    enabled: !!code && (kind === 'stock' || !!fee),
+    enabled: !!code && (kind !== 'option' || !!fee),
     retry: false,
     staleTime: 10 * 60_000,
   })
@@ -320,6 +324,16 @@ export const useJudgments = () =>
 export const useJudgment = (id: string) =>
   useQuery({ queryKey: ['judgment', id], queryFn: () => get<Judgment>(`/judgments/${id}`), retry: false })
 
+export type Series = { code: string; name: string; dates: string[]; close: number[]; data_version: string }
+export const useSeries = (code: string, index = false) =>
+  useQuery({ queryKey: ['series', code, index], queryFn: () => get<Series>('/ask/series', { code, index: index ? 'true' : undefined }),
+             enabled: !!code, staleTime: 10 * 60_000 })
+
+export type AskComparison = { horizon: number; asof: string; data_version: string; items: [Answer, Answer]; question: string; voice: string; lead: string | null }
+export const useAskCompare = (a: string, b: string, horizon: number) =>
+  useQuery({ queryKey: ['ask-compare', a, b, horizon], queryFn: () => get<AskComparison>('/ask/compare', { a, b, horizon }),
+             enabled: !!a && !!b, retry: false, staleTime: 10 * 60_000 })
+
 // ---------------------------------------------------------------- 自选股
 
 export type WatchItem = {
@@ -343,4 +357,20 @@ export const useMethods = () =>
   useQuery({
     queryKey: ['pattern-methods'], queryFn: () => get<{ methods: Method[] }>('/patterns/methods'),
     refetchInterval: q => (q.state.data?.methods.some(m => m.status === 'queued' || m.status === 'running') ? 3000 : false),
+  })
+
+// ---------------------------------------------------------------- 自选 × 方法库
+
+export type SignalHit = {
+  index: number; method: string; description: string; job: string; date: string; price: number; change: number
+  reasons: Reason[]; history: SummaryRow | null; events: number | null
+}
+export type Signals = {
+  items: { code: string; name: string; hits: SignalHit[] }[]; quiet: string[]; watch_count: number
+  methods_total: number; methods_ready: number; data_end: string | null
+}
+export const useSignals = () =>
+  useQuery({
+    queryKey: ['watch-signals'], queryFn: () => get<Signals>('/watchlist/signals'),
+    refetchInterval: q => (q.state.data && q.state.data.methods_ready < q.state.data.methods_total ? 5000 : false),
   })

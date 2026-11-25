@@ -7,6 +7,7 @@
   在该股自己的历史里找最接近的若干个起点（标准化后的欧氏距离），数量取 max(200, 全部起点的 10%)，且不超过全部。
 - 相邻起点的未来窗口互相重叠，不是独立样本；统计只描述历史，不预测未来。
 - 场外期权（100% 平值看涨）：到期收益 = max(涨幅, 0) − 期权费，占名义本金。
+- 指数用同一套口径（指数点位本身不需要复权）。
 """
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ START = pd.Timestamp("2007-01-01")
 MIN_BARS = 60
 BIN = 0.025
 LO, HI = -0.4, 0.6
+FEE_CURVE = [round(0.01 + 0.005 * i, 4) for i in range(29)]   # 期权费 1% – 15%，每 0.5% 一档
 
 
 class NotEnoughHistory(ValueError):
@@ -43,6 +45,24 @@ def load(snapshot, code: str) -> StockFrame:
     pf = pq.ParquetFile(Path(snapshot.path) / "daily.parquet", metadata=snapshot.daily_meta)
     df = to_engine_frame(pf.read_row_groups(groups, columns=FRAME_COLUMNS))
     return StockFrame(code, df["name"].iloc[-1] if len(df) else code, df)
+
+
+def load_index(store, code: str) -> StockFrame:
+    """指数日线 → 引擎使用的格式。指数点位没有复权问题，close 与 raw_close 相同。"""
+    data = store.index_daily(code, limit=None)
+    df = pd.DataFrame(data["bars"])
+    df["date"] = pd.to_datetime(df["date"])
+    df["raw_close"] = df["close"]
+    df["name"] = data["name"]
+    return StockFrame(data["code"], data["name"], df.reset_index(drop=True))
+
+
+def series(sf: StockFrame) -> dict:
+    """画图用：2007 年起每天的收盘（前复权到最新一天，和看盘页一致）。"""
+    df = sf.df[sf.df.date >= START - pd.Timedelta(days=120)]
+    scale = float(sf.df.raw_close.iloc[-1] / sf.df.close.iloc[-1]) if len(sf.df) else 1.0
+    return {"code": sf.code, "name": sf.name, "dates": df.date.dt.strftime("%Y-%m-%d").tolist(),
+            "close": [round(float(v) * scale, 3) for v in df.close]}
 
 
 def features(df: pd.DataFrame) -> pd.DataFrame:
@@ -104,6 +124,12 @@ def analyze(sf: StockFrame, horizon: int, fee: float | None = None, asof: str | 
     near = idx[np.argsort(dist)[:k]]
 
     vol_hist = feats["vol20"].iloc[idx]
+    near_sorted = np.sort(near)
+    fee_curve = None
+    if fee is not None:
+        rs, ra = fwd[near], fwd[idx]
+        fee_curve = [{"fee": f, "similar": float((rs > f).mean()), "all": float((ra > f).mean()),
+                      "payoff_mean": float((np.maximum(rs, 0) - f).mean())} for f in FEE_CURVE]
     last = df.iloc[-1]
     return {
         "code": sf.code, "name": sf.name, "horizon": horizon, "fee": fee,
@@ -114,6 +140,9 @@ def analyze(sf: StockFrame, horizon: int, fee: float | None = None, asof: str | 
         "all": _stats(fwd[idx], fee),
         "similar": _stats(fwd[near], fee),
         "similar_k": k,
+        # 每个相似的起点：日期与之后 N 个交易日的涨跌（按日期排序），用于在走势图上标出来
+        "similar_points": [[df.date.iloc[i].strftime("%Y-%m-%d"), round(float(fwd[i]), 5)] for i in near_sorted],
+        "fee_curve": fee_curve,
         "method": ("后复权价格；从某日收盘到之后第 N 根日 K 收盘（停牌日不计）。“相似的时候”：近 20 日涨跌幅、相对 60 日均线位置、"
                    "近 20 日波动率最接近当下的历史起点。相邻起点的窗口互相重叠，不是独立样本；只描述历史，不预测未来。"
                    + (" 期权口径：100% 平值看涨，到期收益 = max(涨幅, 0) − 期权费，不含交易成本与报价差异。" if fee is not None else "")),

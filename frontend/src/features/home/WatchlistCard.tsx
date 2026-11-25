@@ -21,7 +21,7 @@ export default function WatchlistCard({ page = false }: { page?: boolean }) {
   const items = page ? all : all.slice(0, 6)
   const act = async (fn: () => Promise<unknown>) => {
     setError('')
-    try { qc.setQueryData(['watchlist'], await fn()) } catch (e) { setError(e instanceof ApiError ? e.message : String(e)) }
+    try { qc.setQueryData(['watchlist'], await fn()); qc.invalidateQueries({ queryKey: ['watch-signals'] }) } catch (e) { setError(e instanceof ApiError ? e.message : String(e)) }
   }
 
   return (

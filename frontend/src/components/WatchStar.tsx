@@ -12,7 +12,7 @@ export default function WatchStar({ code }: { code: string }) {
   const on = !!q.data?.items.some(i => i.code === code)
   const toggle = async () => {
     setBusy(true); setError('')
-    try { qc.setQueryData(['watchlist'], await (on ? removeWatch(code) : addWatch(code))) }
+    try { qc.setQueryData(['watchlist'], await (on ? removeWatch(code) : addWatch(code))); qc.invalidateQueries({ queryKey: ['watch-signals'] }) }
     catch (e) { setError(e instanceof ApiError ? e.message : String(e)) }
     finally { setBusy(false) }
   }

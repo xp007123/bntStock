@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { useIndexDaily, useIndices } from '../../api/client'
 import KLineChart from '../../components/KLineChart'
 import SubNav, { MARKET_TABS } from '../../components/SubNav'
@@ -31,7 +33,10 @@ export default function MarketPage() {
         </div>
       )}
       <section className="card">
-        <div className="card-title">{current?.name ?? code} <span className="muted">日 K · 近 1 年</span></div>
+        <div className="card-title">
+          <span>{current?.name ?? code} <span className="muted">日 K · 近 1 年</span></span>
+          <Link to={`/ask/index?code=${code}&h=21`} className="btn dark">问小四：{current?.name ?? '它'}接下来 1 个月涨的可能<ArrowRight size={15} /></Link>
+        </div>
         {chart.data ? <KLineChart bars={chart.data.bars} height={360} ariaLabel={`${current?.name ?? code} 日 K 线`} /> : <div className="state">读取中…</div>}
       </section>
     </div>

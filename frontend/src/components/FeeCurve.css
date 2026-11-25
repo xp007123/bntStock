@@ -1,0 +1,8 @@
+.fee-curve { display: flex; flex-direction: column; gap: 8px; }
+.fc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.fc-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.fc-legend .ln { width: 18px; height: 0; border-top: 2.5px solid var(--accent); }
+.fc-legend .ln.dashed { border-top: 1.5px dashed var(--muted); }
+.fc-chart { height: 240px; cursor: pointer; }
+.fc-read { font-size: 13px; color: var(--muted); padding-top: 12px; border-top: 1px solid var(--line); }
+.fc-read b { color: var(--ink); font-weight: 600; }

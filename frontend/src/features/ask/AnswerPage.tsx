@@ -7,11 +7,14 @@ import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import type { PetStatus } from '../../components/xiaosi/ResearchPet'
 import Verdict from '../../components/Verdict'
 import Distribution from '../../components/Distribution'
+import FeeCurve from '../../components/FeeCurve'
+import SimilarTimes from '../../components/SimilarTimes'
 import Seal from '../../components/Seal'
 import ShareCard from '../../components/ShareCard'
 import WatchStar from '../../components/WatchStar'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
 import { motionOff, useRolling } from '../../lib/motion'
+import { useRemember } from '../../lib/recent'
 import { stanceChoices, stanceText } from '../../lib/stance'
 import { horizonText, optionHorizons, stockHorizons } from './horizons'
 import './ask.css'
@@ -30,7 +33,7 @@ export default function AnswerPage() {
   if (ask.data) last.current = ask.data
   const kept = !ask.data && !ask.isError && last.current?.kind === kind && last.current.code === code ? last.current : null
 
-  if (!code) return <div className="state">请先在“问小四”里选一只股票。<Link to="/">去提问</Link></div>
+  if (!code) return <div className="state">请先在“问小四”里选一只{kind === 'index' ? '指数' : '股票'}。<Link to="/">去提问</Link></div>
   if (ask.isError) return (
     <div className="ask-blank">
       <HomeResearchPet size={96} status="error" />
@@ -68,6 +71,11 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
   const [cheer, setCheer] = useState(false)
   const sim = a.analysis.similar
   const option = a.kind === 'option'
+  const index = a.kind === 'index'
+  useRemember(pending ? null : {
+    kind: a.kind, to: `/ask/${a.kind}?code=${a.code}&h=${a.horizon}${option ? `&fee=${feePct}` : ''}`, title: a.name,
+    detail: option ? `${horizonText(a.horizon)}期权 · 费 ${(a.fee! * 100).toFixed(1)}%` : `${horizonText(a.horizon)}涨的可能`,
+  })
   const follow = (h: number, fee?: number) =>
     navigate(`/ask/${a.kind}?code=${a.code}&h=${h}${option ? `&fee=${fee ?? feePct}` : ''}`)
   const horizons = (option ? optionHorizons : stockHorizons).filter(h => h.value !== a.horizon).slice(0, 2)
@@ -80,12 +88,12 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
         <Link to="/" className="back muted"><ArrowLeft size={15} />换个问题</Link>
         <h1 className="ask-question">{a.question}</h1>
         <div className="ask-terms">
-          <span className="tag night">小四 · {option ? '问期权' : '问个股'}</span>
-          <span>股票<b>{a.name} {displayCode(a.code)}</b></span>
+          <span className="tag night">小四 · {option ? '问期权' : index ? '问大盘' : '问个股'}</span>
+          <span>{index ? '指数' : '股票'}<b>{a.name} {displayCode(a.code)}</b></span>
           <span>期限<b>{horizonText(a.horizon)}（{a.horizon} 个交易日）</b></span>
           {option && <span>期权费<b>{(a.fee! * 100).toFixed(1)}%</b><i>100% 平值看涨</i></span>}
           <span>数据截至<b>{a.asof}</b></span>
-          <WatchStar code={a.code} />
+          {!index && <WatchStar code={a.code} />}
         </div>
       </header>
 
@@ -110,6 +118,20 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
             </p>
           </section>
 
+          {option && a.analysis.fee_curve && (
+            <section className="card ask-section">
+              <h2>换个期权费呢？从 1% 到 15% 一条线看完</h2>
+              <FeeCurve curve={a.analysis.fee_curve} fee={a.fee!} onPick={f => follow(a.horizon, f)} />
+            </section>
+          )}
+
+          {a.analysis.similar_points?.length > 0 && (
+            <section className="card ask-section">
+              <h2>这 {sim.n} 个相似的时候，都在哪儿</h2>
+              <SimilarTimes code={a.code} index={index} horizon={a.horizon} horizonLabel={horizonText(a.horizon)} points={a.analysis.similar_points} />
+            </section>
+          )}
+
           <section className="card ask-section">
             <h2>证据</h2>
             <ul className="ask-evidence">
@@ -132,12 +154,13 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
               {option && [feePct - 1.5, feePct + 1.5].filter(f => f > 0).map(f => (
                 <button key={f} disabled={pending} onClick={() => follow(a.horizon, Number(f.toFixed(1)))}>期权费 {f.toFixed(1)}% 呢？</button>
               ))}
-              {!option && <button disabled={pending} onClick={() => navigate(`/ask/option?code=${a.code}&h=63&fee=7.5`)}>它的 3 个月期权呢？</button>}
-              <Link to={`/stocks/${a.code}`} className="ask-follow-link">看 K 线<ArrowUpRight size={14} /></Link>
+              {a.kind === 'stock' && <button disabled={pending} onClick={() => navigate(`/ask/option?code=${a.code}&h=63&fee=7.5`)}>它的 3 个月期权呢？</button>}
+              {a.kind === 'stock' && <button disabled={pending} onClick={() => navigate(`/ask/compare?a=${a.code}&h=${a.horizon}`)}>和另一只比一比</button>}
+              <Link to={index ? '/market' : `/stocks/${a.code}`} className="ask-follow-link">看 K 线<ArrowUpRight size={14} /></Link>
             </div>
           </section>
 
-          <SealPanel key={`${a.kind}-${a.code}-${a.horizon}-${a.fee}`} a={a} disabled={pending} onSealed={sealedNow} />
+          {!index && <SealPanel key={`${a.kind}-${a.code}-${a.horizon}-${a.fee}`} a={a} disabled={pending} onSealed={sealedNow} />}
         </aside>
       </div>
     </article>

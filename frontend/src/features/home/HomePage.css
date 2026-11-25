@@ -28,7 +28,7 @@
 
 /* 提问面板：墨黑卡里的一块白 */
 .ask-panel { grid-column: 1 / -1; margin-top: 28px; background: var(--surface); color: var(--ink-2); border-radius: 22px; padding: 8px; }
-.ask-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; background: var(--bg); border-radius: 16px; }
+.ask-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; background: var(--bg); border-radius: 16px; }
 .ask-tabs button { border: 0; background: transparent; border-radius: 12px; padding: 10px 16px; display: flex; flex-direction: column; align-items: flex-start; text-align: left; line-height: 1.4; transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
 .ask-tabs b { font-size: 15px; font-weight: 600; color: var(--muted); transition: color var(--t-fast) var(--ease); }
 .ask-tabs span { font-size: 12px; color: var(--faint); }
@@ -177,3 +177,20 @@
 .watch-full .watch-list { gap: 4px 24px; }
 .watch-full .watch-add .stock-search { max-width: 420px; }
 @media (max-width: 760px) { .watch-full { padding: 16px; } .watch-page { gap: 14px; } }
+
+/* 问小四按钮旁边的次要入口：两只对着问 */
+.ask-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; }
+.ask-compare-link { border: 0; background: none; padding: 4px 2px; font-size: 14px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.ask-compare-link:hover { color: var(--ink); text-decoration-color: var(--ink); }
+@media (max-width: 760px) { .ask-actions { width: 100%; } .ask-compare-link { margin: 0 auto; } }
+
+/* 最近问过 */
+.recent-asks { display: flex; flex-direction: column; gap: 10px; }
+.recent-asks .card-title { margin-bottom: 0; }
+.recent-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.recent-list a { display: inline-flex; flex-direction: column; gap: 1px; padding: 8px 14px; border-radius: var(--r); background: var(--bg); border: 1px solid var(--line); text-decoration: none; transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.recent-list a:hover { border-color: var(--accent); background: var(--accent-softer); }
+.recent-list b { font-size: 14px; font-weight: 600; color: var(--ink); }
+.recent-list span { font-size: 12px; color: var(--muted); }
+.recent-clear { border: 0; background: none; font-size: 12px; color: var(--muted); padding: 2px 6px; }
+.recent-clear:hover { color: var(--ink); }

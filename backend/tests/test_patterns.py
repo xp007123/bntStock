@@ -173,3 +173,23 @@ def test_method_library(client: TestClient):
     other.post("/api/auth/login", json={"account": "路人丙", "password": "abcdef"})
     assert other.get("/api/patterns/jobs").json() == []
     assert other.get(f"/api/patterns/jobs/{done[0]['job']}/result").status_code == 200
+
+
+def test_watchlist_signals(client: TestClient):
+    """自选 × 方法库：自选里今天符合某个方法的股票，和方法结果里的“今日符合”一致。"""
+    for m in client.get("/api/patterns/methods").json()["methods"]:
+        _wait(client, m["job"])
+    methods = client.get("/api/patterns/methods").json()["methods"]
+    today = {}
+    for m in methods:
+        for x in client.get(f"/api/patterns/jobs/{m['job']}/result").json()["selected"]:
+            today.setdefault(x["code"], set()).add(m["name"])
+    codes = client.get("/api/securities", params={"q": "", "limit": 5}).json()
+    watch = sorted(set(list(today)[:2]) | {codes[0]["code"]})
+    for c in watch:
+        client.post(f"/api/watchlist/{c}")
+    sig = client.get("/api/watchlist/signals").json()
+    assert sig["methods_ready"] == sig["methods_total"] == len(methods) and sig["watch_count"] == len(watch)
+    got = {i["code"]: {h["method"] for h in i["hits"]} for i in sig["items"]}
+    assert got == {c: today[c] for c in watch if c in today}
+    assert set(sig["quiet"]) == {c for c in watch if c not in today}

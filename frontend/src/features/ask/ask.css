@@ -117,3 +117,34 @@
 .ask-stance button:hover { border-color: var(--ink); color: var(--ink); }
 .ask-stance button[aria-checked='true'] { background: var(--ink); border-color: var(--ink); color: var(--on-night); font-weight: 600; }
 .ask-terms .watch-star { margin-left: 0; }
+
+/* ---- 两只对比 ---- */
+.acmp-pick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; padding: 20px 24px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.acmp-slot { display: flex; flex-direction: column; gap: 8px; }
+.acmp-slot .stock-search { width: 280px; background: var(--bg); }
+.acmp-vs { font-size: 13px; font-weight: 600; color: var(--muted); padding-bottom: 12px; }
+.acmp-hint { padding: 8px 4px; }
+.acmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.acmp-side { display: flex; flex-direction: column; gap: 14px; padding: 24px 28px; }
+.acmp-side.lead { border-color: #fb5e0d66; }
+.acmp-side header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.acmp-side header b { font-size: 18px; color: var(--ink); }
+.acmp-side header .tag { margin-left: auto; }
+.acmp-big { display: flex; align-items: flex-end; gap: 16px; }
+.acmp-big > b { font-size: 72px; font-weight: 600; line-height: .95; letter-spacing: -.02em; color: var(--ink); }
+.acmp-big > b small { font-size: 28px; font-weight: 500; color: var(--accent); margin-left: 2px; }
+.acmp-big span { font-size: 13px; line-height: 1.6; color: var(--muted); padding-bottom: 4px; }
+.acmp-side dl { margin: 0; display: flex; flex-direction: column; }
+.acmp-side dl div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.acmp-side dt { color: var(--muted); }
+.acmp-side dd { margin: 0; font-weight: 600; color: var(--ink); }
+.acmp-side dd.up { color: var(--up); }
+.acmp-side dd.down { color: var(--down); }
+.acmp-side .ask-follow-link { border: 0; background: none; align-self: flex-start; padding-left: 0; }
+.acmp-voice > p { max-width: 860px; }
+@media (max-width: 760px) {
+  .acmp-grid { grid-template-columns: 1fr; }
+  .acmp-slot, .acmp-slot .stock-search { width: 100%; }
+  .acmp-vs { padding: 0; }
+  .acmp-big > b { font-size: 56px; }
+}

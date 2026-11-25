@@ -18,21 +18,21 @@ def tens(p: float) -> int:
     return max(0, min(10, round(p * 10)))
 
 
-def state_text(st: dict) -> str:
+def state_text(st: dict, subject: str = "股价") -> str:
     r20, pos, vp = st["r20"], st["pos60"], st["vol_percentile"]
     move = f"最近 20 个交易日{'涨' if r20 >= 0 else '跌'}了 {pct(r20, sign=False)}"
-    where = f"股价在 60 日均线{'上方' if pos >= 0 else '下方'} {pct(pos, sign=False)}"
+    where = f"{subject}在 60 日均线{'上方' if pos >= 0 else '下方'} {pct(pos, sign=False)}"
     calm = "波动比历史上多数时候都小" if vp < .3 else "波动比历史上多数时候都大" if vp > .7 else "波动处在历史中间水平"
     return f"{move}，{where}，{calm}"
 
 
-def stock_answer(a: dict, valuation: dict | None) -> dict:
+def stock_answer(a: dict, valuation: dict | None, subject: str = "股价") -> dict:
     h, sim, all_ = a["horizon"], a["similar"], a["all"]
     p, base = sim["up_prob"], all_["up_prob"]
     diff = p - base
     tilt = ("现在这种走势对结果影响不大" if abs(diff) < SAME else
             "历史上和现在相似的时候，之后更常涨" if diff > 0 else "历史上和现在相似的时候，之后更常跌")
-    voice = [f"{a['name']}{state_text(a['state'])}。", f"按历史看，{tilt}。"]
+    voice = [f"{a['name']}{state_text(a['state'], subject)}。", f"按历史看，{tilt}。"]
     if a["state"]["vol_percentile"] > .7:
         voice.append("眼下波动偏大，最好和最坏的情况都会比平时更极端。")
     elif a["state"]["vol_percentile"] < .3:
@@ -85,3 +85,30 @@ def option_answer(a: dict, valuation: dict | None) -> dict:
         "tone": "bad" if price == "偏贵" else "good" if price == "偏便宜" else "same",
         "price": price,
     }
+
+
+def compare_answer(a: dict, b: dict) -> dict:
+    """两只股票同一个问题并排：只比引擎给出的数，不替用户选。"""
+    h = a["horizon"]
+    pa, pb = a["similar"]["up_prob"], b["similar"]["up_prob"]
+    gap = pa - pb
+    lead, lag = (a, b) if gap >= 0 else (b, a)
+    if abs(gap) < SAME:
+        head = f"两只差不多：和现在相似的时候里，{horizon_text(h)}后在涨的比例都在 {round(min(pa, pb) * 100)}%–{round(max(pa, pb) * 100)}% 之间。"
+    else:
+        head = f"按历史看，{lead['name']}在涨的比例高 {abs(gap) * 100:.0f} 个百分点（{round(max(pa, pb) * 100)}% 对 {round(min(pa, pb) * 100)}%）。"
+    spread = lambda x: x["similar"]["p90"] - x["similar"]["p10"]
+    wild = a if spread(a) > spread(b) else b
+    calm = b if wild is a else a
+    lines = [head]
+    if abs(spread(a) - spread(b)) < 0.03:
+        lines.append(f"两只结果的分散程度差不多：最差一成和最好一成都相差约 {(spread(a) + spread(b)) / 2 * 100:.0f} 个百分点。")
+    else:
+        lines.append(f"{wild['name']}的结果更分散：最差一成和最好一成相差 {spread(wild) * 100:.0f} 个百分点，{calm['name']}是 {spread(calm) * 100:.0f} 个。")
+    for x in (a, b):
+        d = x["similar"]["up_prob"] - x["all"]["up_prob"]
+        if abs(d) >= SAME:
+            lines.append(f"{x['name']}现在的走势比它平时{'更容易' if d > 0 else '更难'}涨（平时 {round(x['all']['up_prob'] * 100)}%）。")
+    lines.append("概率高不等于一定涨，两只都只是历史统计。")
+    return {"question": f"{a['name']}和{b['name']}，接下来{horizon_text(h)}哪个涨的可能大？", "voice": "".join(lines),
+            "lead": None if abs(gap) < SAME else lead["code"]}

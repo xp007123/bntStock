@@ -4,6 +4,7 @@ import RequireAuth from './RequireAuth'
 import LoginPage from '../features/auth/LoginPage'
 import AdminPage from '../features/admin/AdminPage'
 import AnswerPage from '../features/ask/AnswerPage'
+import AskComparePage from '../features/ask/AskComparePage'
 import JudgmentsPage from '../features/judgments/JudgmentsPage'
 import JudgmentPage from '../features/judgments/JudgmentPage'
 import HomePage from '../features/home/HomePage'
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'ask/compare', element: <AskComparePage /> },
       { path: 'ask/:kind', element: <AnswerPage /> },
       { path: 'judgments', element: <JudgmentsPage /> },
       { path: 'judgments/:id', element: <JudgmentPage /> },

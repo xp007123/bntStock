@@ -29,6 +29,11 @@ def app(tmp_path: Path):
         rows = [(d.strftime("%Y-%m-%d"), round(p * 1.001, 2), round(max(c, p) * 1.01, 2), round(min(c, p) * .99, 2), round(c, 2), round(p, 2))
                 for d, c, p in zip(dates, close, prev)]
         write_daily(src / "daily" / f"{code}.csv", code, name, rows)
+    (src / "index").mkdir()
+    idx = 3000 * np.cumprod(1 + rng.normal(0.0003, .012, len(dates)))
+    lines = ["candle_end_time,open,high,low,close,amount,volume,index_code"]
+    lines += [f"{d:%Y-%m-%d},{c:.2f},{c * 1.01:.2f},{c * .99:.2f},{c:.2f},1e11,1e8,sh000001" for d, c in zip(dates, idx)]
+    (src / "index" / "sh000001.csv").write_bytes(chr(10).join(lines).encode("gbk"))
     data = tmp_path / "data"
     import_baseline(src, data / "market", "v-test", workers=1, log=lambda *_: None)
     return create_app(Settings(data_dir=data, frontend_dist=tmp_path / "none"))
@@ -150,3 +155,27 @@ def test_watchlist(app, client: TestClient):
     other = TestClient(app)
     other.post("/api/auth/login", json={"account": "路人乙", "password": "abcdef"})
     assert other.get("/api/watchlist").json()["items"] == []
+
+
+def test_similar_points_and_fee_curve(app):
+    sf = load(app.state.market.snapshot(), "sh600519")
+    a = analyze(sf, 20, fee=0.05)
+    pts = a["similar_points"]
+    assert len(pts) == a["similar"]["n"] and [p[0] for p in pts] == sorted(p[0] for p in pts)
+    assert np.mean([r > 0 for _, r in pts]) == pytest.approx(a["similar"]["up_prob"])
+    curve = {round(c["fee"], 4): c for c in a["fee_curve"]}
+    assert curve[0.05]["similar"] == pytest.approx(a["similar"]["breakeven_prob"])
+    probs = [c["similar"] for c in a["fee_curve"]]
+    assert probs == sorted(probs, reverse=True)          # 期权费越高，回本越难
+    assert analyze(sf, 20)["fee_curve"] is None
+
+
+def test_ask_index_compare_series(client: TestClient):
+    i = client.get("/api/ask/index", params={"code": "sh000001", "horizon": 21}).json()
+    assert i["kind"] == "index" and "指数在 60 日均线" in i["voice"] and i["analysis"]["similar"]["n"] >= 200
+    c = client.get("/api/ask/compare", params={"a": "sh600519", "b": "sz000001", "horizon": 21}).json()
+    assert [x["code"] for x in c["items"]] == ["sh600519", "sz000001"] and c["question"].startswith("贵州茅台和平安银行")
+    assert client.get("/api/ask/compare", params={"a": "sh600519", "b": "SH600519"}).status_code == 422
+    s = client.get("/api/ask/series", params={"code": "sh600519"}).json()
+    assert len(s["dates"]) == len(s["close"]) and s["dates"] == sorted(s["dates"])
+    assert client.get("/api/ask/series", params={"code": "sh000001", "index": True}).status_code == 200

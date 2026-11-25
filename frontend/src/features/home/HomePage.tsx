@@ -10,6 +10,8 @@ import { horizonText } from '../ask/horizons'
 import JobList from '../patterns/JobList'
 import AskPanel from './AskPanel'
 import WatchlistCard from './WatchlistCard'
+import SignalsCard from '../watch/SignalsCard'
+import { forget, useRecent } from '../../lib/recent'
 import '../patterns/patterns.css'
 import './HomePage.css'
 
@@ -42,10 +44,12 @@ export default function HomePage() {
             <div className="hero-pet"><HomeResearchPet size={168} followPointer status={nod ? 'complete' : 'idle'} /></div>
             <AskPanel onPick={picked} />
           </section>
+          <RecentCard />
           <JobsCard />
         </div>
 
         <aside className="home-side stagger">
+          <SignalsCard compact />
           <WatchlistCard />
           <JudgmentsCard />
           <IndicesCard />
@@ -128,6 +132,21 @@ function IndicesCard() {
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+/** 最近问过：点一下重问，不用再搜。只存在这台电脑的浏览器里。 */
+function RecentCard() {
+  const { uid, items } = useRecent()
+  if (!items.length) return null
+  return (
+    <section className="card home-card recent-asks">
+      <div className="card-title"><span>最近问过 <span className="muted">点一下再问一次，用最新数据</span></span>
+        {uid != null && <button className="recent-clear" onClick={() => forget(uid)}>清空</button>}</div>
+      <ul className="recent-list">
+        {items.map(r => <li key={r.to}><Link to={r.to}><b>{r.title}</b><span>{r.detail}</span></Link></li>)}
+      </ul>
     </section>
   )
 }
