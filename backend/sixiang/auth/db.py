@@ -109,3 +109,58 @@ watchlist = Table(
     Column("created_at", DateTime(), nullable=False),
     UniqueConstraint("user_id", "code"),
 )
+
+# ---------------------------------------------------------------- 群聊（见 docs/群聊-需求与架构.md）
+
+rooms = Table(
+    "rooms", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("user_id", Integer, nullable=False, index=True),
+    Column("title", String(80), nullable=False),
+    Column("topic_json", LongText, nullable=False),          # {"kind": "stock", "code": ..., "name": ..., "brief": ...}
+    Column("members_json", LongText, nullable=False),        # 现在群里的嘉宾 id，按座次
+    Column("status", String(16), nullable=False),            # idle 空闲 / playing 演出中 / interrupted 被打断
+    Column("summary", LongText),                             # 更早聊天记录的摘要
+    Column("created_at", DateTime(), nullable=False),
+    Column("updated_at", DateTime(), nullable=False),
+)
+
+room_messages = Table(
+    "room_messages", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("room_id", Integer, nullable=False, index=True),
+    Column("seq", Integer, nullable=False),                  # 群内序号，断线续传用
+    Column("role", String(12), nullable=False),              # host / guest / user / system
+    Column("persona_id", String(40)),
+    Column("name", String(40), nullable=False),
+    Column("text", LongText, nullable=False),
+    Column("reply_to", Integer),
+    Column("cards_json", LongText),
+    Column("data_json", LongText),
+    Column("meta_json", LongText),
+    Column("created_at", DateTime(), nullable=False, index=True),
+    UniqueConstraint("room_id", "seq"),
+)
+
+# 角色卡的历史版本。仓库里 room/personas/*.md 是出厂设置；管理端每保存一次，这里多一行。
+persona_versions = Table(
+    "persona_versions", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("persona_id", String(40), nullable=False, index=True),
+    Column("version", Integer, nullable=False),
+    Column("content", LongText, nullable=False),             # 整张角色卡（Markdown，带头部）
+    Column("note", String(200)),                             # 这一版改了什么
+    Column("created_by", Integer),
+    Column("created_at", DateTime(), nullable=False),
+    UniqueConstraint("persona_id", "version"),
+)
+
+persona_settings = Table(
+    "persona_settings", metadata,
+    Column("persona_id", String(40), primary_key=True),
+    Column("current_version", Integer),                      # 空 = 用出厂设置
+    Column("enabled", Boolean, nullable=False, default=True),      # 停用后不能再被拉进群
+    Column("in_default", Boolean, nullable=False, default=False),  # 开群时默认拉进来
+    Column("sort", Integer, nullable=False, default=0),            # 座次
+    Column("updated_at", DateTime(), nullable=False),
+)

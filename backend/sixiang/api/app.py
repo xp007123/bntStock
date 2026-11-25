@@ -22,7 +22,11 @@ from ..research.jobs import JobManager
 from ..research.library_store import UserLibrary
 from ..judgments import Judgments
 from ..watchlist import Watchlist
-from .routes import admin, ask, auth, judgments, market, patterns, watchlist
+from ..room import llm as room_llm
+from ..room.registry import PersonaRegistry
+from ..room.service import RoomService
+from ..room.store import RoomStore
+from .routes import admin, admin_personas, ask, auth, judgments, market, patterns, rooms, watchlist
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -51,6 +55,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.library = UserLibrary(engine)
     app.state.judgments = Judgments(engine)
     app.state.watchlist = Watchlist(engine)
+    # 群聊：没配模型密钥时 model 为空，群聊入口不显示，其他功能不受影响
+    app.state.rooms = RoomService(RoomStore(engine), PersonaRegistry(engine), market_store, settings.data_dir / "research" / "jobs", room_llm.from_env())
 
     @app.get("/api/health", tags=["system"])
     def health():
@@ -59,11 +65,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 除健康检查与登录注册外，所有接口需要登录
     app.include_router(auth.router)
     app.include_router(admin.router)
+    app.include_router(admin_personas.router)
     app.include_router(market.router, dependencies=[Depends(current_user)])
     app.include_router(patterns.router, dependencies=[Depends(current_user)])
     app.include_router(ask.router, dependencies=[Depends(current_user)])
     app.include_router(judgments.router, dependencies=[Depends(current_user)])
     app.include_router(watchlist.router, dependencies=[Depends(current_user)])
+    app.include_router(rooms.router, dependencies=[Depends(current_user)])
 
     dist = settings.frontend_dist
     if (dist / "index.html").exists():

@@ -154,3 +154,132 @@ def test_host_gets_no_tools(ctx):
     asyncio.run(actor.perform(Host("open", "开场"), room, cast, host, model, ctx))
     asyncio.run(actor.perform(Speak("buffett", "说"), room, cast, host, model, ctx))
     assert model.calls[0]["tools"] is None and len(model.calls[1]["tools"]) == len(tools.REGISTRY)
+
+
+# ---------------------------------------------------------------- 接口、运行器、角色管理
+
+import time
+
+from fastapi.testclient import TestClient
+
+from sixiang.api.app import create_app
+from sixiang.room.registry import PersonaError, PersonaRegistry
+
+from .conftest import login_as_admin
+
+
+@pytest.fixture
+def client(tmp_path: Path, ctx):
+    """ctx 已经在 tmp_path/data 下建好了行情；这里起一个应用，模型换成假的。"""
+    app = create_app(Settings(data_dir=tmp_path / "data", frontend_dist=tmp_path / "none"))
+    app.state.rooms.model = FakeModel(default="我的看法是这样。")
+    with TestClient(app) as c:          # with：让后台任务所在的事件循环一直活着
+        login_as_admin(c)
+        yield c
+
+
+def wait_idle(client: TestClient, rid: int) -> dict:
+    for _ in range(200):
+        room = client.get(f"/api/rooms/{rid}").json()
+        if not room["playing"]:
+            return room
+        time.sleep(.05)
+    raise AssertionError("这场戏一直没演完")
+
+
+def test_room_api_flow(client: TestClient):
+    listing = client.get("/api/personas").json()
+    assert listing["available"] and listing["host"]["id"] == "xiaosi" and listing["default"] == personas.DEFAULT_GUESTS
+    assert client.post("/api/rooms", json={"code": "没有这只"}).status_code == 422
+    rid = client.post("/api/rooms", json={"code": "茅台"}).json()["id"]
+    room = wait_idle(client, rid)
+    assert room["title"] == "贵州茅台" and room["status"] == "idle" and "brief" not in room["topic"]
+    msgs = room["messages"]
+    assert len(msgs) == 9 and [m["seq"] for m in msgs] == list(range(1, 10)) and msgs[0]["action"] == "open"
+    assert "prompt_tokens" not in str(msgs)                                   # 内部信息不给前端
+
+    # 用户 @ 人说话：他先回，他的对手再插一句
+    assert client.post(f"/api/rooms/{rid}/say", json={"text": "@索罗斯 现在怎么想"}).json() == {"ok": True}
+    msgs = wait_idle(client, rid)["messages"]
+    assert msgs[9]["role"] == "user" and msgs[9]["text"] == "索罗斯 现在怎么想"
+    assert msgs[10]["persona_id"] == "soros" and msgs[10]["reply_to"] == 10 and len(msgs) == 12
+
+    # 接着聊；拉人踢人
+    client.post(f"/api/rooms/{rid}/continue")
+    assert len(wait_idle(client, rid)["messages"]) == 16
+    got = client.post(f"/api/rooms/{rid}/members", json={"remove": "serenity"}).json()["members"]
+    assert "serenity" not in got
+    room = wait_idle(client, rid)
+    assert room["members"] == got and room["messages"][-1]["role"] == "system" and "请出" in room["messages"][-1]["text"]
+    # 断线续传：只要某条之后的
+    after = client.get(f"/api/rooms/{rid}").json()["messages"][-3]["seq"]
+    assert [m["seq"] for m in client.app.state.rooms.store.messages(rid, after)] == [after + 1, after + 2]
+
+    assert client.get("/api/rooms").json()["items"][0]["id"] == rid
+    # 别人看不到、说不了话
+    client.app.state.auth.register("路人丁", "13711115555", "abcdef", "abcdef", status="active")
+    other = TestClient(client.app)
+    other.post("/api/auth/login", json={"account": "路人丁", "password": "abcdef"})
+    assert other.get(f"/api/rooms/{rid}").status_code == 404 and other.post(f"/api/rooms/{rid}/say", json={"text": "嗨"}).status_code == 404
+    assert other.get("/api/admin/personas").status_code == 403
+
+
+def test_daily_limit_is_a_line_not_an_error(client: TestClient):
+    client.app.state.rooms.daily_limit = 0
+    rid = client.post("/api/rooms", json={"code": "sh600519"}).json()["id"]
+    msgs = wait_idle(client, rid)["messages"]
+    assert len(msgs) == 1 and msgs[0]["role"] == "host" and msgs[0]["action"] == "limit"
+
+
+def test_model_down_room_stays_quiet(client: TestClient):
+    client.app.state.rooms.model = FakeModel(default="")       # 模型一句话都说不出来
+    rid = client.post("/api/rooms", json={"code": "sh600519"}).json()["id"]
+    room = wait_idle(client, rid)
+    assert room["messages"] == [] and room["status"] == "idle"      # 没有报错消息，群只是安静
+    client.app.state.rooms.model = None
+    assert client.get("/api/personas").json()["available"] is False
+    assert client.post("/api/rooms", json={"code": "sh600519"}).status_code == 422
+
+
+def test_persona_admin(client: TestClient):
+    items = client.get("/api/admin/personas").json()
+    assert {p["id"] for p in items["items"]} >= {"xiaosi", "buffett"} and items["tools"] and "id: new_persona" in items["template"]
+    d = client.get("/api/admin/personas/buffett").json()
+    assert d["builtin"] and not d["custom"] and d["versions"] == [] and d["content"].startswith("---")
+
+    # 改人设：存成新的一版，立刻生效
+    edited = d["content"].replace("好公司也要好价格", "价格是你付的，价值是你得的")
+    saved = client.post("/api/admin/personas/buffett/versions", json={"content": edited, "note": "换了口头禅"}).json()
+    assert saved["custom"] and saved["version"] == d["version"] + 1 and saved["tagline"] == "价格是你付的，价值是你得的"
+    assert saved["versions"][0]["note"] == "换了口头禅"
+    assert next(p for p in client.get("/api/personas").json()["items"] if p["id"] == "buffett")["tagline"] == "价格是你付的，价值是你得的"
+    # 回到出厂设置，再切回刚才那一版
+    assert client.post("/api/admin/personas/buffett/use", json={"version": None}).json()["tagline"] == "好公司也要好价格"
+    assert client.post("/api/admin/personas/buffett/use", json={"version": saved["version"]}).json()["custom"]
+    assert "价格是你付的" in client.get(f"/api/admin/personas/buffett/versions/{saved['version']}").json()["content"]
+    assert "好公司也要好价格" in client.get("/api/admin/personas/buffett/versions/0").json()["content"]
+
+    # 写坏的卡片存不进去；id 不能改
+    assert client.post("/api/admin/personas/buffett/versions", json={"content": "没有头部的一段话，但是够长够长够长够长够长"}).status_code == 422
+    assert client.post("/api/admin/personas/buffett/versions", json={"content": edited.replace("id: buffett", "id: someone")}).status_code == 422
+
+    # 停用：不再出现在角色列表和默认成员里；主持人不能停用
+    client.post("/api/admin/personas/serenity/settings", json={"enabled": False})
+    pub = client.get("/api/personas").json()
+    assert "serenity" not in [p["id"] for p in pub["items"]] and "serenity" not in pub["default"]
+    assert client.post("/api/admin/personas/xiaosi/settings", json={"enabled": False}).status_code == 422
+    rid = client.post("/api/rooms", json={"code": "sh600519"}).json()["id"]
+    assert "serenity" not in wait_idle(client, rid)["members"]
+
+    # 新建一个角色，设为默认进群、排第一个
+    new = items["template"].replace("id: new_persona", "id: munger").replace("name: 新角色", "name: 芒格") + "\n这个人说话很直，喜欢反过来想问题，对蠢事毫不客气。\n"
+    made = client.post("/api/admin/personas", json={"content": new}).json()
+    assert made["id"] == "munger" and not made["builtin"] and made["version"] == 1
+    assert client.post("/api/admin/personas", json={"content": new}).status_code == 422       # 重名
+    client.post("/api/admin/personas/munger/settings", json={"in_default": True, "sort": 0})
+    assert client.get("/api/personas").json()["default"][0] == "munger"
+    assert client.post("/api/admin/personas/munger/use", json={"version": None}).status_code == 422    # 不是内置的，没有出厂设置
+
+    # 试说一句：用草稿，不保存
+    tried = client.post("/api/admin/personas/try", json={"content": new, "code": "茅台"}).json()
+    assert tried["ok"] and tried["text"] == "我的看法是这样。" and tried["stock"] == "贵州茅台"
