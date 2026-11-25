@@ -19,3 +19,14 @@
   .stock-grid { grid-template-columns: 1fr; }
   .stock-head { flex-direction: column; }
 }
+
+.stock-grid { grid-template-areas: "main side" "fin side"; }
+.stock-main { grid-area: main; }
+.stock-side { grid-area: side; }
+.stock-fin { grid-area: fin; min-width: 0; }
+.fin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fin-table th { font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.fin-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.fin-table th:first-child, .fin-table td:first-child { text-align: left; }
+.fin-table.full td:first-child { color: var(--ink-2); }
+@media (max-width: 900px) { .stock-grid { grid-template-areas: "main" "side" "fin"; } }

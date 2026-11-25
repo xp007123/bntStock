@@ -60,3 +60,9 @@ def indices(request: Request):
 @router.get("/indices/{code}/daily")
 def index_daily(request: Request, code: str, limit: int | None = Query(250, ge=1, le=10000)):
     return _guard(_store(request).index_daily, code, limit)
+
+
+@router.get("/securities/{code}/financials")
+def security_financials(request: Request, code: str, asof: dt.date | None = None):
+    """截止日前已披露的财务报告（按披露时点，不含之后的修订）、TTM 归母净利润与估值。"""
+    return _guard(_store(request).financials, code, asof.isoformat() if asof else None)

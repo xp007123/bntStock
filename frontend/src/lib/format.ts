@@ -13,6 +13,7 @@ export const fmtPct = (v: number | null | undefined, digits = 2, sign = true) =>
 export const fmtBig = (v: number | null | undefined, unit = '') => {
   if (v == null || !Number.isFinite(v)) return '—'
   const a = Math.abs(v)
+  if (a >= 1e12) return `${(v / 1e12).toFixed(2)}万亿${unit}`
   if (a >= 1e8) return `${(v / 1e8).toFixed(2)}亿${unit}`
   if (a >= 1e4) return `${(v / 1e4).toFixed(2)}万${unit}`
   return `${v.toFixed(0)}${unit}`

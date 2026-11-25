@@ -62,3 +62,16 @@ def publish(market_dir: Path, staged: Path, version_id: str) -> Path:
     tmp.write_text(version_id, encoding="utf-8")
     os.replace(tmp, market_dir / "CURRENT")
     return target
+
+
+def stage_from(market_dir: Path, base_id: str, version_id: str, skip: tuple[str, ...] = ()) -> Path:
+    """以已有版本为基础建立暂存目录：未变化的文件用硬链接（同一磁盘上不占额外空间），失败时复制。"""
+    staged = staging_dir(market_dir, version_id)
+    for file in version_path(market_dir, base_id).iterdir():
+        if file.name in skip or file.name == MANIFEST:
+            continue
+        try:
+            os.link(file, staged / file.name)
+        except OSError:
+            shutil.copy2(file, staged / file.name)
+    return staged

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -210,6 +212,14 @@ def sync(market_dir: Path, client: IFindClient, end: dt.date | None = None, dry_
     idx = pd.concat(frames, ignore_index=True).sort_values(["code", "date"])
     pq.write_table(pa.Table.from_pandas(idx, schema=INDEX_SCHEMA, preserve_index=False), staged / "indices.parquet", compression="zstd")
 
+    # 财务数据本次不变，沿用基础版本（硬链接）
+    fin = base.path / "financials.parquet"
+    if fin.exists():
+        try:
+            os.link(fin, staged / "financials.parquet")
+        except OSError:
+            shutil.copy2(fin, staged / "financials.parquet")
+
     data_end = max(s["last_date"] for s in out_secs)
     manifest = {
         "id": version_id,
@@ -222,6 +232,7 @@ def sync(market_dir: Path, client: IFindClient, end: dt.date | None = None, dry_
                    "active_on_data_end": sum(1 for s in out_secs if s["last_date"] == data_end)},
         "adjustment": base.manifest["adjustment"],
         "index_names": base.manifest.get("index_names", {}),
+        "financials": base.manifest.get("financials"),
         "overlap_check": {"date": base.data_end, "checked": checked, "mismatched": len(mismatched), "examples": mismatched[:20]},
         "added_securities": listed,  # 早于本次窗口的历史行未逐日核验简称（name_verified=False）
         "rejected": rejected,

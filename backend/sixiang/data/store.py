@@ -58,6 +58,7 @@ class MarketStore:
         self._lock = threading.Lock()
         self._snapshot: _Snapshot | None = None
         self._con: duckdb.DuckDBPyConnection | None = None
+        self._fin_index: dict = {}
 
     # ---- 版本 ----
     def _current(self) -> tuple[_Snapshot, duckdb.DuckDBPyConnection]:
@@ -166,3 +167,44 @@ class MarketStore:
         return {"code": code.lower(), "name": names.get(code.lower(), code), "data_version": snap.version_id,
                 "bars": [{"date": d.isoformat(), "open": o, "high": h, "low": lo, "close": c, "volume": v, "amount": a}
                          for d, o, h, lo, c, v, a in rows]}
+
+    # ---- 财务与估值
+    def financials(self, code: str, asof: str | None = None) -> dict:
+        """截止日（默认数据末日）前已披露的财务报告、TTM 与估值。"""
+        from .financials import FIELDS, PER_SHARE, SCHEMA, summarize, valuation
+
+        snap, _ = self._current()
+        meta = self.security(code)
+        asof = asof or snap.data_end
+        path = snap.path / "financials.parquet"
+        if not path.exists():
+            return {"code": meta["code"], "available": False, "asof": asof, "reports": [], "valuation": None,
+                    "data_version": snap.version_id, "fields": {}}
+        with self._lock:
+            index = self._fin_index.get(snap.version_id)
+            if index is None:
+                index = self._fin_index[snap.version_id] = (pq.read_metadata(path), _index_row_groups(pq.read_metadata(path)))
+        fmeta, groups = index
+        g = groups.get(meta["code"], [])
+        df = pq.ParquetFile(path, metadata=fmeta).read_row_groups(g).to_pandas() if g else pd.DataFrame(columns=SCHEMA.names)
+        summary = summarize(df, asof)
+        # 截止日当天（或之前最近一个交易日）的不复权收盘价与市值
+        end = dt.date.fromisoformat(asof)
+        daily = pq.ParquetFile(snap.path / "daily.parquet", metadata=snap.daily_meta).read_row_groups(
+            snap.row_groups.get(meta["code"], []), columns=["date", "close", "total_mcap", "float_mcap"]).to_pandas()
+        daily = daily[daily.date <= end]
+        caps = daily.iloc[-1] if len(daily) else None
+        last = {} if caps is None else {"date": caps.date.isoformat(), "close": _f(caps.close)}
+        return {"code": meta["code"], "available": True, "asof": asof, "data_version": snap.version_id,
+                "price_date": last.get("date"), "close": last.get("close"),
+                "valuation": valuation(summary, None if caps is None else _f(caps.total_mcap), None if caps is None else _f(caps.float_mcap), last.get("close")),
+                "ttm_profit": summary["ttm_profit"], "annual_profit": summary["annual_profit"], "reports": summary["reports"],
+                "fields": {grp: [{"label": n, "key": k, "unit": "元/股" if k in PER_SHARE else "元"} for n, k in items] for grp, items in FIELDS.items()}}
+
+
+def _f(v):
+    try:
+        v = float(v)
+        return v if v == v else None
+    except (TypeError, ValueError):
+        return None

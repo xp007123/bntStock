@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { type Adjust, useDaily, useSecurity } from '../../api/client'
+import { type Adjust, useDaily, useFinancials, useSecurity } from '../../api/client'
 import KLineChart from '../../components/KLineChart'
 import StockSearch from '../../components/StockSearch'
 import { dailyChange } from '../../lib/indicators'
 import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/format'
+import { FinancialCard, ValuationCard } from './FinancialPanels'
 import './StockPage.css'
 
 const ADJUSTS: { id: Adjust; label: string }[] = [
@@ -22,6 +23,7 @@ export default function StockPage() {
   const [range, setRange] = useState(250)
   const security = useSecurity(code)
   const daily = useDaily(code, adjust, range || undefined)
+  const fin = useFinancials(code)
   const bars = daily.data?.code === code ? daily.data.bars : []
   const last = bars.at(-1)
   const chg = last ? dailyChange(last.close, last.prev_close, bars.at(-2)?.close) : null
@@ -61,6 +63,8 @@ export default function StockPage() {
               : <KLineChart bars={bars} ariaLabel={`${security.data?.name ?? code} 日 K 线`} />}
           </section>
 
+          <div className="stock-fin"><FinancialCard fin={fin.data} /></div>
+
           <aside className="stock-side">
             <div className="card">
               <div className="card-title">当日数据</div>
@@ -73,6 +77,7 @@ export default function StockPage() {
                 <dt>成交额</dt><dd className="num">{fmtBig(last?.amount)}</dd>
               </dl>
             </div>
+            <ValuationCard fin={fin.data} />
             <div className="card ask-xiaosi">
               <div className="card-title">问小四</div>
               <p className="muted">下一阶段可以在这里直接问：这只票未来上涨的概率、场外期权值不值。</p>

@@ -24,6 +24,7 @@ describe('format', () => {
   it('大数用亿/万', () => {
     expect(fmtBig(1.66e9)).toBe('16.60亿')
     expect(fmtBig(52000)).toBe('5.20万')
+    expect(fmtBig(1.8251e12)).toBe('1.83万亿')
   })
   it('红涨绿跌', () => {
     expect(trendClass(0.01)).toBe('up')

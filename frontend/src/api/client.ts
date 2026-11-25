@@ -250,3 +250,19 @@ export type Comparison = {
 export const useCompare = (left: string, right: string) =>
   useQuery({ queryKey: ['pattern-compare', left, right], queryFn: () => get<Comparison>('/patterns/compare', { left, right }),
              enabled: !!left && !!right, retry: false, staleTime: Infinity })
+
+// ---------------------------------------------------------------- 财务与估值
+
+export type FinancialReport = {
+  date: string; published: string; format: string | null; source: string
+  values: Record<string, number | null>; yoy: Record<string, number | null>
+}
+export type Financials = {
+  code: string; available: boolean; asof: string; data_version: string; price_date?: string; close?: number | null
+  valuation: { total_mcap: number | null; float_mcap: number | null; pe_ttm: number | null; ttm_loss: boolean; pb: number | null
+               debt_ratio: number | null; total_shares: number | null; float_shares: number | null } | null
+  ttm_profit: number | null; annual_profit: number | null; reports: FinancialReport[]
+  fields: Record<'income' | 'balance' | 'cashflow', { label: string; key: string; unit: string }[]>
+}
+export const useFinancials = (code: string) =>
+  useQuery({ queryKey: ['financials', code], queryFn: () => get<Financials>(`/securities/${code}/financials`), retry: false, staleTime: 10 * 60_000 })
