@@ -179,3 +179,51 @@ def test_ask_index_compare_series(client: TestClient):
     s = client.get("/api/ask/series", params={"code": "sh600519"}).json()
     assert len(s["dates"]) == len(s["close"]) and s["dates"] == sorted(s["dates"])
     assert client.get("/api/ask/series", params={"code": "sh000001", "index": True}).status_code == 200
+
+
+def test_option_upside(app):
+    """问期权讲的是“能涨多少”：阶梯、到期和中途最高（持有满 5 天后才能平仓），数字和日线对得上。"""
+    sf = load(app.state.market.snapshot(), "sh600519")
+    a = analyze(sf, 63, fee=0.075)
+    up = a["upside"]["similar"]
+    assert a["upside"]["lock"] == 5 and [r["x"] for r in up["ladder"]] == [0.05, 0.10, 0.15, 0.20, 0.30, 0.50]
+    assert all(r["peak"] >= r["end"] for r in up["ladder"])                       # 中途到过的，一定不比到期还在的少
+    assert [r["end"] for r in up["ladder"]] == sorted((r["end"] for r in up["ladder"]), reverse=True)
+    assert up["peak"]["median"] >= up["end"]["median"] and up["peak"]["over_fee"] >= up["end"]["over_fee"]
+    assert up["end"]["over_fee"] == pytest.approx(a["similar"]["breakeven_prob"])
+    assert up["back"]["typical"] == pytest.approx(max(up["end"]["median"], 0) / 0.075)
+    # 手算一个起点：第 5 天到第 63 天收盘价的最高点
+    df = sf.df.reset_index(drop=True)
+    date, _ = a["similar_points"][0]
+    i = int(df.index[df.date == date][0])
+    peak = df.close.iloc[i + 5:i + 64].max() / df.close.iloc[i] - 1
+    assert peak >= df.close.iloc[i + 63] / df.close.iloc[i] - 1
+    # 期限不到 5 天：没有“中途”，只讲到期
+    short = analyze(sf, 5, fee=0.03)["upside"]["similar"]
+    assert short["peak"] is None and "peak" not in short["ladder"][0] and short["back"]["peak_typical"] is None
+    assert analyze(sf, 63)["upside"] is None
+
+
+def test_checkup_and_mcp_tools_degrade(client, monkeypatch):
+    """体检接口：几个期限 + 能取到的几项。没接 MCP 时相关几项不出现，接口不报错。"""
+    r = client.get("/api/ask/checkup", params={"code": "sh600519"})
+    assert r.status_code == 200
+    body = r.json()
+    assert [h["horizon"] for h in body["horizons"]] == [5, 10, 21, 63] and all(h["low"] <= h["close"] * (1 + h["median"]) <= h["high"] for h in body["horizons"])
+    names = [i["tool"] for i in body["items"]]
+    assert "limit_up_history" in names and "stock_live" not in names and "money_flow" not in names
+    assert client.get("/api/ask/checkup", params={"code": "nope"}).status_code == 404
+
+    # 接上（假的）MCP：实时行情那一项出现，名单页的今日名单挂上实时
+    from sixiang.data import mcp
+    from sixiang.room import tools
+
+    class Fake:
+        def call(self, tool, args, ttl=0):
+            assert tool == "get_realtime_quotes" and args["symbols"] == ["600519.SH"]
+            return {"snapshots": [{"symbol": "600519.SH", "quoteTime": "2026-11-26 10:31:00", "latest": 33.0, "changeRatio": 10.0, "amount": 2e8, "high": 33.0, "low": 30.5, "open": 30.6}]}
+    monkeypatch.setattr(mcp, "_client", Fake())
+    monkeypatch.setattr(mcp, "_loaded", True)
+    assert mcp.symbol("sz002145") == "002145.SZ" and mcp.code("600519.SH") == "sh600519"
+    live = tools.run(tools.ToolContext(client.app.state.market), "stock_live", {"code": "sh600519"})
+    assert live.ok and "现在 33.00" in live.text and "+10.00%" in live.text and live.card["change"] == pytest.approx(0.1)

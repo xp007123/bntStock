@@ -18,6 +18,7 @@ import { useRemember } from '../../lib/recent'
 import { stanceChoices, stanceText } from '../../lib/stance'
 import { horizonText, optionHorizons, stockHorizons } from './horizons'
 import InviteCard from '../rooms/InviteCard'
+import Checkup, { UpsideLadder } from './Checkup'
 import './ask.css'
 
 /** 小四的回答：先结论（大数字 + 一句大白话），再证据；右边一直能看到小四的话和“封存”。 */
@@ -99,16 +100,31 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
 
       <div className="ask-grid">
         <div className="ask-main stagger">
-          <Verdict label={a.verdict.label} value={String(a.verdict.value)} dots={a.verdict.dots} pending={pending}
-                   dotsCaption={<>每 100 个相似的时候里<br />有 <b>{Math.round(a.verdict.dots)} 个</b>{option ? '能回本' : '是涨的'}</>}
-                   plain={a.verdict.plain} note={a.verdict.note} />
+          {a.upside_verdict ? (
+            <Verdict label={a.upside_verdict.label} value={`${a.upside_verdict.value > 0 ? '+' : ''}${a.upside_verdict.value.toFixed(1)}`} dots={a.upside_verdict.dots} pending={pending}
+                     dotsCaption={<>每 100 个相似的时候里<br />有 <b>{Math.round(a.upside_verdict.dots)} 个</b>{a.upside_verdict.dots_caption}</>}
+                     plain={a.upside_verdict.plain} note={a.upside_verdict.note} />
+          ) : (
+            <Verdict label={a.verdict.label} value={String(a.verdict.value)} dots={a.verdict.dots} pending={pending}
+                     dotsCaption={<>每 100 个相似的时候里<br />有 <b>{Math.round(a.verdict.dots)} 个</b>{option ? '能回本' : '是涨的'}</>}
+                     plain={a.verdict.plain} note={a.verdict.note} />
+          )}
 
           <div className={`ask-facts ${pending ? 'pending' : ''}`}>
             {a.facts.map(f => <Fact key={f.label} {...f} />)}
           </div>
 
+          {option && a.analysis.upside && (
+            <section className={`card ask-section ${pending ? 'pending' : ''}`}>
+              <h2>涨到每一档的可能有多大</h2>
+              <UpsideLadder up={a.analysis.upside.similar} fee={a.fee!} lock={a.analysis.upside.lock} horizonLabel={horizonText(a.horizon)} />
+            </section>
+          )}
+
+          {!index && !option && <Checkup code={a.code} horizon={a.horizon} />}
+
           <section className={`card ask-section ${pending ? 'pending' : ''}`}>
-            <h2>和现在相似的 {sim.n} 个时候，结果分成{option ? '三' : '两'}种</h2>
+            <h2>{option ? `到期那天：和现在相似的 ${sim.n} 个时候，结果分成三种` : `和现在相似的 ${sim.n} 个时候，结果分成两种`}</h2>
             <Distribution key={`${a.horizon}-${a.fee}`} stats={sim} line={option ? a.fee! : undefined} lineLabel={option ? `回本线 +${(a.fee! * 100).toFixed(1)}%` : undefined} />
             <p className="ask-compare">
               <span className="tag plain">对照</span>
@@ -124,6 +140,8 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
               <FeeCurve curve={a.analysis.fee_curve} fee={a.fee!} onPick={f => follow(a.horizon, f)} />
             </section>
           )}
+
+          {option && <Checkup code={a.code} horizon={a.horizon} option />}
 
           {a.analysis.similar_points?.length > 0 && (
             <section className="card ask-section">

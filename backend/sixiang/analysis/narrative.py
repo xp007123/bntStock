@@ -60,27 +60,48 @@ def stock_answer(a: dict, valuation: dict | None, subject: str = "股价") -> di
 
 
 def option_answer(a: dict, valuation: dict | None) -> dict:
+    """问期权：用户最想知道的是“能涨多少”。先讲上涨预期，期权费只是标在上面的一条线。"""
     h, fee, sim, all_ = a["horizon"], a["fee"], a["similar"], a["all"]
     p, base, mean = sim["breakeven_prob"], all_["breakeven_prob"], sim["payoff_mean"]
     price = "偏贵" if mean < -PRICE_BAND else "偏便宜" if mean > PRICE_BAND else "大致合理"
-    voice = [f"按历史算，这个期权费{price}：和现在相似的时候买入，扣掉期权费后平均{'亏' if mean < 0 else '赚'} {pct(mean, sign=False)}。",
-             f"{a['name']}{state_text(a['state'])}。"]
-    gap = p - base
-    if abs(gap) >= SAME:
-        voice.append(f"相似时候的回本概率比平时{'高' if gap > 0 else '低'} {abs(gap) * 100:.0f} 个百分点。")
-    voice.append("最坏的情况就是期权费全部损失；回本靠的是少数大涨的时候。")
+    up, up_all = a["upside"]["similar"], a["upside"]["all"]
+    lock, ht = a["upside"]["lock"], horizon_text(h)
+    end, peak = up["end"], up["peak"]
+    lead = peak or end                       # 能提前平仓就讲“中途最高”，否则讲到期
+    where = f"持有满 {lock} 天之后、到期之前，中途最高" if peak else "到期时"
+    voice = [f"按历史看，和现在相似的时候买这个 {ht}的看涨：一半情况下{where}涨到过 {pct(lead['median'])} 以上，最好的两成到过 {pct(lead['p80'])} 以上。"]
+    if peak:
+        voice.append((f"一直拿到到期的话，一半情况涨幅在 {pct(end['median'])} 以上" if end["median"] > 0 else "一直拿到到期的话，有一半情况到期那天是没涨的")
+                     + f"，最好的两成在 {pct(end['p80'])} 以上。")
+    voice.append(f"期权费 {fee * 100:.1f}% 是一条线：" + (f"中途涨过这条线的占 {round(peak['over_fee'] * 100)}%，" if peak else "")
+                 + f"到期时还在线上的占 {round(end['over_fee'] * 100)}%。")
+    voice.append(f"{a['name']}{state_text(a['state'])}。")
+    gap = lead["median"] - (up_all["peak"] or up_all["end"])["median"]
+    if abs(gap) >= 0.01:
+        voice.append(f"比起不挑时候，现在这种走势之后的上涨空间{'更大' if gap > 0 else '更小'}一些。")
+    voice.append("最坏的情况就是期权费全部损失。")
     if valuation and valuation.get("pe_ttm") and not valuation.get("ttm_loss"):
         voice.append(f"最新市盈率 TTM 约 {valuation['pe_ttm']:.1f} 倍。")
+    facts = [{"label": "到期时，一半情况涨幅超过", "value": end["median"], "note": f"一直拿满 {ht}"},
+             {"label": "到期时，最好的两成超过", "value": end["p80"], "note": f"一直拿满 {ht}"}]
+    if peak:
+        facts.append({"label": "中途最高，最好的两成到过", "value": peak["p80"], "note": f"持有满 {lock} 天后可以平仓"})
+    else:
+        facts.append({"label": "到期时，最好的一成超过", "value": end["p90"], "note": f"一直拿满 {ht}"})
     return {
-        "question": f"{a['name']} {horizon_text(h)}平值看涨，期权费 {fee * 100:.1f}%，值不值？",
-        "verdict": {"label": "回本的概率", "value": round(p * 100), "dots": p * 100,
-                    "plain": f"和现在相似的历史时候里，大约每 10 次有 {tens(p)} 次能回本。",
-                    "note": f"回本：{horizon_text(h)}后涨幅超过期权费 {fee * 100:.1f}%。不挑时候、随便哪天买，回本概率是 {round(base * 100)}%。"},
-        "facts": [
-            {"label": "平均下来", "value": mean, "note": "扣掉期权费后，占本金"},
-            {"label": "运气最差的十分之一", "value": sim["payoff_p10"], "note": "期权费全部损失" if sim["payoff_p10"] <= -fee + 1e-9 else "扣掉期权费后"},
-            {"label": "运气最好的十分之一", "value": sim["payoff_p90"], "note": "扣掉期权费后"},
-        ],
+        "question": f"{a['name']} {ht}平值看涨，期权费 {fee * 100:.1f}%，能涨多少？",
+        # verdict 是“到期回本”的口径：封存和揭晓按它结算，不能改。页面主结论用下面的 upside_verdict。
+        "verdict": {"label": "到期回本的概率", "value": round(p * 100), "dots": p * 100,
+                    "plain": f"和现在相似的历史时候里，大约每 10 次有 {tens(p)} 次到期时能回本。",
+                    "note": f"回本：{ht}后涨幅超过期权费 {fee * 100:.1f}%。不挑时候、随便哪天买，回本概率是 {round(base * 100)}%。"},
+        "upside_verdict": {
+            "label": f"{'中途最高涨到过' if peak else '到期涨幅'}（一半情况在这之上）", "value": round(lead["median"] * 100, 1),
+            "dots": (peak or end)["over_fee"] * 100,
+            "dots_caption": f"{'中途涨过' if peak else '到期涨过'}期权费 {fee * 100:.1f}%",
+            "plain": f"和现在走势相似的历史时候里，有一半{where}涨到过 {pct(lead['median'])} 以上；最好的两成到过 {pct(lead['p80'])} 以上。",
+            "note": f"期权费 {fee * 100:.1f}%。" + (f"持有满 {lock} 个交易日后才能平仓，所以“中途”从第 {lock} 天算起，按收盘价。" if peak else "")
+                    + f"到期时涨幅还在期权费之上的占 {round(end['over_fee'] * 100)}%（封存的判断按这个揭晓）。"},
+        "facts": facts,
         "voice": "".join(voice),
         "tone": "bad" if price == "偏贵" else "good" if price == "偏便宜" else "same",
         "price": price,

@@ -138,5 +138,74 @@ export default function DataCard({ card }: { card: RoomCard }) {
       </div>
     )
   }
+  if (c.type === 'live') {
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 现在的行情</span>
+        <div className="data-row">
+          <span>现价 <b className="num">{fmtPrice(c.latest)}</b></span>
+          {c.change != null && <span>今天 <em className={`num ${trendClass(c.change)}`}>{fmtPct(c.change, 2)}</em></span>}
+          {c.high != null && c.low != null && <span>最高 <b className="num">{fmtPrice(c.high)}</b> 最低 <b className="num">{fmtPrice(c.low)}</b></span>}
+          {c.amount != null && <span>成交 <b className="num">{fmtBig(c.amount)}</b></span>}
+        </div>
+        {c.time && <span className="data-foot">报价时间 {String(c.time).slice(5, 16)}</span>}
+      </div>
+    )
+  }
+  if (c.type === 'concepts') {
+    const tags = c.concepts as string[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 行业和概念</span>
+        <span className="data-foot">{c.industry ?? '未分类'}</span>
+        {tags.length > 0 && <div className="data-tags">{tags.map(t => <i key={t}>{t}</i>)}{c.total > tags.length && <i>等 {c.total} 个</i>}</div>}
+      </div>
+    )
+  }
+  if (c.type === 'flow') {
+    const days = c.days as { date: string; net: number }[]
+    const max = Math.max(...days.map(d => Math.abs(d.net)), 1)
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 最近 {days.length} 天资金净流入</span>
+        <div className="data-flow">
+          {days.map(d => (
+            <span key={d.date} title={`${d.date} ${(d.net / 1e8).toFixed(2)} 亿`}>
+              <i className={d.net >= 0 ? 'up' : 'down'} style={{ height: `${Math.max(8, Math.abs(d.net) / max * 100)}%` }} />
+              <small>{d.date.slice(5)}</small>
+            </span>
+          ))}
+        </div>
+        <span className="data-foot">合计 <em className={`num ${trendClass(c.net)}`}>{c.net > 0 ? '+' : ''}{(c.net / 1e8).toFixed(2)} 亿</em> · 同花顺口径</span>
+      </div>
+    )
+  }
+  if (c.type === 'boards') {
+    const up = c.up as { name: string; value: number }[]
+    const inflow = c.inflow as { name: string; value: number }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">今天的概念板块{c.time ? ` · ${String(c.time).slice(5, 16)}` : ''}</span>
+        {up.length > 0 && <span className="data-foot">涨得最多：{up.map(x => `${x.name} ${fmtPct(x.value, 1)}`).join('、')}</span>}
+        {inflow.length > 0 && <span className="data-foot">主力流入最多：{inflow.map(x => `${x.name} ${(x.value / 1e8).toFixed(0)} 亿`).join('、')}</span>}
+      </div>
+    )
+  }
+  if (c.type === 'valuation') {
+    const rows = [['市盈率', c.pe, c.pe_pos, c.pe_min, c.pe_max], ['市净率', c.pb, c.pb_pos, c.pb_min, c.pb_max]].filter(r => r[1] != null) as [string, number, number, number, number][]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 估值在它自己历史上的位置</span>
+        {rows.map(([label, now, pos, lo, hi]) => (
+          <div key={label} className="data-val">
+            <span>{label} <b className="num">{now.toFixed(1)}</b></span>
+            <div className="watch-bar" aria-hidden="true"><i style={{ width: `${pos * 100}%` }} /></div>
+            <small>比 {pct(pos)} 的日子高 · 最低 {lo.toFixed(1)} 最高 {hi.toFixed(1)}</small>
+          </div>
+        ))}
+        <span className="data-foot">最近 {c.days} 个交易日</span>
+      </div>
+    )
+  }
   return null
 }

@@ -117,3 +117,9 @@
   .sc-title, .sc.full .sc-title { font-size: 21px; }
   .sc-when { margin-left: 0; flex-basis: 100%; }
 }
+
+/* 盘中实时：一个会呼吸的小绿点 + 文字 */
+.pk-live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; color: var(--ink); }
+.pk-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pk-pulse 2s var(--ease) infinite; }
+@keyframes pk-pulse { 0%, 100% { box-shadow: 0 0 0 0 #fb5e0d66; } 50% { box-shadow: 0 0 0 6px #fb5e0d00; } }
+@media (prefers-reduced-motion: reduce) { .pk-live i { animation: none; } }

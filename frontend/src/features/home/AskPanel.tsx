@@ -9,7 +9,7 @@ import { optionHorizons, stockHorizons } from '../ask/horizons'
 type Tab = 'stock' | 'option' | 'index' | 'method'
 const TABS: { id: Tab; label: string; hint: string }[] = [
   { id: 'stock', label: '问个股', hint: '这只票还能涨吗' },
-  { id: 'option', label: '问期权', hint: '这个期权费值不值' },
+  { id: 'option', label: '问期权', hint: '买看涨，能涨多少' },
   { id: 'index', label: '问大盘', hint: '指数接下来怎么走' },
   { id: 'method', label: '问方法', hint: '我这招灵不灵' },
 ]
@@ -78,7 +78,7 @@ export default function AskPanel({ onPick }: { onPick?: () => void }) {
                 <span className="ask-group">期权费
                   <span className="ask-fee"><input inputMode="decimal" value={fee} onChange={e => setFee(e.target.value)} aria-label="期权费（%）" />%</span><i className="ask-comma">，</i>
                 </span>
-                <span>值不值？</span>
+                <span>能涨多少？</span>
               </>
             ) : <span>涨的可能大吗？</span>}
           </div>

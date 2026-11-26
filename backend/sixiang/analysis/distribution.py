@@ -7,6 +7,8 @@
   在该股自己的历史里找最接近的若干个起点（标准化后的欧氏距离），数量取 max(200, 全部起点的 10%)，且不超过全部。
 - 相邻起点的未来窗口互相重叠，不是独立样本；统计只描述历史，不预测未来。
 - 场外期权（100% 平值看涨）：到期收益 = max(涨幅, 0) − 期权费，占名义本金。
+- 场外期权持有满 5 个交易日后才能平仓：“中途最高”= 从第 5 个交易日到到期日之间，收盘价最高的那天相对起点的涨幅。
+  只看收盘价，不看盘中最高价（日线数据不能冒充盘中）。
 - 指数用同一套口径（指数点位本身不需要复权）。
 """
 from __future__ import annotations
@@ -25,6 +27,8 @@ MIN_BARS = 60
 BIN = 0.025
 LO, HI = -0.4, 0.6
 FEE_CURVE = [round(0.01 + 0.005 * i, 4) for i in range(29)]   # 期权费 1% – 15%，每 0.5% 一档
+LOCK = 5                                   # 场外期权买入后要持有满这么多个交易日才能平仓
+LADDER = [0.05, 0.10, 0.15, 0.20, 0.30, 0.50]
 
 
 class NotEnoughHistory(ValueError):
@@ -96,6 +100,24 @@ def _stats(r: np.ndarray, fee: float | None) -> dict:
     return out
 
 
+def _upside(end: np.ndarray, peak: np.ndarray | None, fee: float) -> dict:
+    """上涨预期：到期涨多少、（能提前平仓的话）中途最高涨到过多少，以及每一档涨幅有多大可能。"""
+    end = end[np.isfinite(end)]
+    q = lambda r, p: float(np.quantile(r, p))  # noqa: E731
+    out = {"end": {"median": q(end, .5), "p80": q(end, .8), "p90": q(end, .9), "over_fee": float((end > fee).mean())},
+           "ladder": [{"x": x, "end": float((end > x).mean())} for x in LADDER], "peak": None}
+    if peak is not None:
+        peak = peak[np.isfinite(peak)]
+        out["peak"] = {"median": q(peak, .5), "p80": q(peak, .8), "p90": q(peak, .9), "over_fee": float((peak > fee).mean())}
+        for row in out["ladder"]:
+            row["peak"] = float((peak > row["x"]).mean())
+    # 花 1 块钱期权费，拿回几块（没扣期权费本身）：一般情况、好的情况、中途最高点卖的一般情况
+    back = lambda r: max(r, 0.0) / fee  # noqa: E731
+    out["back"] = {"typical": back(out["end"]["median"]), "good": back(out["end"]["p80"]),
+                   "peak_typical": back(out["peak"]["median"]) if out["peak"] else None}
+    return out
+
+
 def analyze(sf: StockFrame, horizon: int, fee: float | None = None, asof: str | None = None) -> dict:
     """以 asof（默认最新一根 K 线）为“现在”，返回全部历史与相似时候的分布。"""
     if not 1 <= horizon <= 250:
@@ -125,9 +147,15 @@ def analyze(sf: StockFrame, horizon: int, fee: float | None = None, asof: str | 
 
     vol_hist = feats["vol20"].iloc[idx]
     near_sorted = np.sort(near)
-    fee_curve = None
+    fee_curve, upside = None, None
     if fee is not None:
         rs, ra = fwd[near], fwd[idx]
+        peak = None
+        if horizon > LOCK:
+            win = horizon - LOCK + 1        # 第 LOCK 天到到期日，一共这么多根 K 线
+            peak = (df["close"].rolling(win, min_periods=win).max().shift(-horizon) / df["close"] - 1).to_numpy()
+        upside = {"lock": LOCK, "similar": _upside(rs, peak[near] if peak is not None else None, fee),
+                  "all": _upside(ra, peak[idx] if peak is not None else None, fee)}
         fee_curve = [{"fee": f, "similar": float((rs > f).mean()), "all": float((ra > f).mean()),
                       "payoff_mean": float((np.maximum(rs, 0) - f).mean())} for f in FEE_CURVE]
     last = df.iloc[-1]
@@ -143,9 +171,10 @@ def analyze(sf: StockFrame, horizon: int, fee: float | None = None, asof: str | 
         # 每个相似的起点：日期与之后 N 个交易日的涨跌（按日期排序），用于在走势图上标出来
         "similar_points": [[df.date.iloc[i].strftime("%Y-%m-%d"), round(float(fwd[i]), 5)] for i in near_sorted],
         "fee_curve": fee_curve,
+        "upside": upside,
         "method": ("后复权价格；从某日收盘到之后第 N 根日 K 收盘（停牌日不计）。“相似的时候”：近 20 日涨跌幅、相对 60 日均线位置、"
                    "近 20 日波动率最接近当下的历史起点。相邻起点的窗口互相重叠，不是独立样本；只描述历史，不预测未来。"
-                   + (" 期权口径：100% 平值看涨，到期收益 = max(涨幅, 0) − 期权费，不含交易成本与报价差异。" if fee is not None else "")),
+                   + (f" 期权口径：100% 平值看涨，到期收益 = max(涨幅, 0) − 期权费，不含交易成本与报价差异。“中途最高”按收盘价算，从持有满 {LOCK} 个交易日那天起到到期日。" if fee is not None else "")),
     }
 
 

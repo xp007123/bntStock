@@ -335,3 +335,123 @@ def sector_today(ctx: ToolContext, code: str) -> ToolResult:
             f"涨得最多的：{'、'.join(t['name'] + ' ' + S(t['pct']) for t in top)}。")
     return ToolResult(True, text, {"type": "sector", "code": c, "name": name, "sector": sector, "date": meta["last_date"], "n": int(len(df)),
                                    "up": int((df.pct > 0).sum()), "limit": int(lim), "median": float(df.pct.median()), "pct": mine, "rank": rank, "top": top})
+
+
+# ---------------------------------------------------------------- 来自 MCP 数据服务的（日线里没有的）
+# 实时行情、概念、资金流、历史估值。没配 SIXIANG_MCP_MARKET_URL 时这几个工具回“取不到”，角色照常说话。
+
+def _mcp():
+    from ..data import mcp
+    client = mcp.market()
+    if client is None:
+        raise LookupError("没有接 MCP 数据服务")
+    return mcp, client
+
+
+def _yi(v: float) -> str:
+    return f"{'+' if v > 0 else ''}{v / 1e8:.2f} 亿"
+
+
+def _now_cn():
+    import datetime as dt
+    return dt.datetime.now(dt.timezone(dt.timedelta(hours=8)))
+
+
+_DULL_TAGS = {"深股通", "沪股通", "融资融券", "转融券标的", "标普道琼斯A股", "MSCI概念", "富时罗素概念", "富时罗素概念股"}
+
+
+@tool("stock_live", "查一只股票此刻的实时行情：现价、今天涨跌幅、今天最高最低、成交额。盘中聊“现在怎么样”“今天走势”的时候用；收盘后拿到的是当天收盘的数。",
+      {"code": _CODE}, ["code"])
+def stock_live(ctx: ToolContext, code: str) -> ToolResult:
+    mcp, _ = _mcp()
+    c = resolve(ctx, code)
+    q = mcp.quotes([c]).get(c)
+    if not q:
+        return ToolResult(False, "这只股票现在没有实时报价。")
+    name = ctx.store.security(c)["name"]
+    text = (f"{name} 现在 {q['latest']:.2f}" + (f"（今天 {S(q['change'], 2)}）" if q["change"] is not None else "")
+            + (f"，今天最高 {q['high']:.2f}、最低 {q['low']:.2f}" if q.get("high") and q.get("low") else "")
+            + (f"，成交 {q['amount'] / 1e8:.1f} 亿" if q.get("amount") else "") + f"。报价时间 {str(q.get('time') or '')[5:16]}。")
+    return ToolResult(True, text, {"type": "live", "code": c, "name": name, **q})
+
+
+@tool("stock_concepts", "查一只股票的细分行业和它身上的概念标签（比如“钛白粉概念”“宁德时代概念”）。聊题材、炒作逻辑、它算哪个板块的时候用。",
+      {"code": _CODE}, ["code"])
+def stock_concepts(ctx: ToolContext, code: str) -> ToolResult:
+    mcp, client = _mcp()
+    c = resolve(ctx, code)
+    stocks = client.call("get_stock_reference", {"symbols": [mcp.symbol(c)]}, ttl=6 * 3600).get("stocks") or []
+    if not stocks:
+        return ToolResult(False, "没查到这只股票的概念。")
+    s = stocks[0]
+    tags = [t for t in s.get("concepts") or [] if t not in _DULL_TAGS]
+    name = s.get("stockName") or ctx.store.security(c)["name"]
+    text = f"{name} 的细分行业是{s.get('industry') or '未分类'}。" + (f"身上的概念：{'、'.join(tags[:10])}" + (f" 等 {len(tags)} 个。" if len(tags) > 10 else "。") if tags else "没有概念标签。")
+    return ToolResult(True, text, {"type": "concepts", "code": c, "name": name, "industry": s.get("industry"), "concepts": tags[:12], "total": len(tags)})
+
+
+@tool("money_flow", "查一只股票最近 5 个交易日的资金流向：每天资金净流入多少。聊主力、资金进出、有没有人在买的时候用。",
+      {"code": _CODE}, ["code"])
+def money_flow(ctx: ToolContext, code: str) -> ToolResult:
+    import datetime as dt
+    mcp, client = _mcp()
+    c = resolve(ctx, code)
+    today = _now_cn().date()
+    data = client.call("get_daily_money_flow", {"symbols": [mcp.symbol(c)], "startDate": (today - dt.timedelta(days=14)).isoformat(), "endDate": today.isoformat(),
+                                                "orderSize": "ALL", "metrics": ["ths_net_inflow_amt_stock"]}, ttl=120)
+    days = [{"date": b["tradeDate"], "net": b.get("ths_net_inflow_amt_stock"), "big": b.get("ths_dde_stock")} for b in data.get("bars") or []]
+    days = [d for d in days if d["net"] is not None][-5:]
+    if not days:
+        return ToolResult(False, "这只股票最近没有资金流数据。")
+    name = ctx.store.security(c)["name"]
+    net = sum(d["net"] for d in days)
+    bigs = [d["big"] for d in days if d["big"] is not None]
+    last = days[-1]
+    text = (f"{name} 最近 {len(days)} 个交易日资金净流入合计 {_yi(net)}，其中 {sum(d['net'] > 0 for d in days)} 天是净流入"
+            + (f"；大单净额合计 {_yi(sum(bigs))}" if bigs else "")
+            + f"。最新一天（{last['date'][5:]}）净流入 {_yi(last['net'])}" + (f"，大单净额 {_yi(last['big'])}" if last["big"] is not None else "") + "。口径是同花顺的。")
+    return ToolResult(True, text, {"type": "flow", "code": c, "name": name, "days": days, "net": net, "big": sum(bigs) if bigs else None})
+
+
+@tool("hot_concepts", "查今天哪些概念板块最强：涨幅最大的几个、主力资金流入最多的几个。聊今天的主线、热点、资金去哪了的时候用。", {}, [])
+def hot_concepts(ctx: ToolContext) -> ToolResult:
+    _, client = _mcp()
+    now = _now_cn()
+    data = client.call("get_cn_sector_snapshot", {"asOf": now.isoformat(timespec="seconds"), "asOfSlot": "POST_MARKET", "topN": 5}, ttl=60)
+    r = data.get("rankings") or {}
+    up = [{"name": x["name"], "value": x["value"] / 100} for x in r.get("topGainers") or []]
+    inflow = [{"name": x["name"], "value": x["value"]} for x in r.get("topMainNetInflows") or []]
+    if not up and not inflow:
+        return ToolResult(False, "今天的概念板块排名还没有。")
+    text = (f"今天的概念板块（{str(data.get('latestQuoteTime') or '')[5:16]}，共 {data.get('universeCount')} 个）。"
+            + (f"涨得最多的：{'、'.join(x['name'] + ' ' + S(x['value']) for x in up)}。" if up else "")
+            + (f"主力资金流入最多的：{'、'.join(x['name'] + ' ' + _yi(x['value']) for x in inflow)}。" if inflow else ""))
+    return ToolResult(True, text, {"type": "boards", "time": data.get("latestQuoteTime"), "up": up, "inflow": inflow})
+
+
+@tool("valuation_position", "查一只股票现在的市盈率、市净率，在它自己最近一年多里算高还是低（比多少比例的日子高）。聊估值贵不贵、便不便宜的时候用。",
+      {"code": _CODE}, ["code"])
+def valuation_position(ctx: ToolContext, code: str) -> ToolResult:
+    import datetime as dt
+    mcp, client = _mcp()
+    c = resolve(ctx, code)
+    today = _now_cn().date()
+    data = client.call("get_stock_valuation_history", {"symbols": [mcp.symbol(c)], "startDate": (today - dt.timedelta(days=495)).isoformat(),
+                                                       "endDate": today.isoformat(), "metrics": ["PE_TTM", "PB_LATEST"]}, ttl=3600)
+    bars = data.get("bars") or []
+    name = ctx.store.security(c)["name"]
+    parts, card = [], {"type": "valuation", "code": c, "name": name, "days": len(bars)}
+    for key, label, field in (("PE_TTM", "市盈率", "pe"), ("PB_LATEST", "市净率", "pb")):
+        vals = [b[key] for b in bars if b.get(key) is not None]
+        if len(vals) < 60:
+            continue
+        now = vals[-1]
+        if now <= 0:
+            parts.append(f"{label}是负的（亏损），没法比高低")
+            continue
+        pos = sum(v < now for v in vals if v > 0) / max(1, sum(v > 0 for v in vals))
+        parts.append(f"{label} {now:.1f} 倍，比最近 {len(vals)} 个交易日里 {P(pos)} 的日子高（这段时间最低 {min(v for v in vals if v > 0):.1f}、最高 {max(vals):.1f}）")
+        card.update({field: now, f"{field}_pos": pos, f"{field}_min": min(v for v in vals if v > 0), f"{field}_max": max(vals)})
+    if not parts:
+        return ToolResult(False, "这只股票的历史估值数据不够。")
+    return ToolResult(True, f"{name}：" + "；".join(parts) + "。", card)

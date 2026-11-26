@@ -100,3 +100,38 @@ def ask_series(request: Request, code: str, index: bool = False):
     except (KeyError, UnknownSecurity) as exc:
         raise HTTPException(404, f"未找到 {code}") from exc
     return {**series(sf), "data_version": snap.version_id}
+
+
+# 体检：从几个角度看同一只票。每一项就是群聊角色用的那个数据工具，取不到的那项不显示。
+CHECKUP = ["stock_live", "valuation_position", "stock_financials", "method_hits", "limit_up_history",
+           "sector_today", "stock_concepts", "money_flow", "pick_list"]
+CHECKUP_HORIZONS = [5, 10, 21, 63]
+
+
+@router.get("/checkup")
+def ask_checkup(request: Request, code: str):
+    """问个股的“体检”：几个期限一起看（概率 + 大概落在什么价位），加上估值、买点、涨停、行业、概念、资金几个角度。"""
+    store = request.app.state.market
+    try:
+        sf = load(store.snapshot(), code.lower())
+    except NoDataVersion as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except (KeyError, UnknownSecurity) as exc:
+        raise HTTPException(404, f"未找到 {code}") from exc
+    horizons = []
+    for h in CHECKUP_HORIZONS:
+        try:
+            a = analyze(sf, h)
+        except (NotEnoughHistory, ValueError):
+            continue
+        sim = a["similar"]
+        horizons.append({"horizon": h, "label": horizon_text(h), "prob": sim["up_prob"], "base": a["all"]["up_prob"], "median": sim["median"],
+                         "p10": sim["p10"], "p90": sim["p90"], "low": a["close"] * (1 + sim["p10"]), "high": a["close"] * (1 + sim["p90"]), "close": a["close"]})
+    rooms = request.app.state.rooms
+    ctx = room_tools.ToolContext(store, rooms.jobs_root, picks=getattr(request.app.state, "picks", None))
+    items = []
+    for name in CHECKUP:
+        r = room_tools.run(ctx, name, {"code": sf.code})
+        if r.ok and r.card and not (name == "pick_list" and not r.card.get("hit")):
+            items.append({"tool": name, "text": r.text, "card": r.card})
+    return {"code": sf.code, "name": sf.name, "horizons": horizons, "items": items}

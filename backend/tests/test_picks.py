@@ -153,3 +153,23 @@ def test_report_and_highlights(app):
     # 筛选条件是平台自己的东西，任何接口都不带出去
     for path in ("/api/picks", "/api/picks/sjm", "/api/picks/sjm/stats", "/api/picks/sjm/report"):
         assert "rules" not in c.get(path).text and "换手" not in c.get(path).text
+
+
+def test_today_list_gets_live_quotes(app, monkeypatch):
+    """今天的名单在收盘行情到之前：挂实时行情，并标出此刻是不是封着板。取不到实时就原样返回。"""
+    from sixiang.data import mcp
+    svc = app.state.picks
+    today = dt.datetime.now(pick_service.CN_TZ).date().isoformat()
+    svc.store.save("sjm", today, [{"code": "sz000001", "name": "甲股份", "rank": 1, "auction_pct": 3.0, "limit_price": 12.2, "board": "主板"},
+                                  {"code": "sh600000", "name": "乙股份", "rank": 2, "auction_pct": 2.0, "limit_price": 22.0, "board": "主板"}])
+    c = TestClient(app)
+    login_as_admin(c)
+    assert "live" not in c.get("/api/picks/sjm").json()["items"][0]            # 没接实时行情：照旧
+    monkeypatch.setattr(mcp, "quotes", lambda codes, ttl=8: {
+        "sz000001": {"latest": 12.2, "change": 0.1, "high": 12.2, "time": "2026-11-26 10:30:00"},
+        "sh600000": {"latest": 20.5, "change": 0.02, "high": 22.0, "time": "2026-11-26 10:30:03"}})
+    day = c.get("/api/picks/sjm").json()
+    a, b = day["items"]
+    assert a["live"]["sealed"] and a["live"]["touched"] and not b["live"]["sealed"] and b["live"]["touched"] and day["live_time"] == "2026-11-26 10:30:03"
+    assert a["sealed"] is None                                                   # 正式结果还是等收盘行情
+    assert "live" not in c.get("/api/picks/sjm", params={"date": DAYS[2]}).json().get("items", [{}])[0] if svc.store.days("sjm").get(DAYS[2]) else True

@@ -148,3 +148,39 @@
   .acmp-vs { padding: 0; }
   .acmp-big > b { font-size: 56px; }
 }
+
+/* ---- 体检：几个期限一起看、几个角度的数据卡 ---- */
+.ck-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ck-table th { padding: 6px 10px 10px; text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.ck-table td { padding: 12px 10px; border-top: 1px solid var(--line); white-space: nowrap; }
+.ck-table tbody tr { cursor: pointer; transition: background var(--t-fast) var(--ease); }
+.ck-table tbody tr:hover { background: var(--bg); }
+.ck-table tr.on td { background: var(--accent-softer); }
+.ck-table tr.on td:first-child { border-radius: var(--r) 0 0 var(--r); }
+.ck-table tr.on td:last-child { border-radius: 0 var(--r) var(--r) 0; }
+.ck-table td b { font-weight: 600; color: var(--ink); }
+.ck-bar { position: relative; display: inline-block; width: 120px; height: 8px; margin-right: 10px; border-radius: var(--r-pill); background: var(--bg-deep); vertical-align: middle; }
+.ck-bar i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--accent); }
+.ck-bar u { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+.ck-foot { margin-top: 12px; font-size: 12.5px; line-height: 1.7; }
+.ck-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ck-grid .data-card { width: auto; }
+
+/* ---- 问期权：涨幅阶梯 ---- */
+.up-ladder { display: flex; flex-direction: column; gap: 4px; }
+.up-ladder > div { display: grid; grid-template-columns: 190px 1fr 1fr; gap: 18px; align-items: center; padding: 7px 10px; border-radius: var(--r); font-size: 14px; color: var(--ink-2); }
+.up-ladder > div.up-head { font-size: 12px; color: var(--muted); padding-bottom: 2px; }
+.up-ladder > div.line { background: var(--accent-softer); color: var(--accent-ink); font-weight: 600; }
+.up-ladder > div > span { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.up-ladder i { flex: 1; height: 10px; border-radius: var(--r-pill); background: var(--bg-deep); overflow: hidden; }
+.up-ladder i b { display: block; height: 100%; border-radius: var(--r-pill); background: var(--ink); }
+.up-ladder i b.a { background: var(--accent); }
+.up-ladder em { font-style: normal; font-weight: 600; width: 40px; text-align: right; color: var(--ink); }
+.up-money { margin-top: 16px; padding: 14px 16px; border-radius: var(--r); background: var(--bg); font-size: 14px; line-height: 1.9; color: var(--ink-2); }
+.up-money b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) {
+  .ck-grid { grid-template-columns: 1fr; }
+  .ck-bar { width: 64px; }
+  .up-ladder > div { grid-template-columns: 1fr; gap: 6px; }
+  .up-ladder > div.up-head { display: none; }
+}

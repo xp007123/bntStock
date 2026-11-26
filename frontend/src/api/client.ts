@@ -277,10 +277,23 @@ export type DistStats = {
   histogram: { from: number; to: number; n: number }[]
 }
 export type AskKind = 'stock' | 'option' | 'index'
+type UpsideLevel = { median: number; p80: number; p90: number; over_fee: number }
+/** 问期权的上涨预期：到期涨多少、（持有满 5 天后可以平仓）中途最高到过多少、每一档涨幅有多大可能、花 1 块期权费拿回几块 */
+export type Upside = {
+  end: UpsideLevel; peak: UpsideLevel | null; ladder: { x: number; end: number; peak?: number }[]
+  back: { typical: number; good: number; peak_typical: number | null }
+}
+export type Checkup = {
+  code: string; name: string
+  horizons: { horizon: number; label: string; prob: number; base: number; median: number; p10: number; p90: number; low: number; high: number; close: number }[]
+  items: { tool: string; text: string; card: RoomCard }[]
+}
 export type Answer = {
   kind: AskKind; code: string; name: string; horizon: number; fee: number | null; asof: string; close: number
   data_version: string; question: string; tone: 'good' | 'bad' | 'same'; price?: string
   verdict: { label: string; value: number; dots: number; plain: string; note: string }
+  /** 问期权的主结论：能涨多少（verdict 仍是到期回本的概率，封存按它揭晓） */
+  upside_verdict?: { label: string; value: number; dots: number; dots_caption: string; plain: string; note: string }
   facts: { label: string; value: number; note: string }[]
   voice: string
   evidence: { role: string; text: string; source: string }[]
@@ -290,10 +303,13 @@ export type Answer = {
     sample_range: [string, string]; all: DistStats; similar: DistStats; similar_k: number; method: string
     /** 每个相似的起点：[日期, 之后 N 个交易日的涨跌]，按日期排序 */
     similar_points: [string, number][]
+    upside?: { lock: number; similar: Upside; all: Upside } | null
     /** 期权费 1%–15% 各自的回本比例（只有问期权时有） */
     fee_curve: { fee: number; similar: number; all: number; payoff_mean: number }[] | null
   }
 }
+export const useCheckup = (code: string) =>
+  useQuery({ queryKey: ['ask', 'checkup', code], queryFn: () => get<Checkup>('/ask/checkup', { code }), enabled: !!code, staleTime: 60_000, retry: false })
 export const useAsk = (kind: AskKind, code: string, horizon: number, fee?: number) =>
   useQuery({
     queryKey: ['ask', kind, code, horizon, fee],
@@ -385,7 +401,7 @@ export type PersonaList = { available: boolean; host: Persona; items: Persona[];
 export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaList>('/personas'), staleTime: 60_000 })
 
 /** 数据卡：角色查了数据时挂在消息下面，内容由后端按引擎结果给，不是模型写的 */
-export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' | 'minutes' | 'limitup' | 'sector' } & Record<string, any>
+export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' | 'minutes' | 'limitup' | 'sector' | 'live' | 'concepts' | 'flow' | 'boards' | 'valuation' } & Record<string, any>
 /** 纪要卡：每个人的 quote 是他在群里的原话，data 是当时查到的原文；since 是纪要之后到现在的涨跌（还没有新行情时为空）。 */
 export type Minutes = {
   type: 'minutes'; code: string; name: string; asof?: string; close?: number
@@ -446,9 +462,11 @@ export type PickItem = {
   rank: number; code: string; name: string; board: string | null; auction_pct: number | null; limit_price: number | null
   open: number | null; close: number | null; open_pct: number | null; day_pct: number | null; intraday: number | null
   sealed: boolean | null; touched: boolean | null; next_open_ret: number | null; next_date: string | null; settled: boolean
+  /** 今天的名单在收盘行情到之前：实时行情，以及此刻是不是封着板 */
+  live?: { latest: number; change: number | null; time: string | null; sealed: boolean; touched: boolean }
 }
 export type PickDay = {
-  strategy: PickStrategy; date: string | null; items: PickItem[]; days: string[]; data_end: string; today: string; is_today: boolean; settled: boolean
+  strategy: PickStrategy; date: string | null; items: PickItem[]; days: string[]; data_end: string; today: string; is_today: boolean; settled: boolean; live_time?: string | null
 }
 export type PickBlock = {
   n: number; sealed_rate: number; touched_rate: number; open_pct_median: number; intraday_mean: number; intraday_median: number
@@ -482,7 +500,9 @@ export const usePickStrategies = () =>
   useQuery({ queryKey: ['picks'], queryFn: () => get<{ items: PickStrategyCard[] }>('/picks'), staleTime: 60_000 })
 export const usePickDay = (strategy: string, date?: string) =>
   useQuery({ queryKey: ['picks', strategy, 'day', date ?? 'latest'], queryFn: () => get<PickDay>(`/picks/${strategy}`, { date }),
-             placeholderData: keepPreviousData, staleTime: 30_000 })
+             placeholderData: keepPreviousData, staleTime: 10_000,
+             // 今天的名单还没出收盘结果：每 15 秒拿一次实时行情
+             refetchInterval: q => (q.state.data && q.state.data.is_today && !q.state.data.settled ? 15_000 : false) })
 export const usePickReport = (strategy: string, date?: string | null, enabled = true) =>
   useQuery({ queryKey: ['picks', strategy, 'report', date ?? 'latest'], queryFn: () => get<PickReport>(`/picks/${strategy}/report`, { date: date ?? undefined }), enabled, staleTime: 30_000 })
 export const usePickStats = (strategy: string) =>

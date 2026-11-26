@@ -183,3 +183,16 @@
 .room-quick button { border: 0; background: var(--accent-softer); color: var(--accent-ink); border-radius: var(--r-pill); padding: 5px 13px; font-size: 13px; transition: background var(--t-fast) var(--ease); }
 .room-quick button:hover { background: var(--accent-soft); }
 @media (max-width: 760px) { .room-quick { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .room-quick::-webkit-scrollbar { display: none; } .room-quick button { flex-shrink: 0; } }
+
+/* 新数据卡：概念标签、资金流小柱子、估值位置 */
+.data-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.data-tags i { font-style: normal; font-size: 12px; padding: 2px 9px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink-2); }
+.data-flow { display: flex; align-items: flex-end; gap: 8px; height: 64px; }
+.data-flow span { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+.data-flow i { width: 100%; max-width: 34px; border-radius: 5px 5px 2px 2px; }
+.data-flow i.up { background: var(--up); }
+.data-flow i.down { background: var(--down); }
+.data-flow small { font-size: 11px; color: var(--muted); }
+.data-val { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; align-items: center; font-size: 13px; color: var(--muted); }
+.data-val b { font-weight: 600; color: var(--ink); }
+.data-val small { grid-column: 1 / -1; font-size: 12px; }
