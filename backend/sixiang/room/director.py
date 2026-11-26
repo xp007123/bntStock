@@ -130,3 +130,31 @@ class Roundtable:
         # 退回规则：最后说话的那位嘉宾接
         last = next((m.persona_id for m in reversed(room.messages) if m.role == "guest" and m.persona_id in members), None)
         return [last or members[0]]
+
+
+class Solo:
+    """一对一深聊：只有一位角色，没有主持人。他开场、反问、一步步往下讲；用户说一句他回一句。"""
+
+    name = "solo"
+
+    def __init__(self, cast: dict[str, Persona], model: ChatModel | None = None):
+        self.cast = cast
+
+    def _who(self, room: Room) -> str | None:
+        return next((p for p in room.members if p in self.cast), None)
+
+    async def opening(self, room: Room) -> Scene:
+        pid = self._who(room)
+        if pid:
+            yield Speak(pid, f"{room.user_name}想和你把{room.topic.get('name', '这只股票')}聊透。按你自己的方式开场：先查你下判断需要的数据，"
+                             "说说你对这门生意的第一印象，然后问他一到两个你最想先弄清楚的问题。")
+
+    async def on_user(self, room: Room, msg: Message) -> Scene:
+        pid = self._who(room)
+        if pid:
+            yield Speak(pid, f"{room.user_name}刚说：“{msg.text}”。接着往下聊：回应他，需要数据就查，把你的分析往前推一步。", reply_to=msg.seq)
+
+    async def more(self, room: Room) -> Scene:
+        pid = self._who(room)
+        if pid:
+            yield Speak(pid, "他请你接着往下说。把你还没讲到的那一步讲完：比如价格够不够便宜、最坏会怎样、出现什么情况说明你看错了。别重复前面说过的。")

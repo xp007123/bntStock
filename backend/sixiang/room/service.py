@@ -11,9 +11,9 @@ import logging
 import os
 from pathlib import Path
 
-from . import actor, minutes, tools
+from . import actor, minutes, skills, tools
 from .bus import Bus
-from .director import Roundtable
+from .director import Roundtable, Solo
 from .llm import ChatModel
 from .registry import PersonaRegistry
 from .store import RoomStore
@@ -54,9 +54,12 @@ class RoomService:
         today = f"今天是 {now:%Y-%m-%d} 周{'一二三四五六日'[now.weekday()]}。下面的行情是最近一个收盘日的。"
         return code, name, f"股票：{name}（{code}）。{today}{recent.text if recent.ok else ''}{extra}"
 
-    async def open(self, user, code: str, members: list[str] | None = None) -> int:
+    async def open(self, user, code: str, members: list[str] | None = None, mode: str | None = None) -> int:
         if not self.available:
             raise RoomError("群聊还没开通")
+        deep = mode == "deep"
+        if deep and not (members and len(members) == 1 and skills.has(members[0])):
+            raise RoomError("这位角色还不能深聊")
         try:
             code, name, brief = await asyncio.to_thread(self._brief, code)
         except Exception as exc:
@@ -65,7 +68,8 @@ class RoomService:
         picked = [m for m in (members or self.registry.default_members()) if m in cast and cast[m].role == "guest"][:MAX_MEMBERS]
         if not picked:
             raise RoomError("群里至少要有一位嘉宾")
-        rid = await asyncio.to_thread(self.store.create, user.id, name, {"kind": "stock", "code": code, "name": name, "brief": brief}, picked)
+        topic = {"kind": "stock", "code": code, "name": name, "brief": brief} | ({"mode": "deep"} if deep else {})
+        rid = await asyncio.to_thread(self.store.create, user.id, name, topic, picked)
         self._enqueue(rid, user, {"kind": "open"})
         return rid
 
@@ -106,6 +110,8 @@ class RoomService:
                 raise RoomError("群里至少要留一位嘉宾")
             members.remove(remove)
             note = f"{cast[remove].name if remove in cast else remove} 被请出了群"
+        if note and json.loads(row.topic_json).get("mode") == "deep":
+            raise RoomError("深聊是一对一的，不能换人")
         if note:
             await asyncio.to_thread(self.store.update, rid, members=members)
             self._enqueue(rid, user, {"kind": "note", "text": note, "members": members})
@@ -169,7 +175,7 @@ class RoomService:
             self._pub(rid, "scene_end", status="idle")
             return
 
-        director = Roundtable(cast, self.model)
+        director = Solo(cast, self.model) if room.topic.get("mode") == "deep" else Roundtable(cast, self.model)
         if cmd["kind"] == "open" or not any(m.role == "guest" for m in room.messages) and cmd["kind"] == "more":
             await self._refresh_brief(rid, room)
             scene = director.opening(room)

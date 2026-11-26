@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from ...auth.deps import require_admin
 from ...auth.service import User
-from ...room import actor, tools
-from ...room.director import Host, Speak
+from ...room import actor, skills, tools
+from ...room.director import Host, Solo, Speak
 from ...room.registry import PersonaError, PersonaRegistry, validate
 from ...room.state import Room
 
@@ -23,6 +23,7 @@ name: 新角色
 title: 一句话介绍这个人
 lens: 看什么
 tagline: 一句代表性的话
+bio: 两句话的概要简介：这个人是谁，凭什么值得听（给不认识他的用户看）
 color: #7f8c9b
 tools: [stock_outlook, stock_financials]
 rivals: [buffett]
@@ -116,6 +117,57 @@ class SettingsBody(BaseModel):
 @router.post("/{pid}/settings")
 def settings(pid: str, body: SettingsBody, request: Request):
     return _guard(_reg(request).configure, pid, body.enabled, body.in_default, body.sort)
+
+
+@router.get("/{pid}/deep")
+def deep_pack(pid: str, request: Request):
+    """这位角色的深聊包：出处、哪一种、多长、有哪些小节和资料，以及装配后真正进提示词的正文。"""
+    pack = _reg(request).deep_pack(pid, full=True)
+    if pack is None:
+        raise HTTPException(404, "这位角色还没有装深聊包")
+    return pack
+
+
+class DeepBody(BaseModel):
+    enabled: bool
+
+
+@router.post("/{pid}/deep")
+def set_deep(pid: str, body: DeepBody, request: Request):
+    """开 / 关这位角色的一对一深聊。关掉后用户看不到入口；已经开始的深聊还能接着聊。"""
+    return _guard(_reg(request).set_deep, pid, body.enabled)
+
+
+class TryDeepBody(BaseModel):
+    code: str = Field(default="sh600519", max_length=20)
+    say: str = Field(default="", max_length=300)
+
+
+@router.post("/{pid}/deep/try")
+async def try_deep(pid: str, body: TryDeepBody, request: Request):
+    """试聊一轮深聊：他开场；填了 say 就再回应一句。真的调用模型，要等十几秒到半分钟。返回内容和花了多少。"""
+    svc = request.app.state.rooms
+    if not svc.available:
+        raise HTTPException(503, "还没有配置模型，没法试聊")
+    cast = svc.registry.cast()
+    if pid not in cast or skills.load(pid) is None:
+        raise HTTPException(404, "这位角色还没有装深聊包")
+    try:
+        code, name, brief = await asyncio.to_thread(svc._brief, body.code)
+    except Exception as exc:
+        raise HTTPException(422, f"没找到这只股票：{body.code}") from exc
+    room = Room(topic={"kind": "stock", "code": code, "name": name, "mode": "deep"}, members=[pid], user_name="用户", brief=brief)
+    director, ctx = Solo(cast), tools.ToolContext(svc.market, svc.jobs_root, picks=svc.picks)
+    await actor.play(director.opening(room), room, cast, svc.registry.host(), svc.model, ctx)
+    if body.say.strip():
+        await actor.play(director.on_user(room, room.add("user", "用户", body.say.strip())), room, cast, svc.registry.host(), svc.model, ctx)
+    said = [m for m in room.messages if m.role == "guest"]
+    if not said:
+        return {"ok": False, "note": "这次没说出话来（模型没回应）。再试一次。"}
+    total = lambda k: sum(int(m.meta.get(k, 0) or 0) for m in said)  # noqa: E731
+    return {"ok": True, "stock": name, "turns": [{"role": m.role, "name": m.name, "text": m.text, "data": m.data} for m in room.messages],
+            "usage": {"seconds": round(sum(float(m.meta.get("seconds", 0) or 0) for m in said), 1), "calls": total("calls"),
+                      "prompt_tokens": total("prompt_tokens"), "cached_tokens": total("cached_tokens"), "completion_tokens": total("completion_tokens")}}
 
 
 class TryBody(BaseModel):

@@ -49,12 +49,13 @@ def persona_recent(pid: str, request: Request, user: User = Depends(current_user
 class OpenBody(BaseModel):
     code: str = Field(min_length=1, max_length=20)
     members: list[str] | None = None
+    mode: str | None = Field(default=None, pattern="^(deep)$")       # deep = 和一位角色一对一深聊
 
 
 @router.post("/rooms")
 async def open_room(body: OpenBody, request: Request, user: User = Depends(current_user)):
     try:
-        return {"id": await _svc(request).open(user, body.code, body.members)}
+        return {"id": await _svc(request).open(user, body.code, body.members, body.mode)}
     except RoomError as exc:
         raise HTTPException(422, str(exc)) from exc
 

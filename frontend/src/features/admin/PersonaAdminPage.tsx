@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus, RotateCcw } from 'lucide-react'
-import { type AdminPersona, type AdminPersonaDetail, ApiError, configurePersona, getAdminPersona, getPersonaVersion, savePersona,
-         switchPersonaVersion, tryPersona, useAdminPersonas } from '../../api/client'
+import { type AdminPersona, type AdminPersonaDetail, ApiError, configurePersona, type DeepPack, type DeepTry, getAdminPersona, getDeepPack, getPersonaVersion, savePersona,
+         setDeepEnabled, switchPersonaVersion, tryDeep, tryPersona, useAdminPersonas } from '../../api/client'
 import SubNav, { ADMIN_TABS } from '../../components/SubNav'
 import Avatar from '../rooms/Avatar'
 import '../rooms/rooms.css'
@@ -14,6 +14,9 @@ const when = (iso: string) => new Date(iso.endsWith('Z') ? iso : iso + 'Z').toLo
  * 管理端 · 角色管理。
  * 仓库里的角色卡是“出厂设置”；这里每保存一次，多一个版本，立刻生效。可以随时切回旧版或出厂设置。
  * 停用、是否默认进群、座次也在这里调。“试说一句”用正在编辑的草稿让角色开口，不用保存就能看效果。
+ *
+ * 深聊包（一对一深聊用的完整版资料）是另一套东西：它跟着代码走，取自社区的 Skill，原样保存。
+ * 这里能看它从哪来、装配后的正文、带了哪些资料，能开关，能用真模型试聊一轮并看花了多少。内容本身不在这里改。
  */
 export default function PersonaAdminPage() {
   const list = useAdminPersonas()
@@ -27,6 +30,11 @@ export default function PersonaAdminPage() {
   const [tryCode, setTryCode] = useState('贵州茅台')
   const [tried, setTried] = useState<{ text: string; data?: string[]; stock?: string; note?: string } | null>(null)
   const [trying, setTrying] = useState(false)
+  const [pack, setPack] = useState<{ p: AdminPersona; d: DeepPack } | null>(null)
+  const [deepCode, setDeepCode] = useState('比亚迪')
+  const [deepSay, setDeepSay] = useState('')
+  const [deepTried, setDeepTried] = useState<DeepTry | null>(null)
+  const [deepTrying, setDeepTrying] = useState(false)
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ['admin-personas'] }); qc.invalidateQueries({ queryKey: ['personas'] }) }
   const fail = (e: unknown) => setMsg(e instanceof ApiError ? e.message : String(e))
@@ -57,6 +65,17 @@ export default function PersonaAdminPage() {
     try { const r = await tryPersona(content, tryCode); setTried(r.ok ? r : { text: '', note: r.note }) } catch (e) { fail(e) } finally { setTrying(false) }
   }
 
+  const openPack = async (p: AdminPersona) => { setMsg(''); setDeepTried(null); try { setPack({ p, d: await getDeepPack(p.id) }) } catch (e) { fail(e) } }
+  const toggleDeep = async (p: AdminPersona, enabled: boolean) => {
+    setMsg('')
+    try { const d = await setDeepEnabled(p.id, enabled); if (pack?.p.id === p.id) setPack({ p, d }); setMsg(enabled ? `${p.name}的深聊已开放` : `${p.name}的深聊已关闭，用户看不到入口了（已经开始的还能接着聊）`); refresh() } catch (e) { fail(e) }
+  }
+  const tryDeepOut = async () => {
+    if (!pack) return
+    setDeepTrying(true); setDeepTried(null); setMsg('')
+    try { setDeepTried(await tryDeep(pack.p.id, deepCode, deepSay)) } catch (e) { fail(e) } finally { setDeepTrying(false) }
+  }
+
   const editing = creating || !!detail
   const dirty = creating ? content !== (list.data?.template ?? '') : !!detail && content !== detail.content
 
@@ -74,7 +93,7 @@ export default function PersonaAdminPage() {
         {list.isLoading ? <div className="state">读取中…</div> : (
           <div className="table-wrap">
             <table className="admin-table persona-table">
-              <thead><tr><th>角色</th><th>看什么</th><th>现在用的</th><th>可用</th><th>默认进群</th><th>座次</th><th></th></tr></thead>
+              <thead><tr><th>角色</th><th>看什么</th><th>现在用的</th><th>可用</th><th>默认进群</th><th>座次</th><th>深聊</th><th></th></tr></thead>
               <tbody>
                 {(list.data?.items ?? []).map(p => (
                   <tr key={p.id} className={detail?.id === p.id ? 'on' : ''}>
@@ -87,6 +106,12 @@ export default function PersonaAdminPage() {
                     <td>{p.role === 'guest' && <button className="btn" aria-pressed={p.in_default} disabled={!p.enabled} onClick={() => configure(p, { in_default: !p.in_default })}>{p.in_default ? '默认进群' : '不默认'}</button>}</td>
                     <td>{p.role === 'guest' && <input type="number" className="persona-sort" defaultValue={p.sort} min={0} max={999} aria-label={`${p.name} 的座次`}
                                                       onBlur={e => { const v = Number(e.target.value); if (Number.isFinite(v) && v !== p.sort) configure(p, { sort: v }) }} />}</td>
+                    <td>{p.role === 'guest' && (p.deep_pack ? (
+                      <span className="deep-cell">
+                        <button className="btn" aria-pressed={p.deep_pack.enabled} onClick={() => toggleDeep(p, !p.deep_pack!.enabled)}>{p.deep_pack.enabled ? '开放中' : '已关闭'}</button>
+                        <button className="btn" onClick={() => openPack(p)}>看深聊包</button>
+                      </span>
+                    ) : <span className="muted">没装</span>)}</td>
                     <td className="ops"><button className="btn primary" onClick={() => open(p.id)}>改人设</button></td>
                   </tr>
                 ))}
@@ -94,10 +119,55 @@ export default function PersonaAdminPage() {
             </table>
           </div>
         )}
-        <p className="muted footnote">座次：数字小的先发言。默认进群的角色里，挨着坐的最容易吵起来。停用后不能再被拉进群，已有的聊天记录不受影响。</p>
+        <p className="muted footnote">座次：数字小的先发言。默认进群的角色里，挨着坐的最容易吵起来。停用后不能再被拉进群，已有的聊天记录不受影响。深聊：装了深聊包的角色才能一对一深聊；关闭后用户看不到入口。</p>
       </section>
 
       {msg && <p className="admin-msg">{msg}</p>}
+
+      {pack && (
+        <div className="persona-edit">
+          <section className="card">
+            <div className="card-title">深聊包 · {pack.p.name}
+              <span className="muted">{pack.d.style === 'persona' ? '人物型：包里就是他完整的人设' : '方法型：口吻用左边表格里的角色卡，方法用包里的框架'}</span>
+              <button className="btn" onClick={() => setPack(null)}>收起</button>
+            </div>
+            <dl className="deep-meta">
+              <dt>来自</dt><dd>{pack.d.source.repo ? <a href={`${pack.d.source.repo}${pack.d.source.path ? `/tree/main/${pack.d.source.path}` : ''}`} target="_blank" rel="noreferrer">{pack.d.source.repo.replace('https://github.com/', '')}{pack.d.source.path ? ` · ${pack.d.source.path}` : ''}</a> : '没有记录'}</dd>
+              <dt>版本</dt><dd className="num">{pack.d.source.version ?? '—'}（{pack.d.source.fetched ?? '—'} 取回）</dd>
+              <dt>许可</dt><dd>{pack.d.source.license ?? '—'}</dd>
+              <dt>正文</dt><dd>{pack.d.chars.toLocaleString()} 字，{pack.d.sections.length} 个小节：{pack.d.sections.slice(0, 8).join('、')}{pack.d.sections.length > 8 ? '…' : ''}</dd>
+              <dt>资料</dt><dd>{pack.d.references.length ? pack.d.references.map(r => `${r.name}（${r.chars.toLocaleString()} 字）`).join('、') : '没有'}<span className="muted">　不每次带上，他需要时自己去翻</span></dd>
+            </dl>
+            <textarea className="persona-content deep-body" value={pack.d.body ?? ''} readOnly spellCheck={false} aria-label="装配后进提示词的正文" />
+            <p className="muted footnote">这是装配后真正交给模型的正文（已去掉上游的头部元数据、链接清单和买卖结论模板）。深聊包跟着代码走、原样取自上游，不在这里改；要换内容就换一版文件再部署。不管包里怎么写，这几条以我们的规矩为准：只聊眼前这只票、数字只来自数据工具、一次最多反问两个问题、不替用户做买卖决定。</p>
+          </section>
+
+          <aside className="persona-aside">
+            <section className="card">
+              <div className="card-title">试聊一轮 <span className="muted">真的调用模型</span></div>
+              <div className="persona-try deep-try">
+                <input type="text" value={deepCode} onChange={e => setDeepCode(e.target.value)} placeholder="股票代码或名称" aria-label="用哪只股票试聊" />
+                <input type="text" value={deepSay} onChange={e => setDeepSay(e.target.value)} placeholder="替用户说一句（选填），比如：最坏会怎样" aria-label="替用户说一句" />
+                <button className="btn dark" disabled={deepTrying || !list.data?.available} onClick={tryDeepOut}>{deepTrying ? '他在想，要等十几秒到半分钟…' : `让${pack.p.name}开场`}</button>
+              </div>
+              {deepTried && (deepTried.ok ? (
+                <div className="persona-tried">
+                  <span className="muted">聊 {deepTried.stock}：</span>
+                  {deepTried.turns?.map((t, i) => (
+                    <div key={i} className={`deep-turn ${t.role}`}>
+                      <b>{t.name}</b>
+                      {t.text.split('\n').map((l, j) => <p key={j} className="bubble">{l}</p>)}
+                      {t.data.map((d, j) => <p key={j} className="persona-tried-data">查到的数据：{d}</p>)}
+                    </div>
+                  ))}
+                  {deepTried.usage && <p className="deep-usage num">用时 {deepTried.usage.seconds} 秒 · 调用模型 {deepTried.usage.calls} 次 · 输入 {deepTried.usage.prompt_tokens.toLocaleString()} token（其中 {deepTried.usage.cached_tokens.toLocaleString()} 命中缓存）· 输出 {deepTried.usage.completion_tokens.toLocaleString()} token</p>}
+                </div>
+              ) : <p className="muted">{deepTried.note}</p>)}
+              <p className="muted footnote">看三件事：像不像他、有没有老实去查数据、有没有说出“建议买入卖出”这类话。每次说的不一样，多试几只不同的票。</p>
+            </section>
+          </aside>
+        </div>
+      )}
 
       {editing && (
         <div className="persona-edit">

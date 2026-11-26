@@ -48,7 +48,8 @@ def play(scene, room, cast, host, model, ctx) -> int:
 
 def test_persona_cards_load():
     cast = personas.all_personas(reload=True)
-    assert {"xiaosi", "buffett", "yangjia", "soros", "serenity"} <= set(cast)
+    assert {"xiaosi", "buffett", "yangjia", "soros", "serenity", "munger", "taleb"} <= set(cast)
+    assert all(p.bio for p in cast.values() if p.role == "guest")           # 每位嘉宾都有概要简介
     assert personas.host().id == "xiaosi" and len(personas.guests()) >= 4
     for pid in personas.DEFAULT_GUESTS:
         pub = cast[pid].public()
@@ -274,13 +275,13 @@ def test_persona_admin(client: TestClient):
     assert "serenity" not in wait_idle(client, rid)["members"]
 
     # 新建一个角色，设为默认进群、排第一个
-    new = items["template"].replace("id: new_persona", "id: munger").replace("name: 新角色", "name: 芒格") + "\n这个人说话很直，喜欢反过来想问题，对蠢事毫不客气。\n"
+    new = items["template"].replace("id: new_persona", "id: fisher").replace("name: 新角色", "name: 费雪") + "\n这个人说话很直，喜欢反过来想问题，对蠢事毫不客气。\n"
     made = client.post("/api/admin/personas", json={"content": new}).json()
-    assert made["id"] == "munger" and not made["builtin"] and made["version"] == 1
+    assert made["id"] == "fisher" and not made["builtin"] and made["version"] == 1
     assert client.post("/api/admin/personas", json={"content": new}).status_code == 422       # 重名
-    client.post("/api/admin/personas/munger/settings", json={"in_default": True, "sort": 0})
-    assert client.get("/api/personas").json()["default"][0] == "munger"
-    assert client.post("/api/admin/personas/munger/use", json={"version": None}).status_code == 422    # 不是内置的，没有出厂设置
+    client.post("/api/admin/personas/fisher/settings", json={"in_default": True, "sort": 0})
+    assert client.get("/api/personas").json()["default"][0] == "fisher"
+    assert client.post("/api/admin/personas/fisher/use", json={"version": None}).status_code == 422    # 不是内置的，没有出厂设置
 
     # 试说一句：用草稿，不保存
     tried = client.post("/api/admin/personas/try", json={"content": new, "code": "茅台"}).json()
@@ -358,3 +359,97 @@ def test_persona_recent_lines(client: TestClient):
     other = TestClient(client.app)
     other.post("/api/auth/login", json={"account": "路人戊", "password": "abcdef"})
     assert other.get("/api/personas/lynch/recent").json()["items"] == []
+
+
+def test_deep_chat(client: TestClient):
+    """一对一深聊：只有装了深聊包的角色能开；提示词里是完整版的思维方式和深聊规矩；能说得比群聊长；没有主持人。"""
+    from sixiang.room import prompts, skills
+    sk = skills.load("buffett", reload=True)
+    assert sk and "护城河" in sk.body and not sk.body.startswith("---") and "按需资源" not in sk.body and "research" in sk.references
+    assert skills.load("yangjia") is None and skills.load("../etc") is None
+    assert set(skills.installed()) == {"buffett", "munger", "taleb", "livermore", "soros", "lynch"}
+    for pid in skills.installed():
+        s = skills.load(pid, reload=True)
+        assert s.source["license"] == "MIT" and s.source["version"] and s.source["repo"].startswith("https://github.com/") and len(s.body) > 3000
+        assert s.style == ("framework" if pid in ("livermore", "soros", "lynch") else "persona")
+    fw = skills.load("livermore")
+    assert "Pivotal Point" in fw.body and "Podcasts" not in fw.body and "Playbooks" not in fw.body and not fw.body.startswith("---")
+    assert skills.read_reference(sk, "research") and skills.read_reference(sk, "nope") == "没有这份资料。"
+
+    listing = client.get("/api/personas").json()["items"]
+    assert {p["id"]: p["deep"] for p in listing}["buffett"] is True and {p["id"]: p["deep"] for p in listing}["yangjia"] is False
+    assert sorted(p["id"] for p in listing if p["deep"]) == ["buffett", "livermore", "lynch", "munger", "soros", "taleb"]
+    assert client.post("/api/rooms", json={"code": "sh600519", "members": ["yangjia"], "mode": "deep"}).status_code == 422
+    assert client.post("/api/rooms", json={"code": "sh600519", "members": ["buffett", "soros"], "mode": "deep"}).status_code == 422
+    assert client.post("/api/rooms", json={"code": "sh600519", "members": ["buffett"], "mode": "x"}).status_code == 422
+
+    long = "这门生意我愿意多看两眼。" * 12          # 群聊里会被截到 70 字，深聊不会
+    model = FakeModel(default=long + "\n第二段。\n第三段。\n第四段。")
+    client.app.state.rooms.model = model
+    rid = client.post("/api/rooms", json={"code": "sh600519", "members": ["buffett"], "mode": "deep"}).json()["id"]
+    room = wait_idle(client, rid)
+    assert room["topic"]["mode"] == "deep" and room["members"] == ["buffett"]
+    msgs = room["messages"]
+    assert len(msgs) == 1 and msgs[0]["role"] == "guest" and msgs[0]["persona_id"] == "buffett"      # 没有主持人开场
+    assert msgs[0]["text"].split("\n")[0] == long and len(msgs[0]["text"].split("\n")) == 4
+    call = model.calls[0]
+    system = call["messages"][0]["content"]
+    assert system.startswith(prompts.DEEP_RULES) and "核心思想模型" in system and "# 今天聊的" in system and "群里还有" not in system
+    assert system.index("核心思想模型") < system.index("# 今天聊的")                                   # 不变的在前，会变的在后
+    assert "read_reference" in {t["function"]["name"] for t in call["tools"]}
+
+    client.post(f"/api/rooms/{rid}/say", json={"text": "最坏会怎样"})
+    msgs = wait_idle(client, rid)["messages"]
+    assert [m["role"] for m in msgs] == ["guest", "user", "guest"] and msgs[2]["reply_to"] == 2
+    client.post(f"/api/rooms/{rid}/continue")
+    assert [m["role"] for m in wait_idle(client, rid)["messages"]] == ["guest", "user", "guest", "guest"]
+    assert client.post(f"/api/rooms/{rid}/members", json={"add": "soros"}).status_code == 422          # 一对一，不能拉人
+
+    # 群聊不受影响：同一位角色在群里还是精简卡、短句
+    model.calls.clear()
+    rid2 = client.post("/api/rooms", json={"code": "sh600519", "members": ["buffett"]}).json()["id"]
+    g = wait_idle(client, rid2)["messages"]
+    guest = next(m for m in g if m["role"] == "guest")
+    assert len(guest["text"].split("\n")[0]) <= 71 and "mode" not in client.get(f"/api/rooms/{rid2}").json()["topic"]
+    assert all("核心思想模型" not in c["messages"][0]["content"] for c in model.calls)
+
+
+def test_framework_pack_and_admin_deep(client: TestClient):
+    """方法型的深聊包：口吻用我们的角色卡，方法用上游的框架。管理端能看、能关、能试聊。"""
+    from sixiang.room import prompts
+    model = FakeModel(default="价格自己会说话。\n等它站回前高再说。")
+    client.app.state.rooms.model = model
+    rid = client.post("/api/rooms", json={"code": "sh600519", "members": ["livermore"], "mode": "deep"}).json()["id"]
+    wait_idle(client, rid)
+    system = model.calls[0]["messages"][0]["content"]
+    assert system.startswith(prompts.DEEP_RULES) and "# 你是谁、怎么说话" in system and "破产过四次" in system        # 我们的角色卡
+    assert "# 你的方法" in system and "Line of Least Resistance" in system and "Reading List" not in system          # 上游的框架
+
+    rows = {p["id"]: p for p in client.get("/api/admin/personas").json()["items"]}
+    assert rows["yangjia"]["deep_pack"] is None and rows["livermore"]["deep_pack"]["style"] == "framework"
+    assert rows["munger"]["deep_pack"]["enabled"] and rows["munger"]["deep_pack"]["source"]["license"] == "MIT"
+    pack = client.get("/api/admin/personas/munger/deep").json()
+    assert "反过来想" in pack["body"] and {r["name"] for r in pack["references"]} >= {"25-biases", "casebook", "voice"}
+    assert client.get("/api/admin/personas/yangjia/deep").status_code == 404
+
+    # 关掉：用户那边不再显示能深聊，也开不了；已经开始的那场还能接着聊
+    assert client.post("/api/admin/personas/livermore/deep", json={"enabled": False}).json()["enabled"] is False
+    assert {p["id"]: p["deep"] for p in client.get("/api/personas").json()["items"]}["livermore"] is False
+    assert client.post("/api/rooms", json={"code": "sh600519", "members": ["livermore"], "mode": "deep"}).status_code == 422
+    client.post(f"/api/rooms/{rid}/say", json={"text": "接着说"})
+    assert wait_idle(client, rid)["messages"][-1]["persona_id"] == "livermore"
+    assert client.post("/api/admin/personas/livermore/deep", json={"enabled": True}).json()["enabled"] is True
+    assert client.post("/api/admin/personas/yangjia/deep", json={"enabled": True}).status_code == 404
+
+    tried = client.post("/api/admin/personas/taleb/deep/try", json={"code": "sh600519", "say": "最坏会怎样"}).json()
+    assert tried["ok"] and [t["role"] for t in tried["turns"]] == ["guest", "user", "guest"] and tried["usage"]["calls"] >= 2
+
+
+def test_deep_drops_leading_disclaimer():
+    """深聊包要求先声明“不是本人”的，开头那句去掉；正文里正常提到“本人”的不动。"""
+    d = actor.drop_disclaimer
+    assert d("下面是按查理·芒格公开的言行提炼出来的视角，不是他本人。\n先说我看到的这门生意。") == "先说我看到的这门生意。"
+    assert d("先说一句：下面是按公开言行提炼的视角，不是他本人。先说生意。") == "先说生意。"
+    assert d("我以巴菲特视角和你聊，基于公开言论推断，非本人意见。\n这门生意我看得懂。") == "这门生意我看得懂。"
+    assert d("这门生意我看得懂。创始人本人还在一线，这点我喜欢。") == "这门生意我看得懂。创始人本人还在一线，这点我喜欢。"
+    assert d("") == ""

@@ -9,7 +9,7 @@ import asyncio
 import re
 from typing import Awaitable, Callable
 
-from . import prompts, tools
+from . import prompts, skills, tools
 from .director import Host, Speak, Step
 from .llm import ChatModel, Reply
 from .personas import Persona
@@ -19,6 +19,8 @@ MAX_TOOL_ROUNDS = 2     # 一条发言里最多查两轮数据：为了节奏和
 MAX_BUBBLES = 3         # 一次最多连发三条
 MAX_CHARS = 70          # 每条太长就截到句子结尾
 MAX_TOKENS = 1500       # 输出上限给宽：模型说话前的思考也算在里面，给小了会想完没字可说
+# 一对一深聊：要把一件事讲透，放宽到几段话；查数据也可以多查两轮
+DEEP = {"tool_rounds": 4, "bubbles": 6, "chars": 420, "tokens": 4000}
 
 Emit = Callable[[str, dict], Awaitable[None] | None]
 
@@ -30,7 +32,15 @@ async def _send(emit: Emit | None, kind: str, payload: dict) -> None:
             await r
 
 
-def tidy(text: str, name: str) -> str:
+_DISCLAIMER = re.compile(r"^\s*(?:先说一句[：:，,]?\s*)?[^。\n]{0,60}(?:不是他?本人|非本人(?:意见|观点)?)[^。\n]{0,30}[。.]?\s*")
+
+
+def drop_disclaimer(text: str) -> str:
+    """有的深聊包要求开口先声明一句“这不是本人”。页面上已经写了，这里去掉——规矩里也说了不要，这是兜底。"""
+    return _DISCLAIMER.sub("", text or "", count=1)
+
+
+def tidy(text: str, name: str, max_bubbles: int = MAX_BUBBLES, max_chars: int = MAX_CHARS) -> str:
     """模型偶尔会带上名字前缀、整句引号、Markdown，或者说太长：收拾一下，不算错。"""
     t = (text or "").strip()
     t = re.sub(rf"^[【\[]?{re.escape(name)}[】\]]?\s*[：:]\s*", "", t)
@@ -44,11 +54,11 @@ def tidy(text: str, name: str) -> str:
         line = re.sub(r"^(?:[-•·]\s*|\d{1,2}[.、)）](?!\d)\s*)", "", line).strip()      # 去掉列表记号；“12.3 倍”这种小数不动
         if not line:
             continue
-        if len(line) > MAX_CHARS:
-            cut = max(line.rfind(ch, 0, MAX_CHARS) for ch in "。！？!?…；;")
-            line = line[:cut + 1] if cut > 20 else line[:MAX_CHARS] + "…"
+        if len(line) > max_chars:
+            cut = max(line.rfind(ch, 0, max_chars) for ch in "。！？!?…；;")
+            line = line[:cut + 1] if cut > 20 else line[:max_chars] + "…"
         bubbles.append(line)
-    return "\n".join(bubbles[:MAX_BUBBLES])
+    return "\n".join(bubbles[:max_bubbles])
 
 
 async def perform(step: Step, room: Room, cast: dict[str, Persona], host: Persona, model: ChatModel,
@@ -60,29 +70,39 @@ async def perform(step: Step, room: Room, cast: dict[str, Persona], host: Person
     await _send(emit, "typing", {"persona": me.id, "name": me.name})
     messages = prompts.build(me, room, step.cue, cast, host.name)
     offered = None if is_host else tools.schemas()
+    skill = skills.load(me.id) if prompts.is_deep(room) else None
+    rounds, max_bubbles, max_chars, max_tokens = ((DEEP["tool_rounds"], DEEP["bubbles"], DEEP["chars"], DEEP["tokens"]) if skill
+                                                  else (MAX_TOOL_ROUNDS, MAX_BUBBLES, MAX_CHARS, MAX_TOKENS))
+    ref_tool = skills.reference_tool(skill) if skill else None
+    if ref_tool and offered is not None:
+        offered = offered + [ref_tool]
     cards: list[dict] = []
     data: list[str] = []
     usage = {"prompt_tokens": 0, "completion_tokens": 0}
-    seconds, calls, errors = 0.0, 0, []
+    seconds, calls, errors, cached = 0.0, 0, [], 0
     reply = Reply()
 
     async def on_text(piece: str) -> None:
         await _send(emit, "delta", {"persona": me.id, "text": piece})
 
-    for round_ in range(MAX_TOOL_ROUNDS + 1):
-        last = round_ == MAX_TOOL_ROUNDS
+    for round_ in range(rounds + 1):
+        last = round_ == rounds
         reply = await model.chat(messages, None if last else offered, temperature=me.temperature,
-                                 max_tokens=MAX_TOKENS, on_text=on_text)
+                                 max_tokens=max_tokens, on_text=on_text)
         calls += 1
         seconds += reply.seconds
         for k in usage:
             usage[k] += int(reply.usage.get(k, 0) or 0)
+        cached += int(reply.usage.get("prompt_cache_hit_tokens", 0) or 0)       # 模型那边缓存命中了多少（深聊的长提示词靠它省钱）
         if reply.error:
             errors.append(reply.error)
         if not reply.tool_calls or last:
             break
         messages.append(reply.as_message())
         for call in reply.tool_calls:
+            if skill and call.name == "read_reference":      # 翻自己的背景资料：不是行情数据，不出数据卡
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": skills.read_reference(skill, call.args().get("name"))})
+                continue
             result = await asyncio.to_thread(tools.run, ctx, call.name, call.args())
             messages.append({"role": "tool", "tool_call_id": call.id, "content": result.text})
             if result.ok:
@@ -90,21 +110,22 @@ async def perform(step: Step, room: Room, cast: dict[str, Persona], host: Person
                 if result.card:
                     cards.append(result.card)
 
-    text = tidy(reply.text, me.name)
+    text = tidy(drop_disclaimer(reply.text) if skill else reply.text, me.name, max_bubbles, max_chars)
     if not text and not reply.tool_calls:
         # 想了半天没说话：不带数据工具再催一次
         messages.append({"role": "user", "content": "（导演悄悄话）直接说话，就一两句。"})
-        reply = await model.chat(messages, None, temperature=me.temperature, max_tokens=MAX_TOKENS, on_text=on_text)
+        reply = await model.chat(messages, None, temperature=me.temperature, max_tokens=max_tokens, on_text=on_text)
         calls += 1
         seconds += reply.seconds
         if reply.error:
             errors.append(reply.error)
-        text = tidy(reply.text, me.name)
+        text = tidy(drop_disclaimer(reply.text) if skill else reply.text, me.name, max_bubbles, max_chars)
     if not text:
         await _send(emit, "skipped", {"persona": me.id, "errors": errors})
         return None
     msg = room.add("host" if is_host else "guest", me.name, text, persona_id=me.id, reply_to=step.reply_to, cards=cards, data=data,
                    meta={"model": model.name, "seconds": round(seconds, 2), "calls": calls, "persona_version": me.version, **usage,
+                         **({"deep": True, "cached_tokens": cached} if skill else {}),
                          **({"errors": errors} if errors else {}), **({"action": step.action} if isinstance(step, Host) else {})})
     await _send(emit, "message", {"seq": msg.seq})
     return msg

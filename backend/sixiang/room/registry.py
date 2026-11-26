@@ -13,7 +13,8 @@ import threading
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.engine import Engine
 
-from ..auth.db import persona_settings, persona_versions
+from ..auth.db import persona_settings, persona_versions, persona_deep
+from . import skills
 from . import personas as builtin
 from .personas import Persona, parse
 
@@ -67,6 +68,7 @@ class PersonaRegistry:
             settings, current = {}, {}
             if self.engine is not None:
                 with self.engine.connect() as conn:
+                    skills.set_disabled(r.persona_id for r in conn.execute(select(persona_deep)) if not r.enabled)
                     settings = {r.persona_id: r for r in conn.execute(select(persona_settings))}
                     for pid, s in settings.items():
                         if s.current_version is not None:
@@ -119,7 +121,27 @@ class PersonaRegistry:
                 counts = dict(conn.execute(select(persona_versions.c.persona_id, func.count()).group_by(persona_versions.c.persona_id)).all())
         rows = sorted(self._load().items(), key=lambda kv: (kv[1]["persona"].role != "host", kv[1]["sort"], kv[0]))
         return [x["persona"].public() | {"enabled": x["enabled"], "in_default": x["in_default"], "sort": x["sort"], "builtin": x["builtin"],
-                                         "custom": x["custom"], "saved_versions": counts.get(pid, 0)} for pid, x in rows]
+                                         "custom": x["custom"], "saved_versions": counts.get(pid, 0), "deep_pack": self.deep_pack(pid)} for pid, x in rows]
+
+    # ---------------------------------------------------------- 深聊包
+    def deep_pack(self, pid: str, full: bool = False) -> dict | None:
+        """这位角色的深聊包概况；full 时带上装配后的正文（管理端查看用）。没装就是 None。"""
+        skill = skills.load(pid)
+        if skill is None:
+            return None
+        return skill.info() | {"enabled": skills.has(pid)} | ({"body": skill.body} if full else {})
+
+    def set_deep(self, pid: str, enabled: bool) -> dict:
+        if pid not in self._load() or skills.load(pid) is None:
+            raise KeyError(pid)
+        with self.engine.begin() as conn:
+            if conn.execute(select(persona_deep).where(persona_deep.c.persona_id == pid)).first():
+                conn.execute(update(persona_deep).where(persona_deep.c.persona_id == pid).values(enabled=enabled, updated_at=_now()))
+            else:
+                conn.execute(insert(persona_deep).values(persona_id=pid, enabled=enabled, updated_at=_now()))
+        self.invalidate()
+        self._load()
+        return self.deep_pack(pid, full=True)
 
     def detail(self, pid: str) -> dict:
         x = self._load().get(pid)

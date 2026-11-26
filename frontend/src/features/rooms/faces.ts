@@ -39,6 +39,14 @@ const FACES: Record<string, string> = {
   templeton: `<path d="M3 56 Q0 38 13 33 Q18 44 16 58Z M97 56 Q100 38 87 33 Q82 44 84 58Z" fill="#f3f1ec"/>
     ${line('M40 24 H60 M43 18 H57', 2)}${eyes(45, CREAM, 20)}
     <g fill="none" stroke="${CREAM}" stroke-width="2.2"><circle cx="40.5" cy="55" r="12.5"/><circle cx="59.5" cy="55" r="12.5"/></g>${line('M43 76 Q50 81 57 76')}${bow('#f3f1ec')}`,
+  // 芒格：侧分的白发、又厚又方的眼镜、嘴角往下
+  munger: `<path d="M20 38 Q24 14 54 12 Q74 14 80 36 Q58 20 20 38Z" fill="#ebe8e1"/>${eyes(45, CREAM, 18)}
+    <g fill="none" stroke="${CREAM}" stroke-width="4.5"><rect x="25" y="41" width="22" height="25" rx="3"/><rect x="53" y="41" width="22" height="25" rx="3"/></g>
+    ${line('M43 82 Q50 78 57 82')}${tie('#a9c1dc')}`,
+  // 塔勒布：光头、压低的眉毛、一圈灰白的络腮胡
+  taleb: `${line('M33 40 L46 44 M67 40 L54 44', 3.4)}${eyes(47, CREAM, 18)}
+    <path d="M17 62 Q18 97 50 99 Q82 97 83 62 Q74 77 50 77 Q26 77 17 62Z" fill="#dedbd5"/>
+    <path d="M43 86 H57" fill="none" stroke="#5f5a55" stroke-width="3" stroke-linecap="round"/>`,
   // 小四：主持人，平台的那只橙色小四本尊
   xiaosi: `<ellipse cx="33" cy="27" rx="13" ry="6" fill="#ffffff" opacity=".22" transform="rotate(-28 33 27)"/>
     <rect x="36" y="38" width="9" height="23" rx="4.5" fill="#2b0f05"/><rect x="55" y="38" width="9" height="23" rx="4.5" fill="#2b0f05"/>`,

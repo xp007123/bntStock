@@ -18,7 +18,7 @@ import time
 from ..config import load_settings
 from ..data.store import MarketStore
 from . import actor, llm, personas, tools
-from .director import Roundtable
+from .director import Roundtable, Solo
 from .state import Room
 
 
@@ -43,13 +43,15 @@ async def run(args) -> None:
     cast = personas.all_personas(reload=True)
     host = personas.host()
     members = [m for m in (args.members.split(",") if args.members else personas.DEFAULT_GUESTS) if m in cast]
+    if args.deep:
+        members = [args.deep]
 
     code = tools.resolve(ctx, args.code)
     recent = tools.run(ctx, "stock_recent", {"code": code})
     name = recent.card["name"] if recent.card else code
-    room = Room(topic={"kind": "stock", "code": code, "name": name}, members=members, user_name=args.user,
+    room = Room(topic={"kind": "stock", "code": code, "name": name} | ({"mode": "deep"} if args.deep else {}), members=members, user_name=args.user,
                 brief=f"股票：{name}（{code}）。{recent.text}")
-    director = Roundtable(cast, model)
+    director = Solo(cast, model) if args.deep else Roundtable(cast, model)
     print(f"━━ 彩排：{name} · 模型 {model.name} · 嘉宾 {'、'.join(cast[m].name for m in members)} ━━")
     if not args.quiet:
         print(f"〔话题简报〕{room.brief}")
@@ -77,7 +79,7 @@ async def run(args) -> None:
     said = [m for m in room.messages if m.role in ("host", "guest")]
     tin, tout = sum(m.meta.get("prompt_tokens", 0) for m in said), sum(m.meta.get("completion_tokens", 0) for m in said)
     print(f"\n━━ 共 {len(said)} 条发言，模型调用 {sum(m.meta.get('calls', 0) for m in said)} 次，"
-          f"输入 {tin:,} token，输出 {tout:,} token，用时 {time.monotonic() - t0:.0f} 秒；"
+          f"输入 {tin:,} token（其中缓存命中 {sum(m.meta.get('cached_tokens', 0) for m in said):,}），输出 {tout:,} token，用时 {time.monotonic() - t0:.0f} 秒；"
           f"查了 {sum(len(m.data) for m in said)} 次数据，出错 {sum(len(m.meta.get('errors', [])) for m in said)} 次 ━━")
 
 
@@ -85,6 +87,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="群聊彩排")
     ap.add_argument("--code", required=True, help="股票代码或名称")
     ap.add_argument("--members", default="", help="嘉宾 id，逗号分隔；默认四位都来")
+    ap.add_argument("--deep", default="", help="一对一深聊：角色 id（要有深聊包），如 buffett")
     ap.add_argument("--say", default="", help="开场后替用户说的一句话")
     ap.add_argument("--more", type=int, default=0, help="再接着聊几场")
     ap.add_argument("--user", default="老王", help="用户在群里的名字")

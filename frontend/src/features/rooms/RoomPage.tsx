@@ -12,6 +12,7 @@ import './rooms.css'
 type Typing = { persona: string; name: string; text: string }
 /** 不知道问什么的时候，点一下就发。都是问看法和风险，不问该不该买。 */
 const QUICK = ['最坏会怎样？', '最大的风险是什么？', '谁愿意现在拿一个月？', '什么情况说明你看错了？']
+const QUICK_DEEP = ['最坏会怎样？', '什么价格你才会感兴趣？', '什么情况说明你看错了？', '它和同行比怎么样？']
 
 /**
  * 群聊页。演出在后台跑，这里只是“观看”：先读已有的消息，再用 SSE 接着收。
@@ -106,19 +107,24 @@ export default function RoomPage() {
   const others = (personas.data?.items ?? []).filter(p => !members.includes(p.id))
   const bySeq = (seq: number | null) => (seq ? messages.find(m => m.seq === seq) : undefined)
   const quiet = !playing && messages.length === 0
+  const deep = room.topic.mode === 'deep'
+  const solo = deep ? cast[members[0]] : null
   const talked = messages.some(m => m.role === 'guest')
   const day = (m: RoomMessage) => (m.created_at ? new Date(m.created_at + 'Z') : new Date()).toLocaleDateString('sv-SE')
 
   return (
-    <div className="room">
+    <div className={`room ${deep ? 'deep' : ''}`}>
       <header className="room-head">
         <Link to="/rooms" className="back muted"><ArrowLeft size={15} />聊过的</Link>
         <div className="room-title">
-          <h1>{room.title}</h1>
+          <h1>{deep && solo ? `和${solo.name}深聊 · ${room.title}` : room.title}</h1>
           <Link to={`/stocks/${room.topic.code}`} className="room-k"><CandlestickChart size={14} />K 线</Link>
           <Link to={`/ask/stock?code=${room.topic.code}&h=21`} className="room-k">小四的结论</Link>
         </div>
-        <div className="room-members">
+        {deep ? solo && (
+          <div className="room-members"><Link to={`/personas/${solo.id}`} className="room-member"><Avatar persona={solo} size={26} />{solo.name} · {solo.lens}</Link>
+            <span className="muted room-deep-note">一对一：他按自己的方法把这只票一步步聊透</span></div>
+        ) : <div className="room-members">
           {members.map(pid => cast[pid] && (
             <span key={pid} className="room-member">
               <Avatar persona={cast[pid]} size={26} />{cast[pid].name}
@@ -131,12 +137,12 @@ export default function RoomPage() {
               {adding && <span className="room-add-list">{others.map(p => <button key={p.id} onClick={() => change({ add: p.id })}><Avatar persona={p} size={24} />{p.name}<small>{p.lens}</small></button>)}</span>}
             </span>
           )}
-        </div>
+        </div>}
         <p className="room-note muted">{personas.data?.disclaimer} 说的是看法和历史上的情况，不构成投资建议。</p>
       </header>
 
       <div className="room-flow">
-        {quiet && <p className="room-quiet">群里现在很安静。说句话，或者点下面的“让他们聊起来”。</p>}
+        {quiet && <p className="room-quiet">{deep ? '他还没开口。说句话，或者点下面的“请他开始”。' : '群里现在很安静。说句话，或者点下面的“让他们聊起来”。'}</p>}
         {messages.map(m => {
           if (m.role === 'system') return <p key={m.seq} className="room-system">{m.text}</p>
           const mine = m.role === 'user'
@@ -146,7 +152,7 @@ export default function RoomPage() {
             <div key={m.seq} className={`msg ${mine ? 'mine' : ''} ${m.role}`}>
               {!mine && <Avatar persona={p} name={m.name} size={38} />}
               <div className="msg-body">
-                {!mine && <span className="msg-name">{m.name}{p && <i>{p.lens}</i>}{!mine && m.role === 'guest' &&
+                {!mine && <span className="msg-name">{m.name}{p && <i>{p.lens}</i>}{!deep && m.role === 'guest' &&
                   <button className="msg-at" onClick={() => mention(m.name)} title={`问${m.name}`}>@</button>}</span>}
                 {quoted && quoted.name !== m.name && <span className="msg-quote">回 {quoted.name}：{quoted.text.replace(/\n/g, ' ').slice(0, 26)}{quoted.text.length > 26 ? '…' : ''}</span>}
                 {m.text.split('\n').map((line, i) => <p key={i} className="bubble">{line}</p>)}
@@ -175,19 +181,19 @@ export default function RoomPage() {
         {limit ? <p className="room-limit">今天聊到这儿了，明天接着来。记录都在，随时可以回来看。</p> : (
           <>
             <div className="room-ats">
-              <span className="muted">问</span>
-              {members.map(pid => cast[pid] && <button key={pid} onClick={() => mention(cast[pid].name)}>@{cast[pid].name}</button>)}
-              {!playing && talked && <button className="room-minutes" onClick={minutes} title="让小四把每个人的看法记成一张卡，可以分享">出一份纪要</button>}
-              {!playing && <button className="room-more" onClick={more}>{messages.some(m => m.role === 'guest') ? '让他们接着聊' : '让他们聊起来'}</button>}
-              {playing && <span className="room-playing"><i />正在聊</span>}
+              {!deep && <span className="muted">问</span>}
+              {!deep && members.map(pid => cast[pid] && <button key={pid} onClick={() => mention(cast[pid].name)}>@{cast[pid].name}</button>)}
+              {!deep && !playing && talked && <button className="room-minutes" onClick={minutes} title="让小四把每个人的看法记成一张卡，可以分享">出一份纪要</button>}
+              {!playing && <button className="room-more" onClick={more}>{deep ? (talked ? '请他接着说' : '请他开始') : talked ? '让他们接着聊' : '让他们聊起来'}</button>}
+              {playing && <span className="room-playing"><i />{deep ? '他在想，深聊要等十几秒' : '正在聊'}</span>}
             </div>
             {talked && !playing && !text && (
               <div className="room-quick" aria-label="一点就发的问题">
-                {QUICK.map(q => <button key={q} onClick={() => say(q)}>{q}</button>)}
+                {(deep ? QUICK_DEEP : QUICK).map(q => <button key={q} onClick={() => say(q)}>{q}</button>)}
               </div>
             )}
             <div className="room-input">
-              <textarea ref={input} rows={1} value={text} maxLength={500} placeholder="说点什么，或者 @ 某个人问一句…" aria-label="在群里说话"
+              <textarea ref={input} rows={1} value={text} maxLength={500} placeholder={deep ? '回答他的问题，或者接着问…' : '说点什么，或者 @ 某个人问一句…'} aria-label="在群里说话"
                         onChange={e => setText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send() } }} />
               <button className="room-send" disabled={!text.trim()} onClick={send} aria-label="发送"><ArrowUp size={18} /></button>

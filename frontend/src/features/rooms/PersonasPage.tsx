@@ -102,7 +102,7 @@ function RoundTable({ data }: { data: PersonaList }) {
   )
 }
 
-/** 人物卡：色块上压着“看什么”的大字，头像骑在色块边上；一只会换话的气泡，三行短介绍，一排死对头。 */
+/** 人物卡：色块上压着“看什么”的大字，头像骑在色块边上；一只会换话的气泡，两句话的概要简介（很多人不认识林奇、芒格、塔勒布），一排死对头。 */
 function Card({ p, data }: { p: Persona; data: PersonaList }) {
   const lines = useMemo(() => [p.tagline && `${p.tagline}。`, ...p.lines].filter(Boolean) as string[], [p])
   const [n, setN] = useState(0)
@@ -118,7 +118,6 @@ function Card({ p, data }: { p: Persona; data: PersonaList }) {
   }
   useEffect(() => () => window.clearInterval(timer.current), [])
   const rivals = p.rivals.map(id => data.items.find(x => x.id === id)).filter(Boolean) as Persona[]
-  const facts = [['一般拿多久', p.hold], ['开口先问', p.ask], ['打死不碰', p.never]].filter(f => f[1])
   return (
     <article className="pc card" style={{ '--who': p.color } as React.CSSProperties} onMouseEnter={() => hover(true)} onMouseLeave={() => hover(false)}>
       <Link to={`/personas/${p.id}`} className="pc-top" data-lens={p.lens} aria-label={`${p.name}的主页`}>
@@ -126,9 +125,9 @@ function Card({ p, data }: { p: Persona; data: PersonaList }) {
       </Link>
       <Link to={`/personas/${p.id}`} className="pc-face" tabIndex={-1} aria-hidden="true"><Avatar persona={p} size={108} /></Link>
       <div className="pc-body">
-        <div className="pc-name"><h2><Link to={`/personas/${p.id}`}>{p.name}</Link></h2><span>{p.title}</span></div>
+        <div className="pc-name"><h2><Link to={`/personas/${p.id}`}>{p.name}</Link></h2>{p.deep && <Link to={`/personas/${p.id}`} className="pc-deep">可以深聊</Link>}<span>{p.title}</span></div>
         <p key={n} className={`pc-bubble ${n ? 'swap' : ''}`}>{lines[n] ?? p.tagline}</p>
-        {facts.length > 0 && <ul className="pc-facts">{facts.map(([k, v]) => <li key={k}><b>{k}</b><span>{v}</span></li>)}</ul>}
+        {p.bio && <p className="pc-bio">{p.bio}</p>}
         {rivals.length > 0 && (
           <div className="pc-rivals"><i>VS</i><span>最爱跟他吵的</span>
             {rivals.map(r => <Link key={r.id} to={`/personas/${r.id}`} title={r.name}><Avatar persona={r} size={30} /></Link>)}</div>

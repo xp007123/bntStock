@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import { usePersonaRecent, usePersonas } from '../../api/client'
+import { ApiError, openRoom, usePersonaRecent, usePersonas, useSecurity } from '../../api/client'
 import StockSearch from '../../components/StockSearch'
 import SubNav, { ASK_TABS } from '../../components/SubNav'
 import Avatar from './Avatar'
@@ -13,12 +13,22 @@ export default function PersonaPage() {
   const { id = '' } = useParams()
   const personas = usePersonas()
   const recent = usePersonaRecent(id)
-  const [stock, setStock] = useState<{ code: string } | null>(null)
+  const [code, setCode] = useState('')
+  const [lineup, setLineup] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const sec = useSecurity(code || 'sh600519')
+  const navigate = useNavigate()
   const data = personas.data
   const p = data?.items.find(x => x.id === id)
   if (personas.isLoading) return <div className="state">读取中…</div>
   if (!data || !p) return <div className="state">没有这个角色。<Link to="/personas">看看都有谁</Link></div>
   const others = data.items.filter(x => x.id !== id)
+  const deep = async () => {
+    setBusy(true); setError('')
+    try { navigate(`/rooms/${(await openRoom(code, [p.id], 'deep')).id}`) }
+    catch (e) { setError(e instanceof ApiError ? e.message : String(e)); setBusy(false) }
+  }
   const said = recent.data?.items ?? []
   return (
     <div className="persona-page">
@@ -28,19 +38,33 @@ export default function PersonaPage() {
       <section className="pp-hero fade-in" style={{ '--who': p.color } as React.CSSProperties}>
         <Avatar persona={p} size={128} />
         <div className="pp-who">
-          <span className="pp-lens">{p.lens}</span>
+          <span className="pp-lens">{p.lens}</span>{p.deep && <span className="pp-lens deep">可以深聊</span>}
           <h1>{p.name}</h1>
           <p className="pp-title">{p.title}</p>
           <p className="pp-tagline">“{p.tagline}”</p>
+          {p.bio && <p className="pp-bio">{p.bio}</p>}
         </div>
         {data.available && (
           <div className="pp-ask">
-            <b>拉 {p.name} 聊一只股票</b>
-            <StockSearch onPick={code => setStock({ code })} placeholder="输入代码或名称" />
-            <small>选好股票后可以再挑几位和他对着聊</small>
+            <b>和 {p.name} 聊一只股票</b>
+            {!code ? <StockSearch onPick={setCode} placeholder="输入代码或名称" /> : (
+              <>
+                <span className="pp-stock"><b>{sec.data?.name ?? '…'}</b><button aria-label="换一只" onClick={() => { setCode(''); setError('') }}>换一只</button></span>
+                {p.deep && <button className="btn primary" disabled={busy} onClick={deep}>{busy ? '正在开始…' : '一对一深聊'}</button>}
+                <button className={`btn ${p.deep ? '' : 'dark'}`} disabled={busy} onClick={() => setLineup(true)}>拉进群里聊</button>
+              </>
+            )}
+            <small>{p.deep ? '深聊：只有他一个人，按他的方法把这只票一步步聊透，他会反问你。群聊：几个人短兵相接。' : '选好股票后可以再挑几位和他对着聊。'}</small>
+            {error && <small className="pp-error">{error}</small>}
           </div>
         )}
       </section>
+
+      {(p.hold || p.ask || p.never) && (
+        <ul className="pp-facts card">
+          {[['一般拿多久', p.hold], ['开口先问', p.ask], ['打死不碰', p.never]].filter(f => f[1]).map(([k, v]) => <li key={k}><b>{k}</b><span>{v}</span></li>)}
+        </ul>
+      )}
 
       <div className="pp-grid">
         <section className="card pp-card"><h2>他信什么</h2><ul>{p.beliefs.map(b => <li key={b}>{b}</li>)}</ul></section>
@@ -74,7 +98,7 @@ export default function PersonaPage() {
       </section>
       <p className="muted pp-note">{data.disclaimer}说的是看法和历史上的情况，不构成投资建议。</p>
 
-      {stock && <LineupPicker code={stock.code} name="这只股票" preset={[p.id]} onClose={() => setStock(null)} />}
+      {lineup && <LineupPicker code={code} name={sec.data?.name ?? '这只股票'} preset={[p.id]} onClose={() => setLineup(false)} />}
     </div>
   )
 }

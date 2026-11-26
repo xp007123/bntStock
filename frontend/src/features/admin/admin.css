@@ -46,3 +46,17 @@
 .persona-tools li { display: flex; flex-direction: column; padding: 6px 0; font-size: 12px; }
 .persona-tools code { font: 12px var(--mono); color: var(--ink); }
 @media (max-width: 1080px) { .persona-edit { grid-template-columns: 1fr; } .persona-aside { position: static; } .persona-content { height: 440px; } }
+
+/* 角色管理 · 深聊包 */
+.deep-cell { display: inline-flex; gap: 6px; }
+.deep-meta { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 6px 14px; margin: 0 0 14px; font-size: 13.5px; }
+.deep-meta dt { color: var(--muted); }
+.deep-meta dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.deep-meta a { color: var(--accent-ink); }
+.deep-body { background: var(--bg); color: var(--ink-2); }
+.deep-try { flex-direction: column; align-items: stretch; }
+.deep-turn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 10px; }
+.deep-turn b { font-size: 12px; font-weight: 500; color: var(--muted); }
+.deep-turn.user { align-items: flex-end; }
+.deep-turn.user .bubble { background: var(--ink); color: var(--on-night); }
+.deep-usage { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line-strong); font-size: 12px; color: var(--muted); line-height: 1.7; }

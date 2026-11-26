@@ -165,6 +165,14 @@ persona_settings = Table(
     Column("updated_at", DateTime(), nullable=False),
 )
 
+# 深聊的开关。没有记录 = 开着（装了深聊包就能聊）；管理端关掉后在这里记一行。
+persona_deep = Table(
+    "persona_deep", metadata,
+    Column("persona_id", String(40), primary_key=True),
+    Column("enabled", Boolean, nullable=False, default=True),
+    Column("updated_at", DateTime(), nullable=False),
+)
+
 # 量化选股名单。pick_days 记“这一天取过没有、取到几只”（取到 0 只也要记，免得反复去取）。
 pick_days = Table(
     "pick_days", metadata,

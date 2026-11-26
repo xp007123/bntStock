@@ -398,7 +398,11 @@ export const useSignals = () =>
 export type Persona = {
   id: string; name: string; title: string; lens: string; tagline: string; role: 'guest' | 'host'; color: string
   /** 人物卡上的三行短介绍（可能为空：后台新建的角色没填）和天然的对手 */
+  /** 概要简介：这个人是谁、凭什么值得听 */
+  bio: string
   hold: string; ask: string; never: string; rivals: string[]
+  /** 装了“深聊包”（完整版的思维方式），可以一对一深聊 */
+  deep: boolean
   beliefs: string[]; asks: string[]; avoids: string[]; lines: string[]; version: number; disclaimer: string
 }
 export type PersonaList = { available: boolean; host: Persona; items: Persona[]; default: string[]; disclaimer: string }
@@ -417,7 +421,7 @@ export type RoomMessage = {
   reply_to: number | null; cards: RoomCard[]; action?: string | null; created_at: string | null
 }
 export type RoomInfo = {
-  id: number; title: string; topic: { kind: string; code: string; name: string }; members: string[]
+  id: number; title: string; topic: { kind: string; code: string; name: string; mode?: 'deep' }; members: string[]
   status: 'idle' | 'playing' | 'interrupted'; created_at: string; updated_at: string
 }
 export type RoomDetail = RoomInfo & { messages: RoomMessage[]; playing: boolean }
@@ -434,7 +438,8 @@ export type RoomEvent =
 export const usePersonaRecent = (id: string) =>
   useQuery({ queryKey: ['personas', id, 'recent'], enabled: !!id, staleTime: 30_000,
              queryFn: () => get<{ items: { room_id: number; seq: number; text: string; title: string; created_at: string }[] }>(`/personas/${id}/recent`) })
-export const openRoom = (code: string, members?: string[]) => post<{ id: number }>('/rooms', { code, members })
+/** mode: 'deep' = 和一位角色一对一深聊（members 只能有他一个，且他要有深聊包） */
+export const openRoom = (code: string, members?: string[], mode?: 'deep') => post<{ id: number }>('/rooms', { code, members, mode })
 export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => get<{ items: RoomListItem[] }>('/rooms'), staleTime: 0 })
 export const getRoom = (id: number | string) => get<RoomDetail>(`/rooms/${id}`)
 export const sayInRoom = (id: number | string, text: string) => post<{ ok: boolean }>(`/rooms/${id}/say`, { text })
@@ -443,7 +448,18 @@ export const askMinutes = (id: number | string) => post<{ ok: boolean }>(`/rooms
 export const setRoomMembers = (id: number | string, change: { add?: string; remove?: string }) => post<{ members: string[] }>(`/rooms/${id}/members`, change)
 
 // ---- 管理端 · 角色管理
-export type AdminPersona = Persona & { enabled: boolean; in_default: boolean; sort: number; builtin: boolean; custom: boolean; saved_versions: number }
+/** 深聊包的概况。style：persona 人物型（包里就是完整人设）/ framework 方法型（口吻用角色卡，方法用包里的框架） */
+export type DeepPack = {
+  style: 'persona' | 'framework'; chars: number; enabled: boolean; sections: string[]
+  source: { repo?: string; path?: string; version?: string; license?: string; fetched?: string }
+  references: { name: string; chars: number }[]; body?: string
+}
+export type DeepTry = {
+  ok: boolean; note?: string; stock?: string
+  turns?: { role: string; name: string; text: string; data: string[] }[]
+  usage?: { seconds: number; calls: number; prompt_tokens: number; cached_tokens: number; completion_tokens: number }
+}
+export type AdminPersona = Persona & { enabled: boolean; in_default: boolean; sort: number; builtin: boolean; custom: boolean; saved_versions: number; deep_pack: DeepPack | null }
 export type AdminPersonaDetail = AdminPersona & {
   content: string; builtin_version: number | null
   versions: { version: number; note: string | null; created_at: string; created_by: number | null }[]
@@ -456,6 +472,9 @@ export const savePersona = (id: string | null, content: string, note: string) =>
   post<AdminPersonaDetail>(id ? `/admin/personas/${id}/versions` : '/admin/personas', { content, note })
 export const switchPersonaVersion = (id: string, version: number | null) => post<AdminPersonaDetail>(`/admin/personas/${id}/use`, { version })
 export const configurePersona = (id: string, s: { enabled?: boolean; in_default?: boolean; sort?: number }) => post<AdminPersonaDetail>(`/admin/personas/${id}/settings`, s)
+export const getDeepPack = (id: string) => get<DeepPack>(`/admin/personas/${id}/deep`)
+export const setDeepEnabled = (id: string, enabled: boolean) => post<DeepPack>(`/admin/personas/${id}/deep`, { enabled })
+export const tryDeep = (id: string, code: string, say = '') => post<DeepTry>(`/admin/personas/${id}/deep/try`, { code, say })
 export const tryPersona = (content: string, code: string, cue = '') =>
   post<{ ok: boolean; text: string; note?: string; data?: string[]; stock?: string; seconds?: number }>('/admin/personas/try', { content, code, cue })
 

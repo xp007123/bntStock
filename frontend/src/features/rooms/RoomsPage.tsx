@@ -32,7 +32,7 @@ export default function RoomsPage() {
                 <Link to={`/rooms/${r.id}`}>
                   <div className="rooms-faces">{r.members.slice(0, 4).map(pid => cast[pid] && <Avatar key={pid} persona={cast[pid]} size={30} />)}</div>
                   <div className="rooms-main">
-                    <b>{r.title}<span className="muted">{r.count} 条 · {r.updated_at.slice(5, 10)}</span></b>
+                    <b>{r.title}{r.topic.mode === 'deep' && <i className="rooms-deep">深聊</i>}<span className="muted">{r.count} 条 · {r.updated_at.slice(5, 10)}</span></b>
                     <span className="muted">{r.last ? `${r.last.name}：${r.last.text.replace(/\n/g, ' ')}` : '还没人说话'}</span>
                   </div>
                   <ChevronRight size={18} className="jd-go" />

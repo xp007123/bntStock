@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+from . import skills
 from pathlib import Path
 
 DIR = Path(__file__).parent / "personas"
@@ -20,7 +22,8 @@ class Persona:
     title: str = ""
     lens: str = ""                 # 看什么：公司 / 产业链 / 情绪 / 宏观和预期
     tagline: str = ""
-    hold: str = ""                 # 角色页人物卡上的三行短介绍：一般拿多久 / 开口先问 / 打死不碰
+    bio: str = ""                  # 概要简介：这个人是谁、凭什么值得听（给不认识他的用户看）
+    hold: str = ""                 # 个人主页上的三行短介绍：一般拿多久 / 开口先问 / 打死不碰
     ask: str = ""
     never: str = ""
     role: str = "guest"            # guest 嘉宾 / host 主持人
@@ -36,7 +39,7 @@ class Persona:
         """给角色页和头像用的介绍。"""
         lines = lambda key: [x.lstrip("-0123456789. ").strip() for x in self.sections.get(key, "").splitlines() if x.strip()]  # noqa: E731
         return {"id": self.id, "name": self.name, "title": self.title, "lens": self.lens, "tagline": self.tagline, "role": self.role,
-                "color": self.color, "hold": self.hold, "ask": self.ask, "never": self.never, "rivals": self.rivals,
+                "color": self.color, "deep": skills.has(self.id), "bio": self.bio, "hold": self.hold, "ask": self.ask, "never": self.never, "rivals": self.rivals,
                 "beliefs": lines("信条")[:5], "asks": lines("看一只股票的顺序")[:6], "avoids": lines("不碰什么")[:4],
                 "lines": lines("示例发言")[:4], "version": self.version, "disclaimer": DISCLAIMER}
 
@@ -64,7 +67,7 @@ def parse(text: str) -> Persona:
         elif current:
             sections[current] += line + "\n"
     p = Persona(id=head["id"], name=head["name"], body=body.strip(), sections={k: v.strip() for k, v in sections.items()})
-    for k in ("title", "lens", "tagline", "hold", "ask", "never", "role", "color"):
+    for k in ("title", "lens", "tagline", "bio", "hold", "ask", "never", "role", "color"):
         if k in head:
             setattr(p, k, head[k])
     for k in ("tools", "rivals"):
