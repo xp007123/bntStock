@@ -227,3 +227,33 @@ def test_checkup_and_mcp_tools_degrade(client, monkeypatch):
     assert mcp.symbol("sz002145") == "002145.SZ" and mcp.code("600519.SH") == "sh600519"
     live = tools.run(tools.ToolContext(client.app.state.market), "stock_live", {"code": "sh600519"})
     assert live.ok and "现在 33.00" in live.text and "+10.00%" in live.text and live.card["change"] == pytest.approx(0.1)
+
+
+def test_market_breadth_and_env(client, monkeypatch):
+    """涨跌家数用自己的日线算；市场环境接口在没接 MCP 时只给算得出来的那项。"""
+    from sixiang.room import tools
+    r = tools.run(tools.ToolContext(client.app.state.market), "market_breadth", {})
+    assert r.ok and r.card["up"] + r.card["down"] <= r.card["n"] and r.card["n"] >= 1 and "全市场" in r.text
+    env = client.get("/api/ask/market-env").json()["items"]
+    assert [i["tool"] for i in env] == ["market_breadth"]
+
+    from sixiang.data import mcp
+
+    class Fake:
+        def call(self, tool, args, ttl=0):
+            if tool == "get_cn_market_snapshot":
+                return {"indices": [{"name": "上证综指", "observedAt": "2026-11-26 15:00", "last": 3476.88, "changePct": 0.5},
+                                    {"name": "中证1000", "observedAt": "2026-11-26 15:00", "last": 5531.84, "changePct": -0.3}],
+                        "crossSection": {"smallMinusLargePct": -0.8}}
+            if tool == "get_overseas_market_close_snapshot":
+                return {"sessionDate": "2026-11-25", "indices": [{"name": "纳斯达克综合指数", "close": 23585.8, "changeRatio": -0.62}],
+                        "semiconductorBellwethers": [{"name": "英伟达", "close": 149.3, "changeRatio": -3.91}]}
+            raise mcp.McpError(tool)
+    monkeypatch.setattr(mcp, "_client", Fake())
+    monkeypatch.setattr(mcp, "_loaded", True)
+    ctx = tools.ToolContext(client.app.state.market)
+    m = tools.run(ctx, "market_today", {})
+    assert m.ok and "上证综指 +0.50%" in m.text and "大盘股更强" in m.text and m.card["small_minus_large"] == pytest.approx(-0.008)
+    u = tools.run(ctx, "us_overnight", {})
+    assert u.ok and "纳斯达克综合 -0.62%" in u.text and "英伟达 -3.91%" in u.text and u.card["date"] == "2026-11-25"
+    assert not tools.run(ctx, "hot_concepts", {}).ok                       # 取不到的工具回一句话，不抛异常

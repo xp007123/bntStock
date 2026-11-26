@@ -557,3 +557,52 @@ def profit_forecast(ctx: ToolContext, code: str) -> ToolResult:
             + f"。{'只有 ' + str(few) + ' 位分析师在看，参考价值有限。' if few < 3 else '至少有 ' + str(few) + ' 位分析师给了预测。'}")
     return ToolResult(True, text, {"type": "forecast", "code": c, "name": name, "analysts": few, "forward_pe": fpe,
                                    "years": [{"year": y["year"], "eps": y["eps_mean_yuan"], "n": y.get("analyst_count")} for y in years]})
+
+
+# ---------------------------------------------------------------- 大盘：今天的指数、隔夜美股、涨跌家数
+
+@tool("market_today", "查今天 A 股几个主要指数的表现（上证、深证、创业板、沪深300、中证500、中证1000）和大盘股小盘股谁更强。聊今天大盘、风格、指数的时候用。", {}, [])
+def market_today(ctx: ToolContext) -> ToolResult:
+    _, client = _mcp()
+    data = client.call("get_cn_market_snapshot", {"asOf": _now_cn().isoformat(timespec="seconds"), "asOfSlot": "POST_MARKET"}, ttl=60)
+    idx = [{"name": i["name"], "last": i.get("last"), "change": i["changePct"] / 100} for i in data.get("indices") or [] if i.get("changePct") is not None]
+    if not idx:
+        return ToolResult(False, "今天的指数快照还没有。")
+    cross = data.get("crossSection") or {}
+    gap = cross.get("smallMinusLargePct")
+    when = str((data.get("indices") or [{}])[0].get("observedAt") or "")[5:16]
+    text = (f"A 股指数（{when}）：" + "、".join(f"{i['name']} {S(i['change'], 2)}" for i in idx) + "。"
+            + (f"{'小盘股' if gap > 0 else '大盘股'}更强，中证1000 比沪深300 {'多涨' if gap > 0 else '少涨'} {abs(gap):.2f} 个百分点。" if gap is not None and abs(gap) >= 0.05 else ""))
+    return ToolResult(True, text, {"type": "market", "time": when, "indices": idx, "small_minus_large": gap / 100 if gap is not None else None})
+
+
+@tool("us_overnight", "查最近一个美股交易日的收盘：纳斯达克、标普500、费城半导体指数，以及英伟达、AMD、美光。聊外围、隔夜美股、科技股情绪的时候用。", {}, [])
+def us_overnight(ctx: ToolContext) -> ToolResult:
+    _, client = _mcp()
+    data = client.call("get_overseas_market_close_snapshot", {"asOf": _now_cn().isoformat(timespec="seconds")}, ttl=1800)
+    pick = lambda rows: [{"name": r["name"].replace("指数", ""), "close": r.get("close"), "change": r["changeRatio"] / 100}  # noqa: E731
+                         for r in rows or [] if r.get("changeRatio") is not None]
+    idx, chips = pick(data.get("indices")), pick(data.get("semiconductorBellwethers"))
+    if not idx:
+        return ToolResult(False, "最近一个美股交易日的收盘数据还没有。")
+    day = str(data.get("sessionDate") or "")
+    text = (f"美股最近一个交易日（{day[5:]}）收盘：" + "、".join(f"{i['name']} {S(i['change'], 2)}" for i in idx)
+            + ("；" + "、".join(f"{i['name']} {S(i['change'], 2)}" for i in chips) if chips else "") + "。")
+    return ToolResult(True, text, {"type": "overseas", "date": day, "indices": idx, "stocks": chips})
+
+
+@tool("market_breadth", "查最近一个收盘日全市场的涨跌家数：多少只涨、多少只跌、多少只涨停跌停、涨幅居中的那只涨了多少。聊赚钱效应、市场冷热的时候用。", {}, [])
+def market_breadth(ctx: ToolContext) -> ToolResult:
+    snap, cur = ctx.store._current()
+    df = cur.execute("""SELECT code, name, close / prev_close - 1 AS pct FROM daily
+                        WHERE CAST(date AS VARCHAR) = ? AND prev_close > 0 AND code NOT LIKE 'bj%'""", [snap.data_end]).df()
+    if df.empty:
+        return ToolResult(False, "最近一个收盘日的行情还没有。")
+    lim = [_limit_ratio(c, n) - 1 for c, n in zip(df.code, df.name)]
+    up_lim = int(sum(p >= l - 0.003 for p, l in zip(df.pct, lim)))
+    down_lim = int(sum(p <= -l + 0.003 for p, l in zip(df.pct, lim)))
+    up, down, n = int((df.pct > 0).sum()), int((df.pct < 0).sum()), int(len(df))
+    med = float(df.pct.median())
+    text = (f"{snap.data_end} 全市场 {n} 只股票（不含北交所）：{up} 只上涨、{down} 只下跌，涨停 {up_lim} 只、跌停 {down_lim} 只，涨幅居中的那只是 {S(med)}。"
+            + ("上涨的不到三成，亏钱效应明显。" if up / n < 0.3 else "上涨的超过七成，赚钱效应明显。" if up / n > 0.7 else ""))
+    return ToolResult(True, text, {"type": "breadth", "date": snap.data_end, "n": n, "up": up, "down": down, "limit_up": up_lim, "limit_down": down_lim, "median": med})

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { type Upside, useCheckup } from '../../api/client'
+import { type Upside, useCheckup, useMarketEnv } from '../../api/client'
 import { fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import DataCard from '../rooms/DataCard'
 import '../rooms/rooms.css'
@@ -49,6 +49,20 @@ export default function Checkup({ code, horizon, option = false }: { code: strin
         </section>
       )}
     </>
+  )
+}
+
+/** 问大盘：现在的市场环境。今天的指数、涨跌家数、隔夜美股、最强的概念、人气股。取不到的那项不显示。 */
+export function MarketEnv() {
+  const q = useMarketEnv()
+  const items = q.data?.items ?? []
+  if (q.isLoading) return <section className="card ask-section"><h2>现在的市场环境</h2><p className="muted">正在把几项数据凑齐…</p></section>
+  if (items.length === 0) return null
+  return (
+    <section className="card ask-section">
+      <h2>现在的市场环境</h2>
+      <div className="ck-grid">{items.map(i => <DataCard key={i.tool} card={i.card} />)}</div>
+    </section>
   )
 }
 

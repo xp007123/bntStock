@@ -135,3 +135,22 @@ def ask_checkup(request: Request, code: str):
         if r.ok and r.card and not (name == "pick_list" and not r.card.get("hit")):
             items.append({"tool": name, "text": r.text, "card": r.card})
     return {"code": sf.code, "name": sf.name, "horizons": horizons, "items": items}
+
+
+MARKET_ENV = ["market_today", "market_breadth", "us_overnight", "hot_concepts", "hot_stocks"]
+
+
+@router.get("/market-env")
+def ask_market_env(request: Request):
+    """问大盘的“现在的市场环境”：今天的指数、涨跌家数、隔夜美股、最强的概念、人气股。取不到的那项不显示。"""
+    try:
+        ctx = room_tools.ToolContext(request.app.state.market)
+        ctx.store.snapshot()
+    except NoDataVersion as exc:
+        raise HTTPException(503, str(exc)) from exc
+    items = []
+    for name in MARKET_ENV:
+        r = room_tools.run(ctx, name, {})
+        if r.ok and r.card:
+            items.append({"tool": name, "text": r.text, "card": r.card})
+    return {"items": items}

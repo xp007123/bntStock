@@ -18,7 +18,7 @@ import { useRemember } from '../../lib/recent'
 import { stanceChoices, stanceText } from '../../lib/stance'
 import { horizonText, optionHorizons, stockHorizons } from './horizons'
 import InviteCard from '../rooms/InviteCard'
-import Checkup, { UpsideLadder } from './Checkup'
+import Checkup, { MarketEnv, UpsideLadder } from './Checkup'
 import './ask.css'
 
 /** 小四的回答：先结论（大数字 + 一句大白话），再证据；右边一直能看到小四的话和“封存”。 */
@@ -122,6 +122,7 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
           )}
 
           {!index && !option && <Checkup code={a.code} horizon={a.horizon} />}
+          {index && <MarketEnv />}
 
           <section className={`card ask-section ${pending ? 'pending' : ''}`}>
             <h2>{option ? `到期那天：和现在相似的 ${sim.n} 个时候，结果分成三种` : `和现在相似的 ${sim.n} 个时候，结果分成两种`}</h2>

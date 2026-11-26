@@ -281,5 +281,33 @@ export default function DataCard({ card }: { card: RoomCard }) {
       </div>
     )
   }
+  if (c.type === 'market' || c.type === 'overseas') {
+    const idx = c.indices as { name: string; change: number }[]
+    const stocks = (c.stocks ?? []) as { name: string; change: number }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.type === 'market' ? `今天的 A 股指数 · ${c.time}` : `隔夜美股 · ${String(c.date).slice(5)} 收盘`}</span>
+        <div className="data-row">{idx.map(i => <span key={i.name}>{i.name} <em className={`num ${trendClass(i.change)}`}>{fmtPct(i.change, 2)}</em></span>)}</div>
+        {stocks.length > 0 && <div className="data-row">{stocks.map(i => <span key={i.name}>{i.name} <em className={`num ${trendClass(i.change)}`}>{fmtPct(i.change, 2)}</em></span>)}</div>}
+        {c.small_minus_large != null && Math.abs(c.small_minus_large) >= 0.0005 &&
+          <span className="data-foot">{c.small_minus_large > 0 ? '小盘股更强' : '大盘股更强'}：中证1000 比沪深300 {c.small_minus_large > 0 ? '多涨' : '少涨'} {(Math.abs(c.small_minus_large) * 100).toFixed(2)} 个百分点</span>}
+      </div>
+    )
+  }
+  if (c.type === 'breadth') {
+    return (
+      <div className="data-card">
+        <span className="data-title">全市场涨跌家数 · {String(c.date).slice(5)}</span>
+        <div className="data-breadth" aria-hidden="true"><i className="up" style={{ flex: c.up }} /><i style={{ flex: c.n - c.up - c.down }} /><i className="down" style={{ flex: c.down }} /></div>
+        <div className="data-row">
+          <span>上涨 <em className="num up">{c.up}</em></span>
+          <span>下跌 <em className="num down">{c.down}</em></span>
+          <span>涨停 <b className="num">{c.limit_up}</b></span>
+          <span>跌停 <b className="num">{c.limit_down}</b></span>
+        </div>
+        <span className="data-foot">涨幅居中的那只 <em className={`num ${trendClass(c.median)}`}>{fmtPct(c.median, 1)}</em> · 共 {c.n} 只，不含北交所</span>
+      </div>
+    )
+  }
   return null
 }

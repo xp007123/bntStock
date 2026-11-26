@@ -62,6 +62,19 @@ class McpClient:
         hit = self._cache.get(key)
         if hit and ttl and time.monotonic() - hit[0] < ttl:
             return hit[1]
+        try:
+            data = self._call(tool, args)
+        except McpError as exc:
+            if "TIMEOUT" not in str(exc):
+                raise
+            data = self._call(tool, args)        # 上游偶尔超时一下，再试一次通常就好
+        if ttl:
+            self._cache[key] = (time.monotonic(), data)
+            if len(self._cache) > 500:
+                self._cache = dict(list(self._cache.items())[-200:])
+        return data
+
+    def _call(self, tool: str, args: dict) -> dict:
         with self._lock:
             reply = None
             for attempt in range(2):          # 服务重启过的话会话就没了：重新握手再试一次
@@ -85,12 +98,7 @@ class McpClient:
         if result.get("isError") or not isinstance(payload, dict) or payload.get("errorCode"):
             raise McpError(f"{tool}: {payload.get('errorCode') if isinstance(payload, dict) else ''} {str(text)[:160]}")
         # Java 那个服务把结果包在 data 里（外面是出处、质量等信息）；Python 的几个直接就是结果
-        data = payload["data"] if "toolName" in payload and "data" in payload else payload
-        if ttl:
-            self._cache[key] = (time.monotonic(), data)
-            if len(self._cache) > 500:
-                self._cache = dict(list(self._cache.items())[-200:])
-        return data
+        return payload["data"] if "toolName" in payload and "data" in payload else payload
 
 
 _client: McpClient | None = None
