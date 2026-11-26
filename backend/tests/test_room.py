@@ -53,6 +53,7 @@ def test_persona_cards_load():
     for pid in personas.DEFAULT_GUESTS:
         pub = cast[pid].public()
         assert pub["name"] and pub["lens"] and len(pub["beliefs"]) >= 3 and pub["lines"] and pub["color"].startswith("#")
+        assert pub["hold"] and pub["ask"] and pub["never"] and pub["rivals"]          # 角色页人物卡上的短介绍
         assert all(r in cast for r in cast[pid].rivals)
 
 

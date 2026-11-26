@@ -397,6 +397,8 @@ export const useSignals = () =>
 
 export type Persona = {
   id: string; name: string; title: string; lens: string; tagline: string; role: 'guest' | 'host'; color: string
+  /** 人物卡上的三行短介绍（可能为空：后台新建的角色没填）和天然的对手 */
+  hold: string; ask: string; never: string; rivals: string[]
   beliefs: string[]; asks: string[]; avoids: string[]; lines: string[]; version: number; disclaimer: string
 }
 export type PersonaList = { available: boolean; host: Persona; items: Persona[]; default: string[]; disclaimer: string }

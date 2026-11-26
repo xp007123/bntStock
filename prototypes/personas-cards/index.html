@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>群里都有谁 · 角色卡设计稿</title>
+<style>
+  :root {
+    --bg: #fff8f2; --bg-deep: #fbeee3; --surface: #fff; --ink: #190300; --ink-2: #4a3a34; --muted: #7d6b62; --faint: #b3a39a;
+    --line: #f1e5db; --line-strong: #e2d2c5; --accent: #fb5e0d; --accent-ink: #c2410c; --accent-soft: #ffe9db; --accent-softer: #fff1e7;
+    --night: #190300; --on-night: #fff8f2; --on-night-muted: #fff8f29e;
+    --shadow: 0 1px 2px #1903000a, 0 10px 28px -16px #19030024; --lift: 0 2px 6px #1903000f, 0 24px 48px -20px #19030038;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+    --font: "Outfit", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink-2); font: 15px/1.6 var(--font); }
+  .page { max-width: 1180px; margin: 0 auto; padding: 36px 28px 80px; }
+  .proto-note { margin: 0 0 22px; padding: 10px 16px; border-radius: 12px; border: 1px dashed var(--line-strong); font-size: 13px; color: var(--muted); }
+  h1 { margin: 0; font-size: 30px; line-height: 1.3; color: var(--ink); letter-spacing: -.01em; }
+  .lead { margin: 6px 0 0; max-width: 640px; color: var(--muted); }
+
+  /* 圆桌：他们坐在一起是什么样 */
+  .table { margin-top: 24px; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 28px; align-items: center; padding: 28px 32px;
+    border-radius: 28px; color: var(--on-night); box-shadow: var(--lift);
+    background: radial-gradient(120% 90% at 100% 0%, #fb5e0d73 0%, #fb5e0d00 55%), radial-gradient(80% 70% at 0% 100%, #fb5e0d33 0%, #fb5e0d00 60%), var(--night); }
+  .ring { position: relative; width: 300px; height: 300px; margin: 0 auto; }
+  .ring::before { content: ''; position: absolute; inset: 62px; border-radius: 50%; background: #fff8f20f; border: 1.5px dashed #fff8f233; }
+  .ring .seat { position: absolute; width: 62px; height: 62px; margin: -31px; border-radius: 50%; box-shadow: 0 0 0 3px #190300, 0 10px 20px -8px #000000b3; transition: transform .3s var(--ease); cursor: pointer; }
+  .ring .seat.on { transform: scale(1.22); box-shadow: 0 0 0 3px var(--accent), 0 10px 24px -6px #fb5e0d99; }
+  .ring .host { position: absolute; left: 50%; top: 50%; width: 84px; height: 84px; margin: -42px; border-radius: 50%; box-shadow: 0 14px 30px -8px #fb5e0d99; }
+  .talk { min-width: 0; }
+  .talk small { font-size: 13px; letter-spacing: .08em; color: var(--on-night-muted); }
+  .talk h2 { margin: 6px 0 16px; font-size: 26px; line-height: 1.35; color: var(--on-night); }
+  .chat { display: flex; flex-direction: column; gap: 10px; min-height: 196px; }
+  .say { display: flex; gap: 10px; align-items: flex-start; opacity: 0; transform: translateY(8px); animation: pop .45s var(--ease) forwards; }
+  .say img { width: 36px; height: 36px; flex: none; border-radius: 50%; }
+  .say b { display: block; font-size: 12px; font-weight: 500; color: var(--on-night-muted); }
+  .say p { margin: 2px 0 0; display: inline-block; padding: 8px 14px; border-radius: 4px 16px 16px 16px; background: #fff8f2; color: var(--ink); font-size: 14.5px; line-height: 1.6; }
+  .say.host p { background: var(--accent-soft); }
+  @keyframes pop { to { opacity: 1; transform: none; } }
+
+  /* 角色卡 */
+  .deck-head { margin: 40px 0 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .deck-head h2 { margin: 0; font-size: 20px; color: var(--ink); }
+  .deck-head span { font-size: 13px; color: var(--muted); }
+  .deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+  .card { position: relative; display: flex; flex-direction: column; border-radius: 26px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+    transition: transform .28s var(--ease), box-shadow .28s var(--ease); }
+  .card:hover { transform: translateY(-6px) rotate(-.6deg); box-shadow: var(--lift); }
+  .card:nth-child(even):hover { transform: translateY(-6px) rotate(.6deg); }
+  .top { position: relative; height: 118px; border-radius: 25px 25px 0 0; background: var(--who); overflow: hidden; }
+  /* 色块上的大号水印字：他看什么 */
+  .top::after { content: attr(data-lens); position: absolute; right: -6px; bottom: -34px; font: 700 96px/1 var(--font); color: #ffffff1f; white-space: nowrap; letter-spacing: -.04em; }
+  .face { position: absolute; left: 22px; top: 54px; width: 108px; height: 108px; border-radius: 50%; box-shadow: 0 0 0 6px var(--surface), 0 14px 24px -10px #19030066; transition: transform .35s var(--ease); z-index: 2; }
+  .card:hover .face { transform: rotate(-8deg) scale(1.06); animation: nod .9s var(--ease) 1; }
+  @keyframes nod { 30% { transform: rotate(-12deg) scale(1.08) translateY(-4px); } 60% { transform: rotate(-4deg) scale(1.06); } }
+  .lens { position: absolute; right: 16px; top: 16px; padding: 4px 14px; border-radius: 999px; background: #190300cc; color: var(--on-night); font-size: 13px; font-weight: 500; transform: rotate(4deg); z-index: 2; }
+  .body { padding: 56px 22px 20px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+  .name h3 { margin: 0; font-size: 24px; line-height: 1.2; color: var(--ink); }
+  .name span { font-size: 12.5px; color: var(--muted); }
+  /* 口头禅：一只会换话的气泡 */
+  .bubble { position: relative; margin: 0; padding: 12px 16px; border-radius: 6px 18px 18px 18px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font-size: 16px; font-weight: 600; line-height: 1.55; min-height: 76px; transition: background .2s; }
+  .bubble::before { content: ''; position: absolute; left: 18px; top: -8px; width: 14px; height: 14px; background: inherit; border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+  .card:hover .bubble { background: var(--accent-softer); }
+  .bubble.swap { animation: swap .32s var(--ease); }
+  @keyframes swap { from { opacity: 0; transform: translateY(4px); } }
+  .facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; font-size: 13.5px; }
+  .facts li { display: grid; grid-template-columns: 62px 1fr; gap: 10px; align-items: baseline; }
+  .facts b { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .facts span { color: var(--ink); }
+  .rivals { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px dashed var(--line-strong); font-size: 12px; color: var(--muted); }
+  .rivals i { font-style: normal; font-weight: 700; color: var(--accent-ink); }
+  .rivals img { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); margin-left: -8px; transition: transform .2s var(--ease); cursor: pointer; }
+  .rivals img:first-of-type { margin-left: 0; }
+  .rivals img:hover { transform: translateY(-3px) scale(1.15); z-index: 1; }
+  .acts { margin-top: auto; display: flex; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 42px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: 500 14px var(--font); cursor: pointer; text-decoration: none; transition: background .18s, border-color .18s; }
+  .btn:hover { border-color: var(--ink); }
+  .btn.dark { flex: 1; background: var(--ink); border-color: var(--ink); color: var(--on-night); }
+  .btn.dark:hover { background: #2b0f05; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--faint); }
+  @media (max-width: 860px) { .table { grid-template-columns: 1fr; padding: 22px 18px; } .ring { transform: scale(.86); margin: -18px auto; } .talk h2 { font-size: 21px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="proto-note">设计稿（静态页面，按钮不会真的开群）。看三处：顶上的圆桌会自己轮播一段对话；鼠标移到卡片上，头像会点头、气泡会换一句话；“死对头”的小头像可以点，跳到那个人的卡片。</p>
+
+  <h1>群里都有谁</h1>
+  <p class="lead">七位路子完全不同的投资人，加一个负责拱火的主持人。同一只股票，他们吵出来的才值得听。</p>
+
+  <section class="table">
+    <div class="ring" id="ring"></div>
+    <div class="talk">
+      <small>他们坐在一起是这样的</small>
+      <h2 id="topic"></h2>
+      <div class="chat" id="chat"></div>
+    </div>
+  </section>
+
+  <div class="deck-head"><h2>认识一下</h2><span>详细的信条和方法在每个人的主页里</span></div>
+  <div class="deck" id="deck"></div>
+
+  <p class="foot">角色由 AI 按公开资料演绎，不代表本人。说的是看法和历史上的情况，不构成投资建议。</p>
+</div>
+
+<script>
+// ---------- 头像：“小四家族”，和正式代码 features/rooms/faces.ts 同一套画法 ----------
+const CREAM = '#fff8f2', DARK = '#23232b'
+const eyes = (y, color = CREAM, h = 22) => `<rect x="36" y="${y}" width="9" height="${h}" rx="4.5" fill="${color}"/><rect x="55" y="${y}" width="9" height="${h}" rx="4.5" fill="${color}"/>`
+const line = (d, w = 3) => `<path d="${d}" fill="none" stroke="${CREAM}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`
+const tie = c => `<path d="M45 84 L55 84 L58 100 L42 100Z" fill="${c}"/>`
+const bow = c => `<path d="M50 87 L39 81 L39 93Z M50 87 L61 81 L61 93Z" fill="${c}"/><circle cx="50" cy="87" r="3" fill="${c}"/>`
+const FACES = {
+  buffett: `<path d="M20 36 Q28 10 50 10 Q72 10 80 36 Q66 25 50 25 Q34 25 20 36Z" fill="#f4f1ec"/>${eyes(43)}<g fill="none" stroke="${CREAM}" stroke-width="3"><circle cx="40.5" cy="54" r="13"/><circle cx="59.5" cy="54" r="13"/></g>${tie('#d23b3b')}`,
+  yangjia: `<path d="M14 40 Q20 8 50 7 Q80 8 86 40 L75 29 L67 38 L58 27 L50 38 L42 27 L33 38 L25 29Z" fill="#1d1512"/>${eyes(45)}${line('M43 78 Q52 83 61 75')}`,
+  soros: `<path d="M5 50 Q-3 34 9 27 Q10 16 22 19 Q30 21 27 31 Q21 37 21 50 Q12 56 5 50Z M95 50 Q103 34 91 27 Q90 16 78 19 Q70 21 73 31 Q79 37 79 50 Q88 56 95 50Z" fill="#d3d0cc"/>${eyes(44, CREAM, 20)}<g fill="none" stroke="${CREAM}" stroke-width="2.6"><rect x="27" y="41" width="21" height="26" rx="6"/><rect x="52" y="41" width="21" height="26" rx="6"/></g>${line('M43 80 H57')}${tie('#b9a3f0')}`,
+  serenity: `<path d="M8 62 Q2 6 50 5 Q98 6 92 62 L96 100 L74 100 Q80 70 74 46 Q62 30 50 42 Q38 30 26 46 Q20 70 26 100 L4 100Z" fill="#fbfbfe"/>${eyes(50, DARK, 20)}<ellipse cx="31" cy="74" rx="5" ry="2.6" fill="#f4a0a0"/><ellipse cx="69" cy="74" rx="5" ry="2.6" fill="#f4a0a0"/>`,
+  livermore: `<path d="M26 31 Q26 5 50 5 Q74 5 74 31Z" fill="#6a6056"/><path d="M26 24 H74 V31 H26Z" fill="#2b2622"/><ellipse cx="50" cy="32" rx="39" ry="6.5" fill="#574e45"/>${eyes(46)}${bow('#d23b3b')}`,
+  lynch: `<path d="M10 42 Q5 24 20 19 Q24 6 39 10 Q50 1 61 10 Q76 6 80 19 Q95 24 90 42 Q78 29 65 33 Q50 25 35 33 Q22 29 10 42Z" fill="#ececf1"/>${eyes(45, CREAM, 18)}<g fill="none" stroke="${CREAM}" stroke-width="3"><rect x="27" y="42" width="21" height="24" rx="6"/><rect x="52" y="42" width="21" height="24" rx="6"/></g><path d="M38 73 Q50 87 62 73Z" fill="${CREAM}"/>${tie('#f2c94c')}`,
+  templeton: `<path d="M3 56 Q0 38 13 33 Q18 44 16 58Z M97 56 Q100 38 87 33 Q82 44 84 58Z" fill="#f3f1ec"/>${line('M40 24 H60 M43 18 H57', 2)}${eyes(45, CREAM, 20)}<g fill="none" stroke="${CREAM}" stroke-width="2.2"><circle cx="40.5" cy="55" r="12.5"/><circle cx="59.5" cy="55" r="12.5"/></g>${line('M43 76 Q50 81 57 76')}${bow('#f3f1ec')}`,
+  xiaosi: `<ellipse cx="33" cy="27" rx="13" ry="6" fill="#ffffff" opacity=".22" transform="rotate(-28 33 27)"/><rect x="36" y="38" width="9" height="23" rx="4.5" fill="#2b0f05"/><rect x="55" y="38" width="9" height="23" rx="4.5" fill="#2b0f05"/>`,
+}
+const face = (id, color) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><clipPath id="c"><circle cx="50" cy="50" r="50"/></clipPath></defs><g clip-path="url(#c)"><rect width="100" height="100" fill="${color}"/>${FACES[id]}</g></svg>`)
+
+// ---------- 内容：都摘自现有的角色卡 ----------
+const CAST = [
+  { id: 'buffett', name: '巴菲特', title: '伯克希尔的掌舵人', lens: '看公司', color: '#2a5d8f',
+    lines: ['好公司也要好价格。', '这门生意我看得懂一半。看不懂的那一半，我就当它不值钱。', '十年后它还能这么赚钱吗？'],
+    hold: '十年起步', first: '这门生意我看得懂吗', never: '看不懂的生意', rivals: ['yangjia', 'serenity', 'soros'] },
+  { id: 'yangjia', name: '炒股养家', title: 'A 股游资，“养家心法”的作者', lens: '看情绪', color: '#c0392b',
+    lines: ['先看情绪，再看票。', '这票现在没情绪。没人看它，我不会碰。', '看不懂就空仓，不丢人。'],
+    hold: '一两天，情绪不在就走', first: '现在是赚钱效应还是亏钱效应', never: '没人关注的票，公司再好也不碰', rivals: ['buffett', 'soros', 'serenity'] },
+  { id: 'soros', name: '索罗斯', title: '量子基金创始人，反身性理论', lens: '看预期', color: '#5b4a8a',
+    lines: ['市场总是错的，问题是错在哪儿。', '你没说出的那个假设是什么？', '我可能是错的。所以我先找自己错在哪儿。'],
+    hold: '拿到大家的想法反转为止', first: '现在所有人都信什么', never: '没有预期差的地方', rivals: ['buffett', 'yangjia', 'serenity'] },
+  { id: 'serenity', name: 'Serenity', title: '匿名研究者，专找最卡脖子的环节', lens: '看产业链', color: '#7f8c9b',
+    lines: ['别盯龙头，往上游看。', '先别聊估值。它在 supply chain 的哪一层？', '产能是物理的，骗不了人。'],
+    hold: '瓶颈还在就一直拿', first: '这一层全球有几家能做', never: '人人都在研究的大龙头', rivals: ['buffett', 'soros', 'yangjia'] },
+  { id: 'livermore', name: '利弗莫尔', title: '华尔街传奇投机客', lens: '看趋势', color: '#3d6b4f',
+    lines: ['价格自己会说话。', '没到关键点，我的手不动。', '越跌越买这件事，我破产的时候干过。'],
+    hold: '趋势在就坐着不动', first: '它现在往哪走，量跟不跟', never: '往下走的票，再便宜也不碰', rivals: ['buffett', 'templeton', 'serenity'] },
+  { id: 'lynch', name: '彼得·林奇', title: '麦哲伦基金的传奇经理', lens: '看成长', color: '#b7791f',
+    lines: ['买你看得懂的成长。', '两分钟讲得清它靠什么赚钱吗？讲不清我就不碰。', '我太太比分析师更早发现过好公司。'],
+    hold: '三五年，等利润长出来', first: '这是哪一类公司', never: '讲不清靠什么赚钱的公司', rivals: ['livermore', 'yangjia', 'soros'] },
+  { id: 'templeton', name: '邓普顿', title: '全球逆向投资之父', lens: '看逆向', color: '#5b6b8c',
+    lines: ['在最悲观的地方找便宜货。', '“这次不一样”，这句话我听了七十年。', '我可能又早到了。早到没关系，只要价格够低。'],
+    hold: '四五年，等悲观过去', first: '现在还有谁没卖', never: '刚大涨过、人人都在谈的票', rivals: ['livermore', 'yangjia', 'lynch'] },
+]
+const BY = Object.fromEntries(CAST.map(p => [p.id, p]))
+const HOST = { id: 'xiaosi', name: '小四', color: '#fb5e0d' }
+
+// ---------- 圆桌 ----------
+const ring = document.getElementById('ring')
+CAST.forEach((p, i) => {
+  const a = (i / CAST.length) * Math.PI * 2 - Math.PI / 2
+  const img = new Image(); img.src = face(p.id, p.color); img.className = 'seat'; img.dataset.id = p.id; img.title = `${p.name} · ${p.lens}`
+  img.style.left = `${150 + Math.cos(a) * 122}px`; img.style.top = `${150 + Math.sin(a) * 122}px`
+  img.onclick = () => document.getElementById('card-' + p.id).scrollIntoView({ behavior: 'smooth', block: 'center' })
+  ring.append(img)
+})
+const hostImg = new Image(); hostImg.src = face('xiaosi', HOST.color); hostImg.className = 'host'; ring.append(hostImg)
+
+// 两段示意对话（话都来自角色卡里的示例和线上真实聊过的内容）
+const SCENES = [
+  { topic: '一只刚涨停的票，明天怎么看？', turns: [
+    ['xiaosi', '一天涨了 10 个点，可这仨月还跌着。老巴，你先说。'],
+    ['buffett', '钛白粉十年后大家还得用，这点我信。但它能不能自己定价，我不信。'],
+    ['yangjia', '老巴，您这套今天用不上。今天涨的不是护城河，是有人抢。'],
+    ['livermore', '我不问它值多少钱。我只问：它现在往哪走，量跟不跟。'] ] },
+  { topic: '跌了三成的好公司，能不能捡？', turns: [
+    ['xiaosi', '比高点低了三成。爵士，这是你的菜吧？'],
+    ['templeton', '这个位置我愿意多看两眼。但先告诉我：它是暂时难，还是真不行了？'],
+    ['livermore', '接下落的刀，我试过，割手。等它自己走出来再说。'],
+    ['lynch', '你们吵价格，我想知道的是三年后它的利润比现在多还是少。'] ] },
+]
+const chat = document.getElementById('chat'), topic = document.getElementById('topic')
+let scene = 0, turn = 0
+function step() {
+  const s = SCENES[scene]
+  if (turn === 0) { chat.innerHTML = ''; topic.textContent = s.topic }
+  const [who, text] = s.turns[turn]
+  const p = who === 'xiaosi' ? HOST : BY[who]
+  const row = document.createElement('div'); row.className = 'say' + (who === 'xiaosi' ? ' host' : '')
+  row.innerHTML = `<img src="${face(p.id, p.color)}" alt=""><div><b>${p.name}</b><p>${text}</p></div>`
+  chat.append(row)
+  ring.querySelectorAll('.seat').forEach(el => el.classList.toggle('on', el.dataset.id === who))
+  turn += 1
+  if (turn >= s.turns.length) { turn = 0; scene = (scene + 1) % SCENES.length; setTimeout(step, 4200) } else setTimeout(step, 1900)
+}
+step()
+
+// ---------- 角色卡 ----------
+const deck = document.getElementById('deck')
+CAST.forEach(p => {
+  const el = document.createElement('article'); el.className = 'card'; el.id = 'card-' + p.id; el.style.setProperty('--who', p.color)
+  el.innerHTML = `
+    <div class="top" data-lens="${p.lens}"></div>
+    <span class="lens">${p.lens}</span>
+    <img class="face" src="${face(p.id, p.color)}" alt="">
+    <div class="body">
+      <div class="name"><h3>${p.name}</h3><span>${p.title}</span></div>
+      <p class="bubble">${p.lines[0]}</p>
+      <ul class="facts">
+        <li><b>一般拿多久</b><span>${p.hold}</span></li>
+        <li><b>开口先问</b><span>${p.first}</span></li>
+        <li><b>打死不碰</b><span>${p.never}</span></li>
+      </ul>
+      <div class="rivals"><i>VS</i><span>最爱跟他吵的</span>${p.rivals.map(r => `<img src="${face(r, BY[r].color)}" title="${BY[r].name}" data-go="${r}" alt="${BY[r].name}">`).join('')}</div>
+      <div class="acts"><button class="btn dark">拉 ${p.name} 聊聊</button><a class="btn" href="#">他的主页</a></div>
+    </div>`
+  // 鼠标停在卡片上：气泡每隔一会儿换一句他说过的话
+  const bubble = el.querySelector('.bubble'); let n = 0, timer = null
+  const next = () => { n = (n + 1) % p.lines.length; bubble.textContent = p.lines[n]; bubble.classList.remove('swap'); void bubble.offsetWidth; bubble.classList.add('swap') }
+  el.addEventListener('mouseenter', () => { next(); timer = setInterval(next, 2200) })
+  el.addEventListener('mouseleave', () => { clearInterval(timer); n = 0; bubble.textContent = p.lines[0] })
+  el.querySelectorAll('[data-go]').forEach(img => img.onclick = () => {
+    const t = document.getElementById('card-' + img.dataset.go); t.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    t.animate([{ boxShadow: '0 0 0 4px #fb5e0d' }, { boxShadow: '0 0 0 4px #fb5e0d00' }], { duration: 1200 })
+  })
+  deck.append(el)
+})
+</script>
+</body>
+</html>

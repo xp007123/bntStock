@@ -300,3 +300,75 @@
   .lineup-list { grid-template-columns: 1fr; }
   .lineup-box { padding: 20px 16px 16px; }
 }
+
+/* ---- 角色页（2026-11-26 重做）：圆桌 + 人物卡。规范见 docs/视觉规范-V3.md 6.19 ---- */
+.rt { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 28px; align-items: center; padding: 26px 32px; border-radius: var(--r-xl); background: var(--ember), var(--night); color: var(--on-night); box-shadow: var(--lift); }
+.rt-ring { position: relative; width: 300px; height: 300px; margin: 0 auto; }
+.rt-ring::before { content: ''; position: absolute; inset: 62px; border-radius: 50%; background: #fff8f20f; border: 1.5px dashed #fff8f233; }
+.rt-seat { position: absolute; width: 62px; height: 62px; margin: -31px; border-radius: 50%; transition: transform .3s var(--ease); }
+.rt-seat .room-avatar { box-shadow: 0 0 0 3px var(--night), 0 10px 20px -8px #000000b3; transition: box-shadow .3s var(--ease); }
+.rt-seat.on { transform: scale(1.22); z-index: 1; }
+.rt-seat.on .room-avatar { box-shadow: 0 0 0 3px var(--accent), 0 10px 24px -6px #fb5e0d99; }
+.rt-host { position: absolute; left: 50%; top: 50%; margin: -42px; }
+.rt-host .room-avatar { box-shadow: 0 14px 30px -8px #fb5e0d99; }
+.rt-talk { min-width: 0; }
+.rt-talk small { font-size: 13px; letter-spacing: .08em; color: var(--on-night-muted); }
+.rt-talk h2 { margin: 6px 0 16px; font-size: 26px; line-height: 1.35; color: var(--on-night); }
+.rt-chat { display: flex; flex-direction: column; gap: 10px; min-height: 212px; }
+.rt-say { display: flex; gap: 10px; align-items: flex-start; animation: rt-pop .45s var(--ease) both; }
+.rt-say .room-avatar { box-shadow: none; }
+.rt-say b { display: block; font-size: 12px; font-weight: 500; color: var(--on-night-muted); }
+.rt-say p { display: inline-block; margin-top: 2px; padding: 8px 14px; border-radius: 4px 16px 16px 16px; background: var(--bg); color: var(--ink); font-size: 14.5px; line-height: 1.6; }
+.rt-say.host p { background: var(--accent-soft); }
+@keyframes rt-pop { from { opacity: 0; transform: translateY(8px); } }
+
+.pc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 12px 0 -4px; }
+.pc-head h2 { font-size: 20px; }
+.pc-head span { font-size: 13px; }
+.pc-deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+.pc.card { position: relative; display: flex; flex-direction: column; padding: 0; overflow: visible; border-radius: 26px; transition: transform .28s var(--ease), box-shadow .28s var(--ease); }
+.pc:hover { transform: translateY(-6px) rotate(-.6deg); box-shadow: var(--lift); }
+.pc:nth-child(even):hover { transform: translateY(-6px) rotate(.6deg); }
+.pc-top { position: relative; display: block; height: 118px; border-radius: 25px 25px 0 0; background: var(--who); overflow: hidden; }
+/* 色块上的大号水印字：他看什么 */
+.pc-top::after { content: attr(data-lens); position: absolute; right: -6px; bottom: -34px; font: 700 96px/1 var(--font); color: #ffffff1f; white-space: nowrap; letter-spacing: -.04em; }
+.pc-lens { position: absolute; right: 16px; top: 16px; padding: 4px 14px; border-radius: var(--r-pill); background: #190300cc; color: var(--on-night); font-size: 13px; font-weight: 500; transform: rotate(4deg); z-index: 1; }
+.pc-face { position: absolute; left: 22px; top: 54px; z-index: 2; border-radius: 50%; transition: transform .35s var(--ease); }
+.pc-face .room-avatar { box-shadow: 0 0 0 6px var(--surface), 0 14px 24px -10px #19030066; }
+.pc:hover .pc-face { transform: rotate(-8deg) scale(1.06); animation: pc-nod .9s var(--ease) 1; }
+@keyframes pc-nod { 30% { transform: rotate(-12deg) scale(1.08) translateY(-4px); } 60% { transform: rotate(-4deg) scale(1.06); } }
+.pc-body { display: flex; flex-direction: column; gap: 14px; flex: 1; padding: 56px 22px 20px; }
+.pc-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.pc-name h2 { font-size: 24px; line-height: 1.2; }
+.pc-name h2 a { color: var(--ink); text-decoration: none; }
+.pc-name h2 a:hover { color: var(--accent-ink); }
+.pc-name span { font-size: 12.5px; color: var(--muted); }
+/* 口头禅：鼠标停在卡片上时每隔一会儿换一句 */
+.pc-bubble { position: relative; padding: 12px 16px; border-radius: 6px 18px 18px 18px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font-size: 16px; font-weight: 600; line-height: 1.55; min-height: 76px; transition: background var(--t-fast) var(--ease); }
+.pc-bubble::before { content: ''; position: absolute; left: 18px; top: -8px; width: 14px; height: 14px; background: inherit; border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+.pc:hover .pc-bubble { background: var(--accent-softer); }
+.pc-bubble.swap { animation: pc-swap .32s var(--ease); }
+@keyframes pc-swap { from { opacity: 0; transform: translateY(4px); } }
+.pc-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 13.5px; }
+.pc-facts li { display: grid; grid-template-columns: 66px 1fr; gap: 10px; align-items: baseline; }
+.pc-facts b { font-size: 12px; font-weight: 500; color: var(--muted); }
+.pc-facts span { color: var(--ink); }
+.pc-rivals { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px dashed var(--line-strong); font-size: 12px; color: var(--muted); }
+.pc-rivals i { font-style: normal; font-weight: 700; color: var(--accent-ink); }
+.pc-rivals a { margin-left: -8px; border-radius: 50%; transition: transform var(--t-fast) var(--ease); }
+.pc-rivals a:first-of-type { margin-left: 0; }
+.pc-rivals a:hover { transform: translateY(-3px) scale(1.15); z-index: 1; }
+.pc-acts { margin-top: auto; display: flex; gap: 8px; }
+.pc-acts .btn { height: 42px; text-decoration: none; white-space: nowrap; }
+.pc-acts .btn.dark { flex: 1; justify-content: center; }
+.pc-acts .stock-search { flex: 1; width: auto; min-width: 0; height: 42px; }
+.pc-foot { font-size: 12px; }
+@media (max-width: 860px) {
+  .rt { grid-template-columns: 1fr; padding: 20px 16px; gap: 8px; }
+  .rt-ring { transform: scale(.82); margin: -26px auto; }
+  .rt-talk h2 { font-size: 21px; }
+  .pc-deck { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .pc:hover, .pc:hover .pc-face { transform: none; animation: none; } .rt-say, .pc-bubble.swap { animation: none; } }
+
+.personas { max-width: 1180px; }
