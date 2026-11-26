@@ -103,8 +103,8 @@ def ask_series(request: Request, code: str, index: bool = False):
 
 
 # 体检：从几个角度看同一只票。每一项就是群聊角色用的那个数据工具，取不到的那项不显示。
-CHECKUP = ["stock_live", "valuation_position", "stock_financials", "method_hits", "limit_up_history",
-           "sector_today", "stock_concepts", "money_flow", "pick_list"]
+CHECKUP = ["stock_live", "stock_news", "valuation_position", "profit_forecast", "stock_financials", "method_hits", "limit_up_history",
+           "sector_today", "stock_concepts", "money_flow", "dragon_tiger", "lockup", "pick_list"]
 CHECKUP_HORIZONS = [5, 10, 21, 63]
 
 

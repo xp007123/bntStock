@@ -1,4 +1,11 @@
-"""MCP 数据服务的客户端：实时行情、资金流、概念板块这些日线里没有的数据，从旧四象留下的 market-data-mcp 取。
+"""MCP 数据服务的客户端：日线里没有的数据，从旧四象留下的几个 MCP 服务取。
+
+一共五个服务，各配各的地址，哪个没配哪类数据就没有：
+  SIXIANG_MCP_MARKET_URL  实时行情、资金流、概念、历史估值（Java，背后是 iFinD）      线上 http://127.0.0.1:9070/mcp
+  SIXIANG_MCP_NEWS_URL    个股新闻、市场快讯                                          线上 http://127.0.0.1:8066/mcp
+  SIXIANG_MCP_FUND_URL    盈利预测                                                    线上 http://127.0.0.1:8077/mcp
+  SIXIANG_MCP_LOCKUP_URL  限售解禁                                                    线上 http://127.0.0.1:8078/mcp
+  SIXIANG_MCP_HOT_URL     龙虎榜、人气股                                              线上 http://127.0.0.1:8079/mcp
 
 只做一件事：调一个只读工具，拿回它的 data。协议是 MCP 的 Streamable HTTP（一次握手，之后每次 tools/call）。
 没配地址（SIXIANG_MCP_MARKET_URL）就是“没有这项数据”：用到它的工具回一句取不到，别的功能照常。
@@ -75,9 +82,10 @@ class McpClient:
             payload = json.loads(text) if text else {}
         except ValueError as exc:
             raise McpError(f"{tool}: 返回的不是 JSON") from exc
-        if result.get("isError") or payload.get("errorCode") or "data" not in payload:
-            raise McpError(f"{tool}: {payload.get('errorCode')} {payload.get('errorDetail', '')}"[:200])
-        data = payload["data"]
+        if result.get("isError") or not isinstance(payload, dict) or payload.get("errorCode"):
+            raise McpError(f"{tool}: {payload.get('errorCode') if isinstance(payload, dict) else ''} {str(text)[:160]}")
+        # Java 那个服务把结果包在 data 里（外面是出处、质量等信息）；Python 的几个直接就是结果
+        data = payload["data"] if "toolName" in payload and "data" in payload else payload
         if ttl:
             self._cache[key] = (time.monotonic(), data)
             if len(self._cache) > 500:
@@ -87,6 +95,7 @@ class McpClient:
 
 _client: McpClient | None = None
 _loaded = False
+_others: dict[str, McpClient | None] = {}
 
 
 def market() -> McpClient | None:
@@ -96,6 +105,14 @@ def market() -> McpClient | None:
         url = os.environ.get("SIXIANG_MCP_MARKET_URL", "").strip()
         _client, _loaded = (McpClient(url) if url else None), True
     return _client
+
+
+def server(name: str) -> McpClient | None:
+    """news / fund / lockup / hot 这几个服务。没配就是 None。"""
+    if name not in _others:
+        url = os.environ.get(f"SIXIANG_MCP_{name.upper()}_URL", "").strip()
+        _others[name] = McpClient(url, timeout=20) if url else None
+    return _others[name]
 
 
 def symbol(code: str) -> str:

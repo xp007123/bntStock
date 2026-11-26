@@ -455,3 +455,105 @@ def valuation_position(ctx: ToolContext, code: str) -> ToolResult:
     if not parts:
         return ToolResult(False, "这只股票的历史估值数据不够。")
     return ToolResult(True, f"{name}：" + "；".join(parts) + "。", card)
+
+
+# ---------------------------------------------------------------- 新闻、解禁、龙虎榜、人气股、盈利预测（Python 的几个 MCP 服务）
+
+def _server(name: str):
+    from ..data import mcp
+    client = mcp.server(name)
+    if client is None:
+        raise LookupError(f"没有接 {name} 数据服务")
+    return client
+
+
+def _ticker(code: str) -> str:
+    return code[2:]
+
+
+@tool("stock_news", "查一只股票最近十天的新闻和公告标题（回购、业绩、重组、减持这类）。聊消息面、催化剂、最近出了什么事的时候用。", {"code": _CODE}, ["code"])
+def stock_news(ctx: ToolContext, code: str) -> ToolResult:
+    import datetime as dt
+    client = _server("news")
+    c = resolve(ctx, code)
+    today = _now_cn().date()
+    data = client.call("search_company_news", {"ticker": _ticker(c), "start_date": (today - dt.timedelta(days=10)).isoformat(), "end_date": today.isoformat()}, ttl=600)
+    name = ctx.store.security(c)["name"]
+    items, seen = [], []
+    for it in data.get("items") or []:
+        title = (it.get("title") or "").strip()
+        # 同一件事各家媒体都发一遍：标题前 8 个字一样的只留一条；只是在长名单里顺带提到这只票的不要
+        if not title or any(title[:8] == s[:8] for s in seen) or (name not in title and name not in (it.get("summary") or "")[:60]):
+            continue
+        seen.append(title)
+        items.append({"title": title, "summary": (it.get("summary") or "").strip()[:90], "source": it.get("source"), "date": (it.get("published_at") or "")[:10], "url": it.get("url")})
+    items = items[:5]
+    if not items:
+        return ToolResult(True, f"{name} 最近十天没有查到和它直接有关的新闻。", {"type": "news", "code": c, "name": name, "items": []})
+    text = f"{name} 最近十天的新闻：" + "；".join(f"{i['date'][5:]}《{i['title']}》{('：' + i['summary']) if n == 0 else ''}" for n, i in enumerate(items)) + "。"
+    return ToolResult(True, text, {"type": "news", "code": c, "name": name, "items": items})
+
+
+@tool("lockup", "查一只股票未来三个月有没有限售股解禁，以及最近一次解禁是什么时候。聊风险、抛压的时候用。", {"code": _CODE}, ["code"])
+def lockup(ctx: ToolContext, code: str) -> ToolResult:
+    client = _server("lockup")
+    c = resolve(ctx, code)
+    data = client.call("get_lockup_expiry", {"ticker": _ticker(c), "trade_date": _now_cn().date().isoformat(), "forward_days": 90}, ttl=3600)
+    name = ctx.store.security(c)["name"]
+    up = [{"date": x.get("free_date"), "kind": x.get("share_type")} for x in data.get("upcoming") or [] if x.get("free_date")]
+    last = next(({"date": x.get("free_date"), "kind": x.get("share_type")} for x in data.get("history") or [] if x.get("free_date")), None)
+    text = (f"{name} 未来 90 天有 {len(up)} 次解禁：" + "、".join(f"{u['date']}（{u['kind']}）" for u in up[:3]) + "。" if up else f"{name} 未来 90 天没有限售股解禁。")
+    if last:
+        text += f"最近一次解禁是 {last['date']}（{last['kind']}）。"
+    return ToolResult(True, text, {"type": "lockup", "code": c, "name": name, "upcoming": up[:5], "last": last})
+
+
+@tool("dragon_tiger", "查一只股票最近 30 天有没有上龙虎榜：上了几次、为什么上、机构是净买还是净卖、买得最多的是哪几个席位。聊游资、机构、谁在买的时候用。",
+      {"code": _CODE}, ["code"])
+def dragon_tiger(ctx: ToolContext, code: str) -> ToolResult:
+    client = _server("hot")
+    c = resolve(ctx, code)
+    data = client.call("get_dragon_tiger_board", {"ticker": _ticker(c), "trade_date": _now_cn().date().isoformat(), "look_back_days": 30}, ttl=1800)
+    name = ctx.store.security(c)["name"]
+    n = int(data.get("appearance_count") or 0)
+    if not n:
+        return ToolResult(True, f"{name} 最近 30 天没有上过龙虎榜。", {"type": "dragon", "code": c, "name": name, "n": 0})
+    apps = data.get("appearances") or []
+    inst = (data.get("institutional_activity") or {}).get("net") or 0.0          # 万元
+    seats = [{"seat": s.get("seat"), "net": s.get("net")} for s in (data.get("buy_seats") or [])[:3] if s.get("seat")]
+    wan = lambda v: f"{'+' if v > 0 else ''}{v / 10000:.2f} 亿" if abs(v) >= 10000 else f"{'+' if v > 0 else ''}{v:.0f} 万"  # noqa: E731
+    text = (f"{name} 最近 30 天上了 {n} 次龙虎榜，最近一次是 {data.get('latest_date')}" + (f"（{apps[0].get('reason')}）" if apps and apps[0].get("reason") else "")
+            + f"。那天机构合计净买入 {wan(inst)}" + ("，买得最多的席位：" + "、".join(s["seat"] for s in seats) if seats else "") + "。")
+    return ToolResult(True, text, {"type": "dragon", "code": c, "name": name, "n": n, "latest": data.get("latest_date"),
+                                   "reason": apps[0].get("reason") if apps else None, "inst_net": inst * 10000, "seats": seats})
+
+
+@tool("hot_stocks", "查今天的人气股榜单：哪些股票最受关注，各自是因为什么题材。聊今天市场在炒什么、哪只是人气龙头的时候用。", {}, [])
+def hot_stocks(ctx: ToolContext) -> ToolResult:
+    client = _server("hot")
+    data = client.call("get_hot_stocks", {"curr_date": ""}, ttl=300)
+    stocks = [{"code": s.get("code"), "name": s.get("name"), "reason": s.get("reason")} for s in data.get("stocks") or [] if s.get("name")][:10]
+    if not stocks:
+        return ToolResult(False, "今天的人气股榜单还没有。")
+    themes = sorted((data.get("theme_frequency") or {}).items(), key=lambda kv: -kv[1])[:5] if isinstance(data.get("theme_frequency"), dict) else []
+    text = (f"今天（{data.get('curr_date')}）的人气股：" + "；".join(f"{s['name']}（{s['reason']}）" for s in stocks[:8]) + "。"
+            + (f"出现最多的题材：{'、'.join(k for k, _ in themes)}。" if themes else ""))
+    return ToolResult(True, text, {"type": "hot", "date": data.get("curr_date"), "stocks": stocks, "themes": [k for k, _ in themes]})
+
+
+@tool("profit_forecast", "查分析师对一家公司未来两三年每股收益的预测，以及按预测算的市盈率。聊成长性、业绩预期、明年值多少钱的时候用。", {"code": _CODE}, ["code"])
+def profit_forecast(ctx: ToolContext, code: str) -> ToolResult:
+    client = _server("fund")
+    c = resolve(ctx, code)
+    data = client.call("get_profit_forecast", {"ticker": _ticker(c)}, ttl=3600)
+    name = ctx.store.security(c)["name"]
+    years = [y for y in data.get("years") or [] if y.get("eps_mean_yuan") is not None][:3]
+    if not years:
+        return ToolResult(True, f"{name} 没有分析师给出盈利预测。", {"type": "forecast", "code": c, "name": name, "years": []})
+    few = min(int(y.get("analyst_count") or 0) for y in years)
+    fpe = data.get("forward_pe")
+    text = (f"{name} 的分析师预测：" + "，".join(f"{y['year']} 年每股收益 {y['eps_mean_yuan']:.2f} 元" for y in years)
+            + (f"。按 {years[0]['year']} 年的预测算，市盈率 {fpe:.1f} 倍" if fpe else "")
+            + f"。{'只有 ' + str(few) + ' 位分析师在看，参考价值有限。' if few < 3 else '至少有 ' + str(few) + ' 位分析师给了预测。'}")
+    return ToolResult(True, text, {"type": "forecast", "code": c, "name": name, "analysts": few, "forward_pe": fpe,
+                                   "years": [{"year": y["year"], "eps": y["eps_mean_yuan"], "n": y.get("analyst_count")} for y in years]})

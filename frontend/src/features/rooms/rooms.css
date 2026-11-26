@@ -196,3 +196,10 @@
 .data-val { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; align-items: center; font-size: 13px; color: var(--muted); }
 .data-val b { font-weight: 600; color: var(--ink); }
 .data-val small { grid-column: 1 / -1; font-size: 12px; }
+
+/* 新闻、人气股：一行标题 + 一行小字 */
+.data-news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.data-news li { display: flex; flex-direction: column; gap: 1px; font-size: 13px; line-height: 1.5; }
+.data-news a, .data-news span { color: var(--ink); text-decoration: none; }
+.data-news a:hover { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
+.data-news small { font-size: 12px; color: var(--muted); }

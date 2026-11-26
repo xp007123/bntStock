@@ -207,5 +207,79 @@ export default function DataCard({ card }: { card: RoomCard }) {
       </div>
     )
   }
+  if (c.type === 'news') {
+    const items = c.items as { title: string; source: string | null; date: string; url: string | null }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 最近十天的新闻</span>
+        {items.length === 0 ? <span className="data-foot">没有查到和它直接有关的新闻。</span> : (
+          <ul className="data-news">
+            {items.map(i => (
+              <li key={i.title}>
+                {i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.title}</a> : <span>{i.title}</span>}
+                <small>{i.date.slice(5)}{i.source ? ` · ${i.source}` : ''}</small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+  if (c.type === 'lockup') {
+    const up = c.upcoming as { date: string; kind: string }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 限售股解禁</span>
+        {up.length === 0 ? <div className="data-row"><span>未来 90 天 <b>没有解禁</b></span></div>
+          : <div className="data-row">{up.map(u => <span key={u.date}><b className="num">{u.date}</b> {u.kind}</span>)}</div>}
+        {c.last && <span className="data-foot">最近一次：{c.last.date}（{c.last.kind}）</span>}
+      </div>
+    )
+  }
+  if (c.type === 'dragon') {
+    const seats = (c.seats ?? []) as { seat: string }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 龙虎榜</span>
+        {c.n === 0 ? <span className="data-foot">最近 30 天没有上过龙虎榜。</span> : (
+          <>
+            <div className="data-row">
+              <span>最近 30 天上榜 <b className="num">{c.n}</b> 次</span>
+              <span>最近一次 <b className="num">{c.latest}</b></span>
+              {c.inst_net != null && <span>机构净买入 <em className={`num ${trendClass(c.inst_net)}`}>{c.inst_net > 0 ? '+' : ''}{(c.inst_net / 1e8).toFixed(2)} 亿</em></span>}
+            </div>
+            {c.reason && <span className="data-foot">上榜原因：{c.reason}</span>}
+            {seats.length > 0 && <span className="data-foot">买得最多的席位：{seats.map(s => s.seat).join('、')}</span>}
+          </>
+        )}
+      </div>
+    )
+  }
+  if (c.type === 'hot') {
+    const stocks = c.stocks as { code: string; name: string; reason: string }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">今天的人气股 · {c.date}</span>
+        <ul className="data-news">
+          {stocks.slice(0, 6).map(s => <li key={s.code}><span><b>{s.name}</b></span><small>{s.reason}</small></li>)}
+        </ul>
+        {c.themes?.length > 0 && <span className="data-foot">出现最多的题材：{(c.themes as string[]).join('、')}</span>}
+      </div>
+    )
+  }
+  if (c.type === 'forecast') {
+    const years = c.years as { year: string; eps: number }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 分析师的盈利预测</span>
+        {years.length === 0 ? <span className="data-foot">没有分析师给出预测。</span> : (
+          <>
+            <div className="data-row">{years.map(y => <span key={y.year}>{y.year} 每股收益 <b className="num">{y.eps.toFixed(2)}</b></span>)}</div>
+            <span className="data-foot">{c.forward_pe != null && <>按 {years[0].year} 年预测算，市盈率 {c.forward_pe.toFixed(1)} 倍 · </>}{c.analysts < 3 ? `只有 ${c.analysts} 位分析师在看，参考价值有限` : `至少 ${c.analysts} 位分析师给了预测`}</span>
+          </>
+        )}
+      </div>
+    )
+  }
   return null
 }

@@ -401,7 +401,7 @@ export type PersonaList = { available: boolean; host: Persona; items: Persona[];
 export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaList>('/personas'), staleTime: 60_000 })
 
 /** 数据卡：角色查了数据时挂在消息下面，内容由后端按引擎结果给，不是模型写的 */
-export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' | 'minutes' | 'limitup' | 'sector' | 'live' | 'concepts' | 'flow' | 'boards' | 'valuation' } & Record<string, any>
+export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' | 'minutes' | 'limitup' | 'sector' | 'live' | 'concepts' | 'flow' | 'boards' | 'valuation' | 'news' | 'lockup' | 'dragon' | 'hot' | 'forecast' } & Record<string, any>
 /** 纪要卡：每个人的 quote 是他在群里的原话，data 是当时查到的原文；since 是纪要之后到现在的涨跌（还没有新行情时为空）。 */
 export type Minutes = {
   type: 'minutes'; code: string; name: string; asof?: string; close?: number
