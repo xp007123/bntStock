@@ -40,6 +40,12 @@ def list_personas(request: Request):
             "default": reg.default_members(), "disclaimer": DISCLAIMER}
 
 
+@router.get("/personas/{pid}/recent")
+def persona_recent(pid: str, request: Request, user: User = Depends(current_user)):
+    """这个角色最近在我的群里说过的话。"""
+    return {"items": _svc(request).store.said_by(user.id, pid)}
+
+
 class OpenBody(BaseModel):
     code: str = Field(min_length=1, max_length=20)
     members: list[str] | None = None

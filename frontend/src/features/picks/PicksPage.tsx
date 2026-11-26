@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowRight, CalendarDays, CandlestickChart, ChevronLeft, ChevronRight, MessagesSquare, Share2 } from 'lucide-react'
-import { ApiError, openRoom, type PickItem, usePersonas, usePickDay, usePickStrategies } from '../../api/client'
+import { type PickItem, usePersonas, usePickDay, usePickStrategies } from '../../api/client'
+import LineupPicker from '../rooms/LineupPicker'
 import SubNav, { PICK_TABS } from '../../components/SubNav'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
 import PickShareCard from './PickShareCard'
@@ -18,9 +19,7 @@ export default function PicksPage() {
   const day = usePickDay(STRATEGY, date)
   const strategies = usePickStrategies()
   const personas = usePersonas()
-  const navigate = useNavigate()
-  const [busy, setBusy] = useState('')
-  const [error, setError] = useState('')
+  const [chatting, setChatting] = useState<PickItem | null>(null)
   const [sharing, setSharing] = useState(false)
 
   const d = day.data
@@ -30,11 +29,6 @@ export default function PicksPage() {
   const go = (to: string | undefined) => to && setParams(to === d?.days[d.days.length - 1] ? {} : { date: to })
   // 选了一个没有名单的日子（周末、节假日）：跳到它之前最近的一份
   const pickDate = (v: string) => { if (d && v) go([...d.days].reverse().find(x => x <= v) ?? d.days[0]) }
-  const chat = async (it: PickItem) => {
-    setBusy(it.code); setError('')
-    try { navigate(`/rooms/${(await openRoom(it.code)).id}`) }
-    catch (e) { setError(e instanceof ApiError ? e.message : String(e)); setBusy('') }
-  }
   const sealed = d?.items.filter(i => i.sealed).length ?? 0
   const live = !!d && !d.settled && d.items.some(i => i.live)
   const sealedNow = d?.items.filter(i => i.live?.sealed).length ?? 0
@@ -89,7 +83,7 @@ export default function PicksPage() {
                       <td className={`num ${trendClass(it.settled ? it.day_pct : it.live?.change)}`}>{it.settled ? fmtPct(it.day_pct) : it.live ? fmtPct(it.live.change) : '—'}</td>
                       <td>{!it.settled ? (it.live ? (it.live.sealed ? <span className="tag pk-sealed">封板中</span> : it.live.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>) : <span className="muted">等收盘</span>) : it.sealed ? <span className="tag pk-sealed">封板</span> : it.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>}</td>
                       <td className="pk-acts">
-                        {personas.data?.available && <button className="btn" disabled={!!busy} onClick={() => chat(it)}><MessagesSquare size={14} />{busy === it.code ? '拉群中…' : '拉群聊聊'}</button>}
+                        {personas.data?.available && <button className="btn" onClick={() => setChatting(it)}><MessagesSquare size={14} />拉群聊聊</button>}
                         <Link className="btn" to={`/stocks/${it.code}`} title="看 K 线"><CandlestickChart size={14} /></Link>
                       </td>
                     </tr>
@@ -98,10 +92,10 @@ export default function PicksPage() {
               </table>
             </div>
           )}
-        {error && <p className="state error">{error}</p>}
       </section>
 
       <p className="muted pk-note">点股票名字可以问小四它接下来一个月的历史概率；想把看法存下来，在小四的回答页里封存。名单按平台的固定规则筛出，不是买卖建议。</p>
+      {chatting && <LineupPicker code={chatting.code} name={chatting.name} onClose={() => setChatting(null)} />}
       {sharing && <PickShareCard strategy={STRATEGY} date={d?.date} onClose={() => setSharing(false)} />}
     </div>
   )

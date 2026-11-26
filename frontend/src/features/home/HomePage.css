@@ -194,3 +194,35 @@
 .recent-list span { font-size: 12px; color: var(--muted); }
 .recent-clear { border: 0; background: none; font-size: 12px; color: var(--muted); padding: 2px 6px; }
 .recent-clear:hover { color: var(--ink); }
+
+/* ---- 提问面板（2026-11-26 重排）：上面一行一项，标签对齐成一列；下面一条浅色横栏放“你要问的这句话”和按钮 ---- */
+.ask-body { display: flex; flex-direction: column; align-items: stretch; gap: 16px; padding: 20px 14px 14px; }
+.ask-fields { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 0 8px; }
+.ask-field { display: flex; align-items: center; gap: 8px 14px; min-height: 42px; }
+.ask-label { flex: none; width: 64px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.ask-field .stock-search { flex: 1; width: auto; min-width: 0; max-width: 420px; height: 42px; background: var(--bg); border-color: var(--line-strong); font-size: 14px; }
+.ask-field .ask-hint { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink-2); max-width: none; }
+.ask-field .ask-select { flex-wrap: wrap; border-radius: 22px; }
+.ask-field .ask-select button { white-space: nowrap; }
+.ask-note { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.ask-note.bad { color: var(--up); }
+.ask-fee input { width: 56px; }
+.ask-first { margin: -2px 0 0 78px; font-size: 13px; }
+.ask-ready { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label go" "sent go" "sent link"; column-gap: 20px; row-gap: 2px; align-items: center; padding: 14px 16px 14px 20px; border-radius: 18px; background: var(--bg); }
+.ask-ready-label { grid-area: label; font-size: 12px; font-weight: 500; color: var(--muted); }
+.ask-ready .ask-sentence { grid-area: sent; align-self: start; display: block; margin: 0; font-size: 18px; font-weight: 600; line-height: 1.5; color: var(--ink); }
+.ask-ready .ask-sentence.empty { font-weight: 400; font-size: 15px; line-height: 1.9; color: var(--faint); }
+.ask-ready .ask-go { grid-area: go; min-width: 148px; justify-content: center; }
+.ask-ready .ask-compare-link { grid-area: link; justify-self: center; margin: 4px 0 0; padding: 0 2px; font-size: 13px; }
+@media (max-width: 760px) {
+  .ask-body { padding: 16px 8px 8px; gap: 12px; }
+  .ask-fields { padding: 0 4px; }
+  .ask-field { align-items: flex-start; flex-direction: column; gap: 6px; min-height: 0; }
+  .ask-label { width: auto; font-size: 13px; }
+  .ask-field .stock-search { width: 100%; max-width: none; flex: none; height: 46px; }
+  .ask-field .ask-select { width: 100%; }
+  .ask-first { margin-left: 0; }
+  .ask-ready { grid-template-columns: 1fr; grid-template-areas: "label" "sent" "go" "link"; row-gap: 8px; padding: 14px; }
+  .ask-ready .ask-sentence { font-size: 17px; }
+  .ask-ready .ask-go { width: 100%; }
+}

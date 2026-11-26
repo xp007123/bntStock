@@ -4,7 +4,23 @@ import type { Minutes, Persona } from '../../api/client'
 import { displayCode } from '../../lib/format'
 import { PALETTE as P } from '../../lib/palette'
 import { blankCard, DOWN_ON_NIGHT, font, fontsReady, footer, H, ON, ON_MUTED, ON_SOFT, PAD, roundRect, UP_ON_NIGHT, W, wrap } from '../../components/shareCanvas'
+import { faceUrl } from './faces'
 import '../../components/ShareCard.css'
+
+type Faces = Record<string, HTMLImageElement>
+
+/** 把要用到的卡通头像先加载成图片，画布上才能直接画。加载不出来的就退回“颜色圆 + 首字”。 */
+function loadFaces(card: Minutes, cast: Record<string, Persona>): Promise<Faces> {
+  const out: Faces = {}
+  return Promise.all(card.stances.map(s => new Promise<void>(done => {
+    const url = faceUrl(s.persona_id, cast[s.persona_id]?.color ?? '#7d6b62')
+    if (!url) return done()
+    const img = new Image()
+    img.onload = () => { out[s.persona_id] = img; done() }
+    img.onerror = () => done()
+    img.src = url
+  }))).then(() => out)
+}
 
 /** 立场标签：红涨绿跌，“再等等”是灰的 */
 function pill(c: CanvasRenderingContext2D, text: string, x: number, base: number) {
@@ -20,7 +36,7 @@ function pill(c: CanvasRenderingContext2D, text: string, x: number, base: number
  * 群聊纪要图：竖版 3:4。谁在聊哪只股票、每个人什么立场和他的一句原话、分歧在哪、一条查到的数据。
  * 引用的话和数据都是原文；角落写明角色是 AI 演绎的。
  */
-function draw(card: Minutes, cast: Record<string, Persona>, date: string): HTMLCanvasElement {
+function draw(card: Minutes, cast: Record<string, Persona>, date: string, faces: Faces): HTMLCanvasElement {
   const { canvas, c } = blankCard()
   c.fillStyle = ON_MUTED; c.font = font(500, 34); c.textAlign = 'right'; c.fillText(date, W - PAD, PAD + 44); c.textAlign = 'left'
 
@@ -43,10 +59,13 @@ function draw(card: Minutes, cast: Record<string, Persona>, date: string): HTMLC
   people.forEach((s, i) => {
     const top = y + i * step, inner = step - 14
     c.fillStyle = ON_SOFT; roundRect(c, PAD, top, W - PAD * 2, inner, 24); c.fill()
-    const r = 34, cx = PAD + 30 + r, cy = top + inner / 2
-    c.fillStyle = cast[s.persona_id]?.color ?? P.muted; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill()
-    c.fillStyle = '#ffffff'; c.font = font(600, 30); c.textAlign = 'center'; c.fillText(s.name.slice(0, 1), cx, cy + 11); c.textAlign = 'left'
-    const left = PAD + 30 + r * 2 + 22
+    const r = 38, cx = PAD + 30 + r, cy = top + inner / 2
+    if (faces[s.persona_id]) c.drawImage(faces[s.persona_id], cx - r, cy - r, r * 2, r * 2)
+    else {
+      c.fillStyle = cast[s.persona_id]?.color ?? P.muted; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill()
+      c.fillStyle = '#ffffff'; c.font = font(600, 30); c.textAlign = 'center'; c.fillText(s.name.slice(0, 1), cx, cy + 11); c.textAlign = 'left'
+    }
+    const left = PAD + 30 + r * 2 + 20
     const base = two ? top + 52 : top + inner / 2 - 8
     c.fillStyle = ON; c.font = font(600, 36); c.fillText(s.name, left, base)
     if (s.stance) pill(c, s.stance, left + c.measureText(s.name).width + 16, base)
@@ -72,7 +91,7 @@ export default function RoomShareCard({ card, cast, date, onClose }: { card: Min
   const [url, setUrl] = useState('')
   useEffect(() => {
     let alive = true
-    fontsReady().then(() => { if (alive) setUrl(draw(card, cast, date).toDataURL('image/png')) })
+    Promise.all([fontsReady(), loadFaces(card, cast)]).then(([, faces]) => { if (alive) setUrl(draw(card, cast, date, faces).toDataURL('image/png')) })
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', esc)
     return () => { alive = false; document.removeEventListener('keydown', esc) }

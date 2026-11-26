@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { useIndices, useJudgments, useMe, usePickStrategies } from '../../api/client'
+import { useIndices, useJudgments, useMe, usePersonas, usePickStrategies } from '../../api/client'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import Seal from '../../components/Seal'
 import { fmtPct, fmtPrice, trendClass } from '../../lib/format'
@@ -11,6 +11,8 @@ import AskPanel from './AskPanel'
 import SubNav, { ASK_TABS } from '../../components/SubNav'
 import WatchlistCard from './WatchlistCard'
 import StrategyCard from '../picks/StrategyCard'
+import Avatar from '../rooms/Avatar'
+import '../rooms/rooms.css'
 import { forget, useRecent } from '../../lib/recent'
 import '../patterns/patterns.css'
 import './HomePage.css'
@@ -47,6 +49,7 @@ export default function HomePage() {
             <div className="hero-pet"><HomeResearchPet size={168} followPointer status={nod ? 'complete' : 'idle'} /></div>
             <AskPanel onPick={picked} />
           </section>
+          <CastStrip />
           <StrategyBoard />
           <RecentCard />
         </div>
@@ -65,6 +68,25 @@ export default function HomePage() {
 
 const More = ({ to, children }: { to: string; children: React.ReactNode }) =>
   <Link to={to} className="more">{children}<ArrowRight size={14} /></Link>
+
+/** 群里的高手：一排头像，一眼知道平台上有谁、各看什么。点进去是他的主页。群聊没开通就不显示。 */
+function CastStrip() {
+  const data = usePersonas().data
+  if (!data?.available || data.items.length === 0) return null
+  return (
+    <section className="home-cast">
+      <div className="card-title"><span>群里的高手 <span className="muted">{data.items.length} 位，各看各的；问完小四可以拉他们聊</span></span><More to="/personas">认识他们</More></div>
+      <div className="cast-row">
+        {data.items.map(p => (
+          <Link key={p.id} to={`/personas/${p.id}`} className="cast-one">
+            <Avatar persona={p} size={64} />
+            <b>{p.name}</b><small>{p.lens}</small>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 /** 策略看板：每个选股策略一张卡，今天出了没有、最近一份名单怎么样。没有策略或读不出来就不占地方。 */
 function StrategyBoard() {

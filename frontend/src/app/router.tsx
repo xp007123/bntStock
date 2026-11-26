@@ -15,6 +15,7 @@ import WatchPage from '../features/watch/WatchPage'
 import RoomPage from '../features/rooms/RoomPage'
 import RoomsPage from '../features/rooms/RoomsPage'
 import PersonasPage from '../features/rooms/PersonasPage'
+import PersonaPage from '../features/rooms/PersonaPage'
 import PersonaAdminPage from '../features/admin/PersonaAdminPage'
 import PickBoardPage from '../features/picks/PickBoardPage'
 import PicksPage from '../features/picks/PicksPage'
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'rooms', element: <RoomsPage /> },
       { path: 'rooms/:id', element: <RoomPage /> },
       { path: 'personas', element: <PersonasPage /> },
+      { path: 'personas/:id', element: <PersonaPage /> },
       { path: 'admin', element: <RequireAuth admin><AdminPage /></RequireAuth> },
       { path: 'admin/personas', element: <RequireAuth admin><PersonaAdminPage /></RequireAuth> },
       { path: '*', element: <Navigate to="/" replace /> },

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ApiError, openRoom, type Persona, usePersonas } from '../../api/client'
 import StockSearch from '../../components/StockSearch'
 import SubNav, { ASK_TABS } from '../../components/SubNav'
@@ -43,11 +43,11 @@ function Card({ p, available }: { p: Persona; available: boolean }) {
   }
   return (
     <article className="persona-card card" style={{ '--who': p.color } as React.CSSProperties}>
-      <header>
-        <Avatar persona={p} size={56} />
+      <Link to={`/personas/${p.id}`} className="persona-head" title={`看${p.name}的主页`}>
+        <Avatar persona={p} size={64} />
         <div><h2>{p.name}</h2><span className="muted">{p.title}</span></div>
         <span className="tag night">{p.lens}</span>
-      </header>
+      </Link>
       <p className="persona-tagline">“{p.tagline}”</p>
       <div className="persona-cols">
         <div><h3>他信什么</h3><ul>{p.beliefs.slice(0, 4).map(b => <li key={b}>{b}</li>)}</ul></div>
@@ -61,7 +61,7 @@ function Card({ p, available }: { p: Persona; available: boolean }) {
               <StockSearch onPick={go} placeholder={`和${p.name}聊哪只股票？输入代码或名称`} />
               <button className="btn" disabled={busy} onClick={() => setPicking(false)}>{busy ? '正在拉群…' : '算了'}</button>
             </div>
-          ) : <button className="btn dark" onClick={() => setPicking(true)}>拉 {p.name} 聊聊</button>}
+          ) : <div className="persona-acts"><button className="btn dark" onClick={() => setPicking(true)}>拉 {p.name} 聊聊</button><Link className="btn" to={`/personas/${p.id}`}>看他的主页</Link></div>}
           {error && <p className="invite-error">{error}</p>}
         </footer>
       )}

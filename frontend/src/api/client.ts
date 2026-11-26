@@ -429,6 +429,9 @@ export type RoomEvent =
   | { type: 'scene_end'; status: string; limit?: boolean }
   | { type: 'members'; members: string[] }
 
+export const usePersonaRecent = (id: string) =>
+  useQuery({ queryKey: ['personas', id, 'recent'], enabled: !!id, staleTime: 30_000,
+             queryFn: () => get<{ items: { room_id: number; seq: number; text: string; title: string; created_at: string }[] }>(`/personas/${id}/recent`) })
 export const openRoom = (code: string, members?: string[]) => post<{ id: number }>('/rooms', { code, members })
 export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => get<{ items: RoomListItem[] }>('/rooms'), staleTime: 0 })
 export const getRoom = (id: number | string) => get<RoomDetail>(`/rooms/${id}`)

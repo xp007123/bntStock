@@ -343,3 +343,17 @@ def test_limit_up_and_sector_tools(ctx):
     assert {"lynch", "livermore", "templeton"} <= set(cast)
     for pid in ("lynch", "livermore", "templeton"):
         assert all(t in tools.REGISTRY for t in cast[pid].tools) and all(x in cast for x in cast[pid].rivals) and cast[pid].public()["lines"]
+
+
+def test_persona_recent_lines(client: TestClient):
+    """角色个人页：他最近在我的群里说过的话；别人的群不算。"""
+    rid = client.post("/api/rooms", json={"code": "sh600519", "members": ["yangjia", "lynch"]}).json()["id"]
+    room = wait_idle(client, rid)
+    assert room["members"] == ["yangjia", "lynch"]
+    said = client.get("/api/personas/lynch/recent").json()["items"]
+    assert said and all(m["room_id"] == rid and m["title"] == "贵州茅台" and m["text"] for m in said)
+    assert client.get("/api/personas/buffett/recent").json()["items"] == []
+    client.app.state.auth.register("路人戊", "13711116666", "abcdef", "abcdef", status="active")
+    other = TestClient(client.app)
+    other.post("/api/auth/login", json={"account": "路人戊", "password": "abcdef"})
+    assert other.get("/api/personas/lynch/recent").json()["items"] == []

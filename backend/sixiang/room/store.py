@@ -96,6 +96,15 @@ class RoomStore:
         with self.engine.begin() as conn:
             conn.execute(update(rooms).where(rooms.c.id == rid).values(**fields))
 
+    def said_by(self, user_id: int, persona_id: str, limit: int = 8) -> list[dict]:
+        """这个角色最近在这位用户的群里说过的话（新的在前）。给角色个人页用。"""
+        q = (select(room_messages.c.room_id, room_messages.c.seq, room_messages.c.text, room_messages.c.created_at, rooms.c.title)
+             .select_from(room_messages.join(rooms, rooms.c.id == room_messages.c.room_id))
+             .where(rooms.c.user_id == user_id, room_messages.c.persona_id == persona_id, room_messages.c.role == "guest")
+             .order_by(room_messages.c.id.desc()).limit(limit))
+        with self.engine.connect() as conn:
+            return [{"room_id": r.room_id, "seq": r.seq, "text": r.text, "title": r.title, "created_at": r.created_at.isoformat()} for r in conn.execute(q)]
+
     def spoken_today(self, user_id: int) -> int:
         """这个用户今天（UTC 日）群里的角色一共说了多少条。额度按这个数。"""
         start = _now().replace(hour=0, minute=0, second=0, microsecond=0)
