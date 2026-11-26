@@ -27,7 +27,7 @@ export default function WatchlistCard({ page = false }: { page?: boolean }) {
   return (
     <section className={`card home-card watch ${page ? 'watch-full' : ''}`}>
       <div className="card-title">
-        <span>我的自选 <span className="muted">{q.data && items.length ? `小四今天怎么看 · ${q.data.data_end} 收盘` : ''}</span></span>
+        <span>我的自选 <span className="muted">{q.data && items.length ? '小四今天怎么看' : ''}</span></span>
         <span className="watch-tools">
           {!adding && <button className="more" onClick={() => setAdding(true)}><Plus size={14} />加一只</button>}
           {!page && <Link to="/watch" className="more">全部<ArrowRight size={14} /></Link>}

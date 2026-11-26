@@ -62,7 +62,7 @@ def list_rooms(request: Request, user: User = Depends(current_user)):
 def get_room(rid: int, request: Request, user: User = Depends(current_user)):
     svc = _svc(request)
     row = _own(request, rid, user)
-    return svc.store.info(row) | {"messages": svc.store.messages(rid), "playing": svc.is_playing(rid)}
+    return svc.store.info(row) | {"messages": svc.with_since(svc.store.messages(rid)), "playing": svc.is_playing(rid)}
 
 
 class SayBody(BaseModel):
@@ -85,6 +85,18 @@ async def more(rid: int, request: Request, user: User = Depends(current_user)):
     svc = _svc(request)
     if not svc.is_playing(rid):
         svc.more(rid, user)
+    return {"ok": True}
+
+
+@router.post("/rooms/{rid}/minutes")
+async def minutes(rid: int, request: Request, user: User = Depends(current_user)):
+    """让小四出一份纪要。结果是群里的一条消息，和别的消息一样从流里来。"""
+    _own(request, rid, user)
+    svc = _svc(request)
+    if not svc.available:
+        raise HTTPException(422, "群聊还没开通")
+    if not svc.is_playing(rid):
+        svc.minutes(rid, user)
     return {"ok": True}
 
 

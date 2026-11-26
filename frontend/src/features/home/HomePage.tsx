@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { useDataVersion, useIndices, useJobs, useJudgments, useMe } from '../../api/client'
+import { useIndices, useJobs, useJudgments, useMe, usePickStrategies } from '../../api/client'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import Seal from '../../components/Seal'
 import { fmtPct, fmtPrice, trendClass } from '../../lib/format'
@@ -12,6 +12,7 @@ import AskPanel from './AskPanel'
 import SubNav, { ASK_TABS } from '../../components/SubNav'
 import WatchlistCard from './WatchlistCard'
 import SignalsCard from '../watch/SignalsCard'
+import StrategyCard from '../picks/StrategyCard'
 import { forget, useRecent } from '../../lib/recent'
 import '../patterns/patterns.css'
 import './HomePage.css'
@@ -21,7 +22,7 @@ const greeting = () => {
   return h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
 }
 
-/** 首页：左边墨黑主卡里向小四提问；右边是交给小四保管的判断、大盘和数据口径。全部来自接口。 */
+/** 首页：左边墨黑主卡里向小四提问，下面是各个选股策略今天的情况；右边是交给小四保管的判断和大盘。全部来自接口。 */
 export default function HomePage() {
   const me = useMe()
   // 选好股票时小四点一下头
@@ -46,6 +47,7 @@ export default function HomePage() {
             <div className="hero-pet"><HomeResearchPet size={168} followPointer status={nod ? 'complete' : 'idle'} /></div>
             <AskPanel onPick={picked} />
           </section>
+          <StrategyBoard />
           <RecentCard />
           <JobsCard />
         </div>
@@ -55,7 +57,6 @@ export default function HomePage() {
           <WatchlistCard />
           <JudgmentsCard />
           <IndicesCard />
-          <DataCard />
         </aside>
       </div>
 
@@ -66,6 +67,18 @@ export default function HomePage() {
 
 const More = ({ to, children }: { to: string; children: React.ReactNode }) =>
   <Link to={to} className="more">{children}<ArrowRight size={14} /></Link>
+
+/** 策略看板：每个选股策略一张卡，今天出了没有、最近一份名单怎么样。没有策略或读不出来就不占地方。 */
+function StrategyBoard() {
+  const items = usePickStrategies().data?.items ?? []
+  if (!items.length) return null
+  return (
+    <section className="home-picks">
+      <div className="card-title"><span>选股策略 <span className="muted">每个交易日各出一份名单</span></span><More to="/picks">全部策略</More></div>
+      <div className="sc-grid">{items.map(s => <StrategyCard key={s.id} s={s} />)}</div>
+    </section>
+  )
+}
 
 /** 我的判断：封存中的按“谁先揭晓”排，不用盯盘，只告诉你还要等多久。 */
 function JudgmentsCard() {
@@ -122,7 +135,7 @@ function IndicesCard() {
   const items = (q.data ?? []).slice(0, 5)
   return (
     <section className="card home-card">
-      <div className="card-title"><span>大盘 <span className="muted">{items[0]?.date ?? ''} 收盘</span></span><More to="/market">看指数</More></div>
+      <div className="card-title"><span>大盘</span><More to="/market">看指数</More></div>
       {q.isError ? <p className="muted">指数读取失败</p> : !q.data ? <p className="muted">读取中…</p> : (
         <ul className="index-list">
           {items.map(i => (
@@ -165,18 +178,3 @@ function JobsCard() {
   )
 }
 
-/** 数字有出处：小四的所有数字都从这份数据里算出来。 */
-function DataCard() {
-  const { data, isError } = useDataVersion()
-  return (
-    <section className="home-data">
-      <span className="eyebrow">小四用的数据</span>
-      {isError ? <b>数据未就绪</b> : !data ? <b>读取中…</b> : (
-        <>
-          <b className="num">日线截至 {data.data_end}</b>
-          <p title={data.adjustment}>版本 {data.id}。每个交易日收盘后更新，小四的所有数字都从这份数据里算出来。</p>
-        </>
-      )}
-    </section>
-  )
-}

@@ -18,7 +18,7 @@ export default function SignalsCard({ compact = false }: { compact?: boolean }) 
   return (
     <section className={`card signals ${compact ? 'compact' : ''}`}>
       <div className="card-title">
-        <span>今天你的自选里 <span className="muted">{d?.data_end ? `${d.data_end} 收盘` : ''}</span></span>
+        <span>今天你的自选里</span>
         {compact ? <Link to="/watch" className="more">全部<ArrowRight size={14} /></Link>
           : d && <span className="muted">对照方法库里的 {d.methods_total} 个方法</span>}
       </div>

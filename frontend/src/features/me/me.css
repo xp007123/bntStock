@@ -1,0 +1,57 @@
+/* “我的”。规范见 docs/视觉规范-V3.md 6.20 */
+.me { display: flex; flex-direction: column; gap: 20px; max-width: 1080px; }
+.me .subnav { margin-bottom: 0; }
+
+/* 墨黑名片：我是谁 + 我攒下的四个数 */
+.me-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px 24px; align-items: center;
+  padding: 32px 36px 28px; border-radius: var(--r-xl); background: var(--ember), var(--night); color: var(--on-night); box-shadow: var(--lift); }
+.me-who { display: flex; align-items: center; gap: 20px; min-width: 0; }
+.me-face { width: 76px; height: 76px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent);
+  font: 600 32px/1 var(--display); box-shadow: 0 0 0 5px #fb5e0d33, var(--glow); }
+.me-who h1 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 32px; line-height: 1.25; letter-spacing: -.01em; color: var(--on-night); }
+.me-who p { margin: 4px 0 0; font-size: 14px; color: var(--on-night-muted); }
+.me-badge { font: 500 12px/1.5 var(--font); padding: 2px 10px; border-radius: var(--r-pill); background: var(--on-night-line); color: var(--on-night); }
+.me-pet { margin-right: 8px; filter: drop-shadow(0 14px 24px #fb5e0d59); }
+.me-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.me-stats a, .me-stats a:hover { text-decoration: none; }
+.me-stats a { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-radius: var(--r-lg); background: #fff8f212; border: 1px solid var(--on-night-line);
+  color: var(--on-night); transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.me-stats a:hover { background: #fff8f21f; transform: translateY(-2px); }
+.me-stats b { font: 600 36px/1.15 var(--display); }
+.me-stats span { font-size: 13px; color: var(--on-night-muted); }
+
+.me-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+/* 快要揭晓的判断 */
+.me-next { padding: 20px 22px 14px; }
+.me-next ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.me-next li a { display: flex; flex-direction: column; gap: 7px; padding: 12px 8px; margin: 0 -8px; border-radius: var(--r); text-decoration: none; transition: background var(--t-fast) var(--ease); }
+.me-next li a:hover { background: var(--bg); }
+.me-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.me-line b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.me-line span, .me-next small { font-size: 12px; color: var(--muted); }
+.me-empty { font-size: 13px; line-height: 1.8; padding: 4px 0 10px; }
+
+/* 入口：一行一个 */
+.me-menu { padding: 8px; display: flex; flex-direction: column; }
+.me-menu a, .me-menu a:hover { text-decoration: none; }
+.me-menu a { display: flex; align-items: center; gap: 14px; padding: 13px 14px; border-radius: var(--r); color: var(--faint); transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.me-menu a:hover { background: var(--bg); color: var(--accent-ink); }
+.me-menu i { width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--accent-softer); color: var(--accent-ink); }
+.me-menu span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.me-menu b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.me-menu small { font-size: 12.5px; color: var(--muted); }
+
+.me-out { align-self: center; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 8px 14px; border-radius: var(--r-pill); font-size: 13px; color: var(--muted); }
+.me-out:hover { background: var(--bg-deep); color: var(--ink); }
+
+@media (max-width: 900px) { .me-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+  .me { gap: 14px; }
+  .me-hero { grid-template-columns: 1fr; padding: 22px 18px 18px; border-radius: 24px; gap: 20px; }
+  .me-pet { display: none; }
+  .me-face { width: 60px; height: 60px; font-size: 26px; }
+  .me-who h1 { font-size: 24px; }
+  .me-stats { grid-template-columns: repeat(2, 1fr); }
+  .me-stats b { font-size: 28px; }
+}

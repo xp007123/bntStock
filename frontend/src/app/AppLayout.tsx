@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { CandlestickChart, LogOut, type LucideIcon, MessageCircle, Shield, UserRound, Zap } from 'lucide-react'
-import { logout, useDataVersion, useJudgments, useMe } from '../api/client'
+import { logout, useJudgments, useMe } from '../api/client'
 import StockSearch from '../components/StockSearch'
 import HomeResearchPet from '../components/xiaosi/HomeResearchPet'
 import './AppLayout.css'
@@ -17,14 +17,6 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/me', label: '我的', icon: UserRound, match: p => p.startsWith('/me') || p.startsWith('/judgments') },
   ] },
 ]
-
-/** 小四手里的数据截至哪天：数字有出处，放在导航底部随时能看到。 */
-function DataNote() {
-  const { data, isError } = useDataVersion()
-  if (isError) return <span className="data-note warn"><i />数据未就绪</span>
-  if (!data) return <span className="data-note"><i />读取数据版本…</span>
-  return <span className="data-note" title={`数据版本 ${data.id}\n${data.adjustment}`}><i className="ok" />日线截至 {data.data_end}</span>
-}
 
 function UserMenu() {
   const me = useMe()
@@ -100,7 +92,7 @@ export default function AppLayout() {
 
         <div className="side-pet">
           <HomeResearchPet size={44} />
-          <div><b>小四</b><DataNote /></div>
+          <div><b>小四</b><span className="data-note">有想法，随时问我</span></div>
         </div>
       </aside>
 

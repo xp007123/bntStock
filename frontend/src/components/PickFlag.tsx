@@ -8,7 +8,7 @@ export default function PickFlag({ code }: { code: string }) {
   const pick = useStockPick(code).data?.pick
   if (!pick) return null
   return (
-    <Link to={`/picks?date=${pick.date}`} className="pick-flag" title="看这一天的整份名单">
+    <Link to={`/picks/${pick.strategy}?date=${pick.date}`} className="pick-flag" title="看这一天的整份名单">
       <Zap size={13} />{pick.date} 进了{pick.name}名单，第 {pick.rank} 名
     </Link>
   )

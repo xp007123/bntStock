@@ -150,3 +150,30 @@
   .rooms-list a { padding: 12px 14px; gap: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .bubble.dots i, .room-playing i { animation: none; } }
+
+/* ---- 纪要卡：小四记下每个人的立场。规范见 docs/视觉规范-V3.md 6.19 ---- */
+.minutes { width: min(520px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
+.minutes-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.minutes-head b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.minutes-share { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 5px 12px; border-radius: var(--r-pill); background: var(--ink); color: var(--on-night); font-size: 12.5px; font-weight: 500; }
+.minutes-share:hover { background: var(--night-2); }
+.minutes ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.minutes li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.minutes-who { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.minutes-who i { font-style: normal; font-size: 12px; font-weight: 500; padding: 1px 9px; border-radius: var(--r-pill); background: var(--bg-deep); color: var(--muted); }
+.minutes-who i.up { background: var(--up-soft); color: var(--up); }
+.minutes-who i.down { background: var(--down-soft); color: var(--down); }
+.minutes-who em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--accent-ink); }
+.minutes li p { margin: 2px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+.minutes-stand, .minutes-stood { align-self: center; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-pill); padding: 4px 12px; font-size: 12.5px; color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.minutes-stand:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-softer); }
+.minutes-stand:disabled { opacity: .45; }
+.minutes-stood { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-softer); }
+.minutes-split { margin: 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 500; line-height: 1.6; color: var(--ink); }
+.minutes-split b { margin-right: 8px; font-size: 12px; font-weight: 600; color: var(--accent-ink); }
+.minutes-data, .minutes-since, .minutes-note { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--muted); }
+.minutes-since em { font-style: normal; font-weight: 600; }
+.minutes-note.error { color: var(--up); }
+.room-ats .room-minutes { margin-left: auto; }
+.room-ats .room-minutes + .room-more { margin-left: 0; }
+@media (max-width: 760px) { .room-ats .room-minutes { order: -1; margin-left: 0; } .minutes { padding: 14px; } }

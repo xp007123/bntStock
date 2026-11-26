@@ -1,5 +1,7 @@
+import { useParams } from 'react-router-dom'
 import { type PickBlock, usePickStats } from '../../api/client'
 import SubNav, { PICK_TABS } from '../../components/SubNav'
+import StrategyHead from './StrategyHead'
 import './picks.css'
 
 const pct1 = (v: number | null | undefined) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`)
@@ -45,7 +47,8 @@ function Rows({ items }: { items: (PickBlock & { label: string })[] }) {
 
 /** 历史表现：把名单过去每一天的结果摊开，好的坏的都放上来。 */
 export default function PickRecordPage() {
-  const q = usePickStats('sjm')
+  const { strategy = '' } = useParams()
+  const q = usePickStats(strategy)
   const s = q.data
   const base = s?.baseline
   const top = s?.range ? s.by_rank.find(b => b.label === '第 1 名') : undefined
@@ -55,12 +58,8 @@ export default function PickRecordPage() {
   return (
     <div className="picks">
       <SubNav items={PICK_TABS} />
-      <header className="page-head fade-in">
-        <h1>竞价先锋的历史表现</h1>
-        <p className="muted">
-          {s?.range ? `${s.range.start} 到 ${s.range.end}，${s.range.days} 个交易日，每天 10 只，一共 ${s.range.n} 只。` : ''}
-        </p>
-      </header>
+      <StrategyHead id={strategy} s={s?.strategy} />
+      {s?.range && <p className="muted pk-range">{s.range.start} 到 {s.range.end}，{s.range.days} 个交易日，一共 {s.range.n} 只。</p>}
 
       {q.isLoading ? <div className="state">正在算…第一次打开要等几秒</div>
         : q.isError || !s?.range ? <div className="state">还没有可以统计的名单。</div> : (
@@ -78,8 +77,8 @@ export default function PickRecordPage() {
             <section className="card pk-compare fade-in">
               <h2 className="card-title">和全市场比</h2>
               <div className="pk-vs-grid">
-                <Versus title="当天封住涨停的比例" note="全市场不含 ST、科创板、北交所，和名单的选股范围一致。"
-                        rows={[{ label: '竞价先锋', value: s.overall.sealed_rate, main: true }, { label: '全市场', value: base?.market?.sealed_rate }]} />
+                <Versus title="当天封住涨停的比例" note="全市场不含 ST、科创板、北交所。"
+                        rows={[{ label: s.strategy.name, value: s.overall.sealed_rate, main: true }, { label: '全市场', value: base?.market?.sealed_rate }]} />
               </div>
             </section>
 
@@ -101,8 +100,7 @@ export default function PickRecordPage() {
             </section>
 
             <p className="muted pk-note">
-              说明：历史名单是现在回头用同一句选股条件查出来的。其中“总市值、流通市值、是不是次新股”这几项，查询时用的可能是现在的数值而不是当时的，早期的名单和当时实际看到的会有少量出入。
-              “封板”指收盘价等于涨停价，“摸过涨停”指最高价到过涨停价，“当天收盘是涨的”指收盘价高于前一天收盘价。
+              说明：“封板”指收盘价等于涨停价，“摸过涨停”指最高价到过涨停价，“当天收盘是涨的”指收盘价高于前一天收盘价。
             </p>
           </>
         )}

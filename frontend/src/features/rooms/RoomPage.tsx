@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowUp, CandlestickChart, Plus, X } from 'lucide-react'
-import { ApiError, continueRoom, getRoom, type Persona, type RoomDetail, type RoomEvent, type RoomMessage, sayInRoom, setRoomMembers, usePersonas } from '../../api/client'
+import { ApiError, askMinutes, continueRoom, getRoom, type Minutes, type Persona, type RoomDetail, type RoomEvent, type RoomMessage, sayInRoom, setRoomMembers, usePersonas } from '../../api/client'
 import Avatar from './Avatar'
 import DataCard from './DataCard'
+import MinutesCard from './MinutesCard'
+import RoomShareCard from './RoomShareCard'
 import './rooms.css'
 
 type Typing = { persona: string; name: string; text: string }
@@ -28,6 +30,7 @@ export default function RoomPage() {
   const [text, setText] = useState('')
   const [adding, setAdding] = useState(false)
   const [notice, setNotice] = useState('')
+  const [sharing, setSharing] = useState<{ card: Minutes; date: string } | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
 
@@ -87,6 +90,7 @@ export default function RoomPage() {
     setText(''); setNotice('')
     try { await sayInRoom(id, t) } catch (e) { setNotice(e instanceof ApiError ? e.message : '没发出去，再试一次'); setText(t) }
   }
+  const minutes = async () => { setNotice(''); setPlaying(true); try { await askMinutes(id) } catch (e) { setPlaying(false); setNotice(e instanceof ApiError ? e.message : '纪要没出成，再试一次') } }
   const more = async () => { setNotice(''); setPlaying(true); try { await continueRoom(id) } catch { setPlaying(false) } }
   const change = async (c: { add?: string; remove?: string }) => {
     setNotice(''); setAdding(false)
@@ -96,6 +100,8 @@ export default function RoomPage() {
   const others = (personas.data?.items ?? []).filter(p => !members.includes(p.id))
   const bySeq = (seq: number | null) => (seq ? messages.find(m => m.seq === seq) : undefined)
   const quiet = !playing && messages.length === 0
+  const talked = messages.some(m => m.role === 'guest')
+  const day = (m: RoomMessage) => (m.created_at ? new Date(m.created_at + 'Z') : new Date()).toLocaleDateString('sv-SE')
 
   return (
     <div className="room">
@@ -138,7 +144,9 @@ export default function RoomPage() {
                   <button className="msg-at" onClick={() => mention(m.name)} title={`问${m.name}`}>@</button>}</span>}
                 {quoted && quoted.name !== m.name && <span className="msg-quote">回 {quoted.name}：{quoted.text.replace(/\n/g, ' ').slice(0, 26)}{quoted.text.length > 26 ? '…' : ''}</span>}
                 {m.text.split('\n').map((line, i) => <p key={i} className="bubble">{line}</p>)}
-                {m.cards.map((c, i) => <DataCard key={i} card={c} />)}
+                {m.cards.map((c, i) => c.type === 'minutes'
+                  ? <MinutesCard key={i} card={c as Minutes} cast={cast} onShare={() => setSharing({ card: c as Minutes, date: day(m) })} />
+                  : <DataCard key={i} card={c} />)}
               </div>
             </div>
           )
@@ -163,6 +171,7 @@ export default function RoomPage() {
             <div className="room-ats">
               <span className="muted">问</span>
               {members.map(pid => cast[pid] && <button key={pid} onClick={() => mention(cast[pid].name)}>@{cast[pid].name}</button>)}
+              {!playing && talked && <button className="room-minutes" onClick={minutes} title="让小四把每个人的看法记成一张卡，可以分享">出一份纪要</button>}
               {!playing && <button className="room-more" onClick={more}>{messages.some(m => m.role === 'guest') ? '让他们接着聊' : '让他们聊起来'}</button>}
               {playing && <span className="room-playing"><i />正在聊</span>}
             </div>
@@ -175,6 +184,7 @@ export default function RoomPage() {
           </>
         )}
       </footer>
+      {sharing && <RoomShareCard card={sharing.card} cast={cast} date={sharing.date} onClose={() => setSharing(null)} />}
     </div>
   )
 }

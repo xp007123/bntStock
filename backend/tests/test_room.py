@@ -284,3 +284,46 @@ def test_persona_admin(client: TestClient):
     # 试说一句：用草稿，不保存
     tried = client.post("/api/admin/personas/try", json={"content": new, "code": "茅台"}).json()
     assert tried["ok"] and tried["text"] == "我的看法是这样。" and tried["stock"] == "贵州茅台"
+
+
+def test_minutes_quotes_real_lines(ctx):
+    """纪要：每个人的那句话是他真说过的原话，数据是查到的原文；模型只挑哪一条、判断立场。"""
+    from sixiang.room import minutes
+    room, cast, _ = make_room()
+    a, b = room.members[0], room.members[1]
+    room.add("guest", cast[a].name, "这生意我看得懂。\n价格不便宜。", persona_id=a, data=["贵州茅台最近 20 天涨了 3.2%。"])
+    room.add("user", "老王", "那到底怎么看")
+    room.add("guest", cast[b].name, "情绪已经到头了。", persona_id=b)
+    reply = ('好的：{"stances":[{"name":"%s","stance":"看多","quote":1},{"name":"%s","stance":"乱写","quote":1}],'
+             '"split":"一个看生意，一个看情绪。","data":1}' % (cast[a].name, cast[b].name))
+    card = minutes.build(room, cast, reply, {"asof": "2026-04-17", "close": 20.0})
+    assert [(s["persona_id"], s["stance"], s["quote"], s["seq"]) for s in card["stances"]] == [
+        (a, "看多", "这生意我看得懂。", 1), (b, None, "情绪已经到头了。", 3)]       # 立场不在三选一里就不标；引用别人的话不算数
+    assert card["split"] == "一个看生意，一个看情绪。" and card["data"] == "贵州茅台最近 20 天涨了 3.2%。" and card["asof"] == "2026-04-17"
+    # 模型答非所问、分歧那句带了数字：卡照样出，那些地方留空
+    card = minutes.build(room, cast, '{"split":"一个说涨 30%，一个不信"}')
+    assert [s["quote"] for s in card["stances"]] == ["价格不便宜。", "情绪已经到头了。"] and card["split"] is None
+    assert minutes.build(room, cast, "模型罢工了")["stances"][0]["stance"] is None
+    empty, cast2, _ = make_room()
+    assert minutes.build(empty, cast2, "{}") is None and minutes.prompt(empty, cast2) is None
+    assert "[1] " in minutes.prompt(room, cast)[1]["content"] and "(1) 贵州茅台最近" in minutes.prompt(room, cast)[1]["content"]
+
+    # 回访：纪要那天到最新一根日线
+    bars = ctx.store.daily("sh600519", adjust="none")["bars"]
+    then = {"code": "sh600519", "asof": bars[-4]["date"], "close": bars[-4]["close"]}
+    got = minutes.since(ctx.store, then)
+    assert got["days"] == 3 and got["date"] == bars[-1]["date"] and got["ret"] == pytest.approx(bars[-1]["close"] / bars[-4]["close"] - 1, abs=1e-3)
+    assert minutes.since(ctx.store, {"code": "sh600519", "asof": bars[-1]["date"]}) is None and minutes.since(ctx.store, {}) is None
+    assert minutes.anchor(ctx.store, "sh600519") == {"asof": bars[-1]["date"], "close": bars[-1]["close"]}
+
+
+def test_minutes_api(client: TestClient):
+    rid = client.post("/api/rooms", json={"code": "sh600519"}).json()["id"]
+    before = len(wait_idle(client, rid)["messages"])
+    assert client.post(f"/api/rooms/{rid}/minutes").json() == {"ok": True}
+    msgs = wait_idle(client, rid)["messages"]
+    last = msgs[-1]
+    assert len(msgs) == before + 1 and last["role"] == "host" and last["action"] == "minutes"
+    card = last["cards"][0]
+    assert card["type"] == "minutes" and card["name"] == "贵州茅台" and len(card["stances"]) == len(personas.DEFAULT_GUESTS)
+    assert all(s["quote"] for s in card["stances"]) and card["asof"] and card["since"] is None      # 假模型不出 JSON：卡照样有

@@ -23,8 +23,7 @@ export const ADMIN_TABS = [
   { to: '/admin/personas', label: '角色管理' },
 ]
 export const PICK_TABS = [
-  { to: '/picks', label: '今日名单', match: (p: string) => p === '/picks' },
-  { to: '/picks/record', label: '历史表现' },
+  { to: '/picks', label: '策略名单' },
   { to: '/patterns', label: '方法库' },
   { to: '/records', label: '我验证过的' },
 ]

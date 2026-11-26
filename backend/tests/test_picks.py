@@ -117,3 +117,39 @@ def test_api_and_room_tool(app):
     assert r.ok and "竞价先锋" in r.text and "第 1 名" in r.text and "50.0%" in r.text and r.card["hit"]["rank"] == 1
     assert "不在" in tools.run(ctx, "pick_list", {"code": "sh600519"}).text
     assert not tools.run(tools.ToolContext(app.state.market, None), "pick_list", {"code": "sz000001"}).ok
+
+
+def test_report_and_highlights(app):
+    """战报讲当天最亮的那件事；没收盘只给名单；数字都来自当天行情。"""
+    svc = app.state.picks
+    svc.store.save("sjm", DAYS[2], parse_sjm(table(DAYS[2], DAYS[1]), dt.date(2026, 11, 18), dt.date(2026, 11, 17)))
+    r = svc.report("sjm")
+    assert r["mode"] == "result" and r["title"] == "2 只里 1 只封住涨停" and r["big"] == {"num": "1", "unit": "只", "label": "封住涨停"}
+    assert "另有 1 只盘中摸到过涨停" in r["sub"]
+    assert [(x["name"], x["tag"]) for x in r["stars"]] == [("甲股份", "封板"), ("乙股份", "摸过涨停")]
+    assert r["stars"][0]["value"] == pytest.approx(0.1) and "50%" in r["facts"][0]
+    hl = svc.highlights("sjm")
+    assert hl[0]["value"] == 0.5 and "33.3%" in hl[0]["note"] and len(hl) == 3
+
+    def row(code, name, rank):
+        return {"code": code, "name": name, "rank": rank, "auction_pct": 1.0, "limit_price": 99.0, "board": "主板"}
+
+    # 没封板也没摸板的一天：讲涨得最多的那只
+    svc.store.save("sjm", DAYS[3], [row("sz000001", "甲股份", 1), row("sh600000", "乙股份", 2)])
+    r = svc.report("sjm", DAYS[3])
+    assert r["big"]["label"] == "甲股份 当天涨幅" and r["big"]["num"] == "+0.9" and [x["name"] for x in r["stars"]] == ["甲股份"]
+
+    # 行情还没到的一天：只有名单
+    svc.store.save("sjm", "2026-11-20", [row("sz000001", "甲股份", 1)])
+    r = svc.report("sjm")
+    assert r["mode"] == "list" and r["big"] is None and r["stars"][0]["value"] == pytest.approx(0.01) and r["value_label"] == "竞价涨幅"
+
+    c = TestClient(app)
+    login_as_admin(c)
+    listed = c.get("/api/picks").json()["items"][0]
+    assert listed["latest"]["date"] == "2026-11-20" and listed["highlights"][0]["label"] == "当天封住涨停的"
+    assert c.get("/api/picks/sjm/report", params={"date": DAYS[2]}).json()["title"] == "2 只里 1 只封住涨停"
+    assert c.get("/api/picks/nope/report").status_code == 404
+    # 筛选条件是平台自己的东西，任何接口都不带出去
+    for path in ("/api/picks", "/api/picks/sjm", "/api/picks/sjm/stats", "/api/picks/sjm/report"):
+        assert "rules" not in c.get(path).text and "换手" not in c.get(path).text

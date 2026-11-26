@@ -82,7 +82,7 @@ export default function DataCard({ card }: { card: RoomCard }) {
         {!hit ? <span className="data-foot">不在最近一次的名单里</span> : (
           <>
             <div className="data-row">
-              <span><Link to={`/picks?date=${hit.date}`}>{hit.name}</Link> <b className="num">第 {hit.rank} 名</b></span>
+              <span><Link to={`/picks/${hit.strategy ?? 'sjm'}?date=${hit.date}`}>{hit.name}</Link> <b className="num">第 {hit.rank} 名</b></span>
               <span>{hit.date}</span>
               {hit.auction_pct != null && <span>竞价 <em className={`num ${trendClass(hit.auction_pct)}`}>{fmtPct(hit.auction_pct, 1)}</em></span>}
             </div>

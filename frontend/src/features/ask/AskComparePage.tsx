@@ -29,7 +29,6 @@ export default function AskComparePage() {
           <span className="seg" role="group" aria-label="期限">
             {stockHorizons.map(o => <button key={o.value} aria-pressed={h === o.value} onClick={() => set('h', String(o.value))}>{o.label.trim()}</button>)}
           </span>
-          {c && <span>数据截至<b>{c.asof}</b></span>}
         </div>
       </header>
 

@@ -385,7 +385,13 @@ export type PersonaList = { available: boolean; host: Persona; items: Persona[];
 export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaList>('/personas'), staleTime: 60_000 })
 
 /** 数据卡：角色查了数据时挂在消息下面，内容由后端按引擎结果给，不是模型写的 */
-export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' } & Record<string, any>
+export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' | 'minutes' } & Record<string, any>
+/** 纪要卡：每个人的 quote 是他在群里的原话，data 是当时查到的原文；since 是纪要之后到现在的涨跌（还没有新行情时为空）。 */
+export type Minutes = {
+  type: 'minutes'; code: string; name: string; asof?: string; close?: number
+  stances: { persona_id: string; name: string; stance: '看多' | '看空' | '再等等' | null; quote: string; seq: number }[]
+  split: string | null; data: string | null; since?: { days: number; date: string; ret: number } | null
+}
 export type RoomMessage = {
   seq: number; role: 'host' | 'guest' | 'user' | 'system'; persona_id: string | null; name: string; text: string
   reply_to: number | null; cards: RoomCard[]; action?: string | null; created_at: string | null
@@ -410,6 +416,7 @@ export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => get
 export const getRoom = (id: number | string) => get<RoomDetail>(`/rooms/${id}`)
 export const sayInRoom = (id: number | string, text: string) => post<{ ok: boolean }>(`/rooms/${id}/say`, { text })
 export const continueRoom = (id: number | string) => post<{ ok: boolean }>(`/rooms/${id}/continue`, {})
+export const askMinutes = (id: number | string) => post<{ ok: boolean }>(`/rooms/${id}/minutes`, {})
 export const setRoomMembers = (id: number | string, change: { add?: string; remove?: string }) => post<{ members: string[] }>(`/rooms/${id}/members`, change)
 
 // ---- 管理端 · 角色管理
@@ -431,7 +438,7 @@ export const tryPersona = (content: string, code: string, cue = '') =>
 
 // ---------------------------------------------------------------- 选股名单
 
-export type PickStrategy = { id: string; name: string; alias: string; publish_at: string; tagline: string; rules: string[] }
+export type PickStrategy = { id: string; name: string; alias: string; publish_at: string; tagline: string }
 export type PickHeadline = {
   days: number; start: string; end: string; sealed_rate: number; market_sealed_rate: number | null; any_sealed_rate: number; top1_sealed_rate: number | null
 }
@@ -450,6 +457,7 @@ export type PickBlock = {
 export type PickBase = { n: number; sealed_rate: number; touched_rate: number; intraday_mean: number; intraday_win: number }
 export type PickStats = {
   strategy: PickStrategy
+  highlights: PickHighlight[]
   range: { start: string; end: string; days: number; n: number } | null
   overall: PickBlock
   recent: (PickBlock & { days: number; start: string }) | null
@@ -459,13 +467,24 @@ export type PickStats = {
   by_month: (PickBlock & { label: string })[]
   baseline: { market: PickBase | null; same_gap: PickBase | null }
 }
+export type PickHighlight = { label: string; value: number; note: string }
+export type PickStar = { rank: number; code: string; name: string; value: number | null; tag: string | null }
+/** 某一天的战报：讲当天最亮的那件事。首页看板和分享图用。文字和数字都由后端按策略给出。 */
+export type PickReport = {
+  strategy: PickStrategy; date: string | null; is_today: boolean; today: string; count: number
+  mode: 'result' | 'list' | 'empty'; title: string; big: { num: string; unit: string; label: string } | null; sub: string
+  value_label: string; stars: PickStar[]; note: string; facts: string[]
+}
+export type PickStrategyCard = PickStrategy & { latest_date: string | null; headline: PickHeadline | null; highlights: PickHighlight[]; latest: PickReport | null }
 export type StockPick = { strategy: string; name: string; alias: string; date: string; rank: number; auction_pct: number | null; headline: PickHeadline | null }
 
 export const usePickStrategies = () =>
-  useQuery({ queryKey: ['picks'], queryFn: () => get<{ items: (PickStrategy & { latest_date: string | null; headline: PickHeadline | null })[] }>('/picks'), staleTime: 60_000 })
+  useQuery({ queryKey: ['picks'], queryFn: () => get<{ items: PickStrategyCard[] }>('/picks'), staleTime: 60_000 })
 export const usePickDay = (strategy: string, date?: string) =>
   useQuery({ queryKey: ['picks', strategy, 'day', date ?? 'latest'], queryFn: () => get<PickDay>(`/picks/${strategy}`, { date }),
              placeholderData: keepPreviousData, staleTime: 30_000 })
+export const usePickReport = (strategy: string, date?: string | null, enabled = true) =>
+  useQuery({ queryKey: ['picks', strategy, 'report', date ?? 'latest'], queryFn: () => get<PickReport>(`/picks/${strategy}/report`, { date: date ?? undefined }), enabled, staleTime: 30_000 })
 export const usePickStats = (strategy: string) =>
   useQuery({ queryKey: ['picks', strategy, 'stats'], queryFn: () => get<PickStats>(`/picks/${strategy}/stats`), staleTime: 5 * 60_000 })
 export const useStockPick = (code: string) =>

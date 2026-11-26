@@ -93,7 +93,6 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
           <span>{index ? '指数' : '股票'}<b>{a.name} {displayCode(a.code)}</b></span>
           <span>期限<b>{horizonText(a.horizon)}（{a.horizon} 个交易日）</b></span>
           {option && <span>期权费<b>{(a.fee! * 100).toFixed(1)}%</b><i>100% 平值看涨</i></span>}
-          <span>数据截至<b>{a.asof}</b></span>
           {!index && <WatchStar code={a.code} />}
         </div>
       </header>

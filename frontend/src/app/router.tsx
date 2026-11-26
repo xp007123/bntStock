@@ -16,6 +16,7 @@ import RoomPage from '../features/rooms/RoomPage'
 import RoomsPage from '../features/rooms/RoomsPage'
 import PersonasPage from '../features/rooms/PersonasPage'
 import PersonaAdminPage from '../features/admin/PersonaAdminPage'
+import PickBoardPage from '../features/picks/PickBoardPage'
 import PicksPage from '../features/picks/PicksPage'
 import PickRecordPage from '../features/picks/PickRecordPage'
 import MePage from '../features/me/MePage'
@@ -36,8 +37,9 @@ export const router = createBrowserRouter([
       { path: 'judgments/:id', element: <JudgmentPage /> },
       { path: 'stocks', element: <Navigate to={`/stocks/${DEFAULT_STOCK}`} replace /> },
       { path: 'stocks/:code', element: <StockPage /> },
-      { path: 'picks', element: <PicksPage /> },
-      { path: 'picks/record', element: <PickRecordPage /> },
+      { path: 'picks', element: <PickBoardPage /> },
+      { path: 'picks/:strategy', element: <PicksPage /> },
+      { path: 'picks/:strategy/record', element: <PickRecordPage /> },
       { path: 'me', element: <MePage /> },
       { path: 'patterns', element: <PatternsPage /> },
       { path: 'patterns/new/:index', element: <NewPatternPage /> },

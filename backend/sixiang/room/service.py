@@ -10,7 +10,7 @@ import logging
 import os
 from pathlib import Path
 
-from . import actor, tools
+from . import actor, minutes, tools
 from .bus import Bus
 from .director import Roundtable
 from .llm import ChatModel
@@ -74,6 +74,18 @@ class RoomService:
 
     def more(self, rid: int, user) -> None:
         self._enqueue(rid, user, {"kind": "more"})
+
+    def minutes(self, rid: int, user) -> None:
+        """让小四出一份纪要（一张卡，挂在他的一条消息下面）。"""
+        self._enqueue(rid, user, {"kind": "minutes"})
+
+    def with_since(self, messages: list[dict]) -> list[dict]:
+        """给已有的纪要卡补上“之后涨跌多少”。每次读群时现算，用的是最新行情。"""
+        for m in messages:
+            for card in m.get("cards") or []:
+                if card.get("type") == "minutes":
+                    card["since"] = minutes.since(self.market, card)
+        return messages
 
     async def set_members(self, rid: int, user, add: str | None = None, remove: str | None = None) -> list[str]:
         row = await asyncio.to_thread(self.store.row, rid, user.id)
@@ -142,6 +154,16 @@ class RoomService:
         if await asyncio.to_thread(self.store.spoken_today, user.id) >= self.daily_limit:
             await keep(room.add("host", host.name, LIMIT_LINE, persona_id=host.id, meta={"action": "limit"}))
             self._pub(rid, "scene_end", status="idle", limit=True)
+            return
+
+        if cmd["kind"] == "minutes":
+            await asyncio.to_thread(self.store.update, rid, status="playing")
+            self._pub(rid, "status", status="playing")
+            self._pub(rid, "typing", persona=host.id, name=host.name)
+            card = await minutes.make(room, cast, self.model, await asyncio.to_thread(minutes.anchor, self.market, room.topic["code"]))
+            await keep(room.add("host", host.name, minutes.LINE if card else minutes.EMPTY_LINE, persona_id=host.id,
+                                cards=[card] if card else [], meta={"action": "minutes"}))
+            self._pub(rid, "scene_end", status="idle")
             return
 
         director = Roundtable(cast, self.model)

@@ -1,6 +1,9 @@
 """选股名单的服务：有哪些策略、每天去取名单、给页面和角色提供名单与战绩。
 
 加一个新策略：在 STRATEGIES 里加一项，并在 _FETCHERS 里登记它怎么取名单。
+
+STRATEGIES 里的内容会原样发给页面，所以只放能给用户看的（名字、一句话介绍、几点出名单）。
+具体的筛选条件是平台自己的东西，只留在 wencai.py 的问句里，不进接口、不上页面。
 """
 from __future__ import annotations
 
@@ -22,13 +25,6 @@ STRATEGIES = {
     "sjm": {
         "id": "sjm", "name": "竞价先锋", "alias": "三角猫", "publish_at": "09:25",
         "tagline": "开盘前 5 分钟，挑出集合竞价里抢得最凶的 10 只。",
-        "rules": [
-            "只看主板和创业板，不要 ST、科创板、北交所，也不要新股次新股",
-            "昨天没涨停，换手不到 5%，成交量没有比前一天翻倍——昨天还算安静",
-            "总市值 500 亿以下，流通市值 10 亿以上",
-            "今天集合竞价没有直接封死涨停",
-            "按 09:25 竞价结束时的涨幅，从高到低取前 10 只",
-        ],
     },
 }
 
@@ -48,6 +44,73 @@ def fetch_sjm(client: IFindClient, day: dt.date, prev: dt.date, prev2: dt.date) 
 
 
 _FETCHERS = {"sjm": fetch_sjm}
+
+
+# ---------------------------------------------------------------- 每个策略自己决定“拿什么说话”
+# 首页看板、策略页顶上的几个数、分享的战报图，都从这里取。新策略各写各的，页面不用改。
+
+def _sjm_highlights(s: dict) -> list[dict]:
+    """竞价先锋的主打数字：封板。"""
+    market = (s["baseline"]["market"] or {}).get("sealed_rate")
+    top1 = next((b["sealed_rate"] for b in s["by_rank"] if b["label"] == "第 1 名"), None)
+    out = [{"label": "当天封住涨停的", "value": s["overall"]["sealed_rate"], "note": f"同期全市场是 {market:.1%}" if market is not None else ""},
+           {"label": "名单里至少有一只封板的日子", "value": s["per_day"]["any_sealed_rate"], "note": f"共 {s['range']['days']} 个交易日"}]
+    if top1 is not None:
+        out.append({"label": "排第 1 名的那只，封住涨停的", "value": top1, "note": "竞价涨幅最高的一只"})
+    return out
+
+
+def _sjm_facts(s: dict) -> list[str]:
+    if not s.get("range"):
+        return []
+    days, rate = s["range"]["days"], s["overall"]["sealed_rate"]
+    market = (s["baseline"]["market"] or {}).get("sealed_rate")
+    out = []
+    if market and rate / market >= 2:
+        out.append(f"近 {days} 个交易日，涨停机会是全市场的 {rate / market:.0f} 倍")
+    else:
+        out.append(f"近 {days} 个交易日，{rate:.0%} 当天封住涨停")
+    out.append(f"{s['per_day']['any_sealed_rate']:.0%} 的交易日，名单里至少有一只封板")
+    return out
+
+
+def _star(i: dict, tag: str | None, key: str = "day_pct") -> dict:
+    return {"rank": i["rank"], "code": i["code"], "name": i["name"], "value": i[key], "tag": tag}
+
+
+def _sjm_report(items: list[dict], settled: bool, s: dict) -> dict:
+    """某一天的战报：讲这一天最亮的那件事。全部是当天已经发生的结果，一个数都不编。"""
+    n = len(items)
+    note = "封板指收盘价等于涨停价。名单按固定规则筛出，数字是历史统计。"
+    if not settled:
+        return {"mode": "list", "title": f"名单 {n} 只", "big": None, "sub": "按 09:25 的竞价涨幅排",
+                "value_label": "竞价涨幅", "stars": [_star(i, None, "auction_pct") for i in items], "note": note}
+    sealed = [i for i in items if i["sealed"]]
+    touched = [i for i in items if i["touched"] and not i["sealed"]]
+    stars = [_star(i, "封板") for i in sealed] + [_star(i, "摸过涨停") for i in touched]
+    if sealed:
+        title, big = f"{n} 只里 {len(sealed)} 只封住涨停", {"num": str(len(sealed)), "unit": "只", "label": "封住涨停"}
+        sub = f"名单共 {n} 只" + (f"，另有 {len(touched)} 只盘中摸到过涨停" if touched else "")
+    elif touched:
+        title, big = f"{n} 只里 {len(touched)} 只盘中摸到涨停", {"num": str(len(touched)), "unit": "只", "label": "盘中摸到涨停"}
+        sub = f"名单共 {n} 只"
+    else:
+        ups = sorted((i for i in items if (i["day_pct"] or 0) > 0), key=lambda i: -i["day_pct"])
+        stars = [_star(i, None) for i in ups[:3]]
+        if ups:
+            title = f"{ups[0]['name']} 当天涨 {ups[0]['day_pct']:.1%}"
+            big = {"num": f"+{ups[0]['day_pct'] * 100:.1f}", "unit": "%", "label": f"{ups[0]['name']} 当天涨幅"}
+            sub = f"名单共 {n} 只，{len(ups)} 只收盘是涨的"
+        elif s.get("range"):
+            title = f"名单 {n} 只"
+            big = {"num": f"{s['overall']['sealed_rate'] * 100:.0f}", "unit": "%", "label": f"近 {s['range']['days']} 个交易日封住涨停的比例"}
+            sub = f"名单共 {n} 只"
+        else:
+            title, big, sub = f"名单 {n} 只", None, ""
+    return {"mode": "result", "title": title, "big": big, "sub": sub, "value_label": "当天收盘", "stars": stars[:6], "note": note}
+
+
+_VIEWS = {"sjm": {"highlights": _sjm_highlights, "facts": _sjm_facts, "report": _sjm_report}}
 
 
 def _clean(v):
@@ -93,8 +156,24 @@ class PickService:
         for sid, meta in STRATEGIES.items():
             _, hit = self._enriched(sid)
             days = sorted(self.store.days(sid))
-            out.append({**meta, "latest_date": days[-1] if days else None, "headline": self._headline(hit["summary"])})
+            out.append({**meta, "latest_date": days[-1] if days else None, "headline": self._headline(hit["summary"]),
+                        "highlights": self.highlights(sid), "latest": self.report(sid) if days else None})
         return out
+
+    def highlights(self, strategy: str) -> list[dict]:
+        _, hit = self._enriched(strategy)
+        s = hit["summary"]
+        return _clean_tree(_VIEWS[strategy]["highlights"](s)) if s.get("range") else []
+
+    def report(self, strategy: str, date: str | None = None) -> dict:
+        """某一天的战报（默认最近一天）：首页看板和分享图用。还没收盘的那天只有名单。"""
+        d = self.day(strategy, date)
+        _, hit = self._enriched(strategy)
+        view = _VIEWS[strategy]
+        body = view["report"](d["items"], d["settled"], hit["summary"]) if d["items"] else {
+            "mode": "empty", "title": "还没有名单", "big": None, "sub": "", "value_label": "", "stars": [], "note": ""}
+        return _clean_tree({"strategy": d["strategy"], "date": d["date"], "is_today": d["is_today"], "today": d["today"],
+                            "count": len(d["items"]), **body, "facts": view["facts"](hit["summary"])})
 
     @staticmethod
     def _headline(s: dict) -> dict | None:
@@ -129,7 +208,7 @@ class PickService:
 
     def summary(self, strategy: str) -> dict:
         _, hit = self._enriched(strategy)
-        return {"strategy": STRATEGIES[strategy], **_clean_tree(hit["summary"])}
+        return {"strategy": STRATEGIES[strategy], "highlights": self.highlights(strategy), **_clean_tree(hit["summary"])}
 
     def of_stock(self, code: str) -> dict | None:
         """这只股票最近一次名单里有没有它（给个股页、群聊用）。"""

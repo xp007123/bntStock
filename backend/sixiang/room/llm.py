@@ -185,6 +185,11 @@ class DemoModel:
     async def chat(self, messages, tools=None, *, temperature=None, max_tokens=None, on_text=None) -> Reply:
         self._n += 1
         system = messages[0]["content"] if messages else ""
+        if "记录员" in system:
+            names = re.search(r"嘉宾：(.*)", messages[-1]["content"])
+            who = [n for n in (names.group(1).split("、") if names else []) if n]
+            return Reply(text=json.dumps({"stances": [{"name": n, "stance": ("看多", "看空", "再等等")[i % 3], "quote": 0} for i, n in enumerate(who)],
+                                          "split": "一个看生意本身，一个看市场情绪，谈不到一块去。", "data": 1}, ensure_ascii=False))
         asked = any(m.get("role") == "tool" for m in messages)
         code = re.search(r"股票：[^（]*（([a-z]{2}\d{6})）", system)
         if tools and not asked and code and self._n % 3 == 1:        # 每三次有一次先查数据，好看数据卡

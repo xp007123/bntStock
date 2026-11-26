@@ -30,14 +30,29 @@ def of_stock(request: Request, code: str):
     return {"pick": request.app.state.picks.of_stock(code.lower())}
 
 
-@router.get("/{strategy}")
-def day(request: Request, strategy: str, date: str | None = None):
-    _known(strategy)
+def _date(date: str | None) -> None:
     if date:
         try:
             dt.date.fromisoformat(date)
         except ValueError as exc:
             raise HTTPException(422, "日期格式不对") from exc
+
+
+@router.get("/{strategy}/report")
+def report(request: Request, strategy: str, date: str | None = None):
+    """某一天的战报：首页看板和分享图用的那几句话和几个数。"""
+    _known(strategy)
+    _date(date)
+    try:
+        return request.app.state.picks.report(strategy, date)
+    except NoDataVersion as exc:
+        raise HTTPException(503, str(exc)) from exc
+
+
+@router.get("/{strategy}")
+def day(request: Request, strategy: str, date: str | None = None):
+    _known(strategy)
+    _date(date)
     try:
         return request.app.state.picks.day(strategy, date)
     except NoDataVersion as exc:
