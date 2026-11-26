@@ -433,7 +433,7 @@ export const tryPersona = (content: string, code: string, cue = '') =>
 
 export type PickStrategy = { id: string; name: string; alias: string; publish_at: string; tagline: string; rules: string[] }
 export type PickHeadline = {
-  days: number; start: string; end: string; sealed_rate: number; market_sealed_rate: number | null; any_sealed_rate: number; intraday_mean: number
+  days: number; start: string; end: string; sealed_rate: number; market_sealed_rate: number | null; any_sealed_rate: number; top1_sealed_rate: number | null
 }
 export type PickItem = {
   rank: number; code: string; name: string; board: string | null; auction_pct: number | null; limit_price: number | null

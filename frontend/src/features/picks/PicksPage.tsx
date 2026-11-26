@@ -45,7 +45,7 @@ export default function PicksPage() {
         <section className="pk-head card fade-in">
           <div><span>当天封住涨停的</span><b className="num">{pct0(head.sealed_rate)}</b><small>同期全市场是 {pct1(head.market_sealed_rate)}</small></div>
           <div><span>名单里至少有一只封板的日子</span><b className="num">{pct0(head.any_sealed_rate)}</b><small>共 {head.days} 个交易日</small></div>
-          <div><span>开盘买、收盘卖，平均</span><b className={`num ${trendClass(head.intraday_mean)}`}>{fmtPct(head.intraday_mean)}</b><small>容易涨停，不等于开盘追进去能赚</small></div>
+          <div><span>排第 1 名的那只，封住涨停的</span><b className="num">{pct0(head.top1_sealed_rate)}</b><small>竞价涨幅最高的一只</small></div>
           <Link to="/picks/record" className="pk-more">看完整的历史表现<ArrowRight size={14} /></Link>
         </section>
       )}
@@ -69,7 +69,7 @@ export default function PicksPage() {
           : !d || d.items.length === 0 ? <div className="state">还没有名单。</div> : (
             <div className="table-wrap">
               <table className="pk-table">
-                <thead><tr><th>#</th><th>股票</th><th>竞价涨幅</th><th>当天收盘</th><th>开盘买到收盘</th><th>结果</th><th /></tr></thead>
+                <thead><tr><th>#</th><th>股票</th><th>竞价涨幅</th><th>当天收盘</th><th>结果</th><th /></tr></thead>
                 <tbody>
                   {d.items.map(it => (
                     <tr key={it.code}>
@@ -77,7 +77,6 @@ export default function PicksPage() {
                       <td><Link to={`/ask/stock?code=${it.code}&h=21`} className="pk-name">{it.name}</Link><small className="num">{displayCode(it.code)}{it.board && it.board !== '主板' ? ` · ${it.board}` : ''}</small></td>
                       <td className={`num ${trendClass(it.auction_pct)}`}>{fmtPct(it.auction_pct)}</td>
                       <td className={`num ${trendClass(it.day_pct)}`}>{it.settled ? fmtPct(it.day_pct) : '—'}</td>
-                      <td className={`num ${trendClass(it.intraday)}`}>{it.settled ? fmtPct(it.intraday) : '—'}</td>
                       <td>{!it.settled ? <span className="muted">等收盘</span> : it.sealed ? <span className="tag pk-sealed">封板</span> : it.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>}</td>
                       <td className="pk-acts">
                         {personas.data?.available && <button className="btn" disabled={!!busy} onClick={() => chat(it)}><MessagesSquare size={14} />{busy === it.code ? '拉群中…' : '拉群聊聊'}</button>}

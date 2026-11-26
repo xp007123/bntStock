@@ -102,7 +102,8 @@ class PickService:
             return None
         return {"days": s["range"]["days"], "start": s["range"]["start"], "end": s["range"]["end"],
                 "sealed_rate": s["overall"]["sealed_rate"], "market_sealed_rate": (s["baseline"]["market"] or {}).get("sealed_rate"),
-                "any_sealed_rate": s["per_day"]["any_sealed_rate"], "intraday_mean": s["overall"]["intraday_mean"]}
+                "any_sealed_rate": s["per_day"]["any_sealed_rate"],
+                "top1_sealed_rate": next((b["sealed_rate"] for b in s["by_rank"] if b["label"] == "第 1 名"), None)}
 
     def day(self, strategy: str, date: str | None = None) -> dict:
         """某一天的名单（默认最近一天），每只带上当天的结果；行情还没到的那天结果为空。"""

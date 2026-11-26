@@ -43,7 +43,7 @@
 .pk-find ul { margin: 4px 0 12px; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.75; color: var(--ink-2); }
 .pk-find li b { color: var(--ink); }
 .pk-find p { font-size: 13px; }
-.pk-vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.pk-vs-grid { display: grid; grid-template-columns: minmax(0, 620px); gap: 28px; }
 .pk-vs h3 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
 .pk-vs > div { display: grid; grid-template-columns: 132px 1fr 52px; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 13px; color: var(--muted); }
 .pk-vs > div i { height: 10px; border-radius: var(--r-pill); background: var(--bg-deep); overflow: hidden; }
