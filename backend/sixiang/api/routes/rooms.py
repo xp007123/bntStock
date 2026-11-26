@@ -42,8 +42,9 @@ def list_personas(request: Request):
 
 @router.get("/personas/{pid}/recent")
 def persona_recent(pid: str, request: Request, user: User = Depends(current_user)):
-    """这个角色最近在我的群里说过的话。"""
-    return {"items": _svc(request).store.said_by(user.id, pid)}
+    """这个角色最近在我的群里说过的话，和他在我这儿的记录（说了多少条、聊过几只股票）。"""
+    store = _svc(request).store
+    return {"items": store.said_by(user.id, pid)} | store.record_of(user.id, pid)
 
 
 class OpenBody(BaseModel):

@@ -84,6 +84,8 @@ class PersonaRegistry:
                 p = current.get(pid) or files.get(pid)
                 if p is None:
                     continue
+                if not p.home and pid in files:       # 后台改过的版本没写主页那几节：主页内容沿用出厂的
+                    p.home = files[pid].home
                 s = settings.get(pid)
                 default_order = (builtin.DEFAULT_GUESTS.index(pid) + 1) * 10 if pid in builtin.DEFAULT_GUESTS else 99   # 留出空位好插人
                 items[pid] = {"persona": p, "builtin": pid in files, "custom": pid in current,

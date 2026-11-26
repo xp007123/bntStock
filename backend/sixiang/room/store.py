@@ -105,6 +105,15 @@ class RoomStore:
         with self.engine.connect() as conn:
             return [{"room_id": r.room_id, "seq": r.seq, "text": r.text, "title": r.title, "created_at": r.created_at.isoformat()} for r in conn.execute(q)]
 
+    def record_of(self, user_id: int, persona_id: str) -> dict:
+        """这个角色在这位用户的群里一共说了多少条、聊过几只股票。给角色个人页用。"""
+        q = (select(func.count(), func.count(func.distinct(rooms.c.title)))
+             .select_from(room_messages.join(rooms, rooms.c.id == room_messages.c.room_id))
+             .where(rooms.c.user_id == user_id, room_messages.c.persona_id == persona_id, room_messages.c.role == "guest"))
+        with self.engine.connect() as conn:
+            said, stocks = conn.execute(q).one()
+        return {"said": said, "stocks": stocks}
+
     def spoken_today(self, user_id: int) -> int:
         """这个用户今天（UTC 日）群里的角色一共说了多少条。额度按这个数。"""
         start = _now().replace(hour=0, minute=0, second=0, microsecond=0)

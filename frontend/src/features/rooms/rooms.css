@@ -246,12 +246,9 @@
 .pp-ask b { font-size: 14px; font-weight: 600; color: var(--ink); }
 .pp-ask .stock-search { width: 100%; background: var(--bg); }
 .pp-ask small { font-size: 12px; color: var(--muted); }
-.pp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .pp-card { padding: 22px 24px; }
 .pp-card h2 { font-size: 16px; margin-bottom: 12px; }
 .pp-card ul, .pp-card ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.7; color: var(--ink-2); }
-.pp-lines { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.pp-lines .bubble { margin: 0; }
 .pp-said { list-style: none !important; padding: 0 !important; gap: 2px !important; }
 .pp-said a { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; margin: 0 -12px; border-radius: var(--r); text-decoration: none; transition: background var(--t-fast) var(--ease); }
 .pp-said a:hover { background: var(--bg); }
@@ -295,7 +292,6 @@
   .pp-hero > .room-avatar { width: 88px !important; height: 88px !important; }
   .pp-who h1 { font-size: 28px; }
   .pp-tagline { font-size: 17px; }
-  .pp-grid { grid-template-columns: 1fr; gap: 14px; }
   .pp-card { padding: 18px 16px; }
   .lineup-list { grid-template-columns: 1fr; }
   .lineup-box { padding: 20px 16px 16px; }
@@ -392,8 +388,65 @@
 /* 概要简介 */
 .pc-bio { font-size: 13.5px; line-height: 1.75; color: var(--ink-2); }
 .pp-bio { margin-top: 12px; max-width: 560px; font-size: 14px; line-height: 1.8; color: var(--on-night-muted); }
-.pp-facts { list-style: none; margin: 0; padding: 16px 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 28px; }
-.pp-facts li { display: flex; flex-direction: column; gap: 2px; }
-.pp-facts b { font-size: 12px; font-weight: 500; color: var(--muted); }
-.pp-facts span { font-size: 15px; font-weight: 600; color: var(--ink); }
-@media (max-width: 760px) { .pp-facts { grid-template-columns: 1fr; padding: 14px 16px; } }
+
+/* 个人主页的内容区：三件真事 / 什么时候找他 / 一段对话 / 记录 / 方法（折叠） */
+.pp-h { font-size: 20px; line-height: 1.4; color: var(--ink); }
+.pp-sub { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.pp-deeds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.pp-deed.card { padding: 22px 22px 20px; transition: transform var(--t) var(--ease), box-shadow var(--t) var(--ease); }
+.pp-deed:hover { transform: translateY(-4px); box-shadow: var(--lift); }
+.pp-year { font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -.02em; color: var(--who); }
+.pp-year.word { font-size: 32px; line-height: 46px; letter-spacing: 0; }
+.pp-deed h3 { margin: 10px 0 6px; font-size: 17px; line-height: 1.45; color: var(--ink); }
+.pp-deed p { font-size: 13.5px; line-height: 1.75; color: var(--ink-2); }
+.pp-deed .pp-lesson { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-strong); font-size: 13px; color: var(--ink); }
+.pp-lesson b { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.pp-punch { margin-top: 16px; padding: 16px 22px; border-radius: var(--r-lg); background: var(--accent-softer); color: var(--ink); font-size: 16px; font-weight: 600; }
+.pp-punch small { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); }
+
+.pp-when { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+.pp-when .card { padding: 22px 24px; }
+.pp-when h3 { margin-bottom: 12px; font-size: 15px; display: flex; align-items: center; gap: 8px; color: var(--ink); }
+.pp-when h3 i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 13px; font-weight: 700; color: #fff; background: var(--ink); }
+.pp-when .no h3 i { background: var(--faint); }
+.pp-when ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pp-when li { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: var(--r); background: var(--bg); }
+.pp-when li b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.pp-when li span { font-size: 12.5px; color: var(--muted); }
+.pp-when .no li { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.pp-when .no li div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pp-goto { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 4px 12px 4px 4px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line-strong); font-size: 12.5px; color: var(--ink); text-decoration: none; transition: border-color var(--t-fast) var(--ease); }
+.pp-goto:hover { border-color: var(--ink); }
+
+.pp-talk.card { margin-top: 16px; padding: 24px 26px 20px; display: flex; flex-direction: column; gap: 14px; }
+.pp-msg { display: flex; gap: 12px; align-items: flex-start; }
+.pp-msg > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.pp-name { font-size: 12px; color: var(--muted); }
+.pp-bubble { max-width: 640px; padding: 10px 16px; border-radius: 4px 18px 18px 18px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font-size: 15px; line-height: 1.85; }
+.pp-msg.host .pp-bubble { background: var(--surface); border-color: var(--line-strong); }
+.pp-msg.me { flex-direction: row-reverse; }
+.pp-msg.me > div { align-items: flex-end; }
+.pp-msg.me .pp-bubble { border-radius: 18px 4px 18px 18px; background: var(--ink); border-color: var(--ink); color: var(--on-night); }
+.pp-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 20px; padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+.pp-notes div { font-size: 13px; line-height: 1.65; color: var(--ink-2); }
+.pp-notes b { display: block; font-size: 12.5px; color: var(--accent-ink); }
+.pp-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
+.pp-cta span { font-size: 13px; color: var(--muted); }
+
+.pp-record { margin-top: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.pp-record .card { padding: 18px 22px; }
+.pp-record b { display: block; font-size: 30px; font-weight: 600; line-height: 1.2; color: var(--ink); }
+.pp-record span { font-size: 13px; color: var(--muted); }
+.pp-record .later b { color: var(--faint); }
+.pp-recent { margin-top: 16px; }
+
+.pp-method.card { padding: 16px 22px; }
+.pp-method summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink); }
+.pp-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 14px; font-size: 13px; line-height: 1.7; color: var(--ink-2); }
+.pp-cols h4 { margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.pp-cols ul, .pp-cols ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 860px) {
+  .pp-deeds, .pp-when, .pp-notes, .pp-record, .pp-cols { grid-template-columns: 1fr; }
+  .pp-talk.card { padding: 18px 16px; }
+  .pp-when .card { padding: 18px 16px; }
+}

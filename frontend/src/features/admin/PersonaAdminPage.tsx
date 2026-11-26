@@ -180,7 +180,7 @@ export default function PersonaAdminPage() {
               <input type="text" value={note} maxLength={200} placeholder="这一版改了什么（选填，方便以后回头找）" onChange={e => setNote(e.target.value)} />
               <button className="btn primary lg" disabled={busy || !dirty} onClick={save}>{busy ? '保存中…' : creating ? '创建角色' : '保存为新的一版'}</button>
             </div>
-            <p className="muted footnote">头部两行 --- 之间是给程序读的：名字、看什么、颜色、爱用的数据（tools）、天然的对手（rivals）。下面的小节是给模型读的人设，“示例发言”最管用，模型主要靠它学口气。</p>
+            <p className="muted footnote">头部两行 --- 之间是给程序读的：名字、看什么、颜色、爱用的数据（tools）、天然的对手（rivals）。下面的小节是给模型读的人设，“示例发言”最管用，模型主要靠它学口气。以“## 主页：”开头的小节（他干过的事 / 这些问题找他 / 这些问题别找他 / 聊一段）只显示在角色的个人主页上，模型看不到；一条一行，字段用 | 隔开，照着现有角色的写法填。没写这几节的话，主页内容沿用出厂的。</p>
           </section>
 
           <aside className="persona-aside">

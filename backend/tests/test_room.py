@@ -453,3 +453,23 @@ def test_deep_drops_leading_disclaimer():
     assert d("我以巴菲特视角和你聊，基于公开言论推断，非本人意见。\n这门生意我看得懂。") == "这门生意我看得懂。"
     assert d("这门生意我看得懂。创始人本人还在一线，这点我喜欢。") == "这门生意我看得懂。创始人本人还在一线，这点我喜欢。"
     assert d("") == ""
+
+
+def test_home_sections_stay_out_of_prompt():
+    """角色卡里“## 主页：”那几节只给个人主页看：解析成结构化内容，不进交给模型的正文。"""
+    from sixiang.room import personas
+    cast = personas.all_personas(reload=True)
+    for pid in ("buffett", "munger", "taleb", "livermore", "soros", "lynch", "templeton", "yangjia", "serenity"):
+        p = cast[pid]
+        home = p.public()["home"]
+        assert "主页" not in p.body and "他干过的事" not in p.body and "看点" not in p.body
+        assert "示例发言" in p.body                                   # 人设正文还在
+        assert len(home["deeds"]) == 3 and all(d["when"] and d["title"] and d["story"] and d["lesson"] for d in home["deeds"])
+        assert len(home["yes"]) == 4 and len(home["no"]) == 4 and all(x["to"] in cast and x["to"] != pid for x in home["no"])
+        talk = home["talk"]
+        assert talk["where"] and len(talk["notes"]) == 3 and any(t["who"] == "me" for t in talk["turns"])
+        assert all(t["who"] in ("user", "me") or t["who"] in cast for t in talk["turns"])
+    card = "---\nid: fisher\nname: 费雪\n---\n## 你是谁\n你是费雪，只买成长股，一拿很多年。\n"
+    assert personas.parse(card).public()["home"] is None             # 没写主页小节的角色：没有这块
+    p = personas.parse(card + "## 主页：这些问题找他\n- 它能长多久？ | 他只看这个\n## 说话方式\n- 慢\n")
+    assert p.public()["home"]["yes"] == [{"q": "它能长多久？", "a": "他只看这个"}] and "说话方式" in p.body and "长多久" not in p.body

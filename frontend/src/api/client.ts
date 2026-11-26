@@ -404,6 +404,14 @@ export type Persona = {
   /** 装了“深聊包”（完整版的思维方式），可以一对一深聊 */
   deep: boolean
   beliefs: string[]; asks: string[]; avoids: string[]; lines: string[]; version: number; disclaimer: string
+  /** 个人主页的内容（写在角色卡的“主页：”几节里）：三件真事、哪些问题找他/别找他、一段真实对话。没写就是 null */
+  home: null | {
+    deeds: { when: string; title: string; story: string; lesson: string }[]
+    yes: { q: string; a: string }[]
+    no: { q: string; a: string; to: string }[]
+    /** who：user 用户 / me 这位角色自己 / 其他角色的 id */
+    talk: { where: string; turns: { who: string; text: string }[]; notes: { title: string; text: string }[] }
+  }
 }
 export type PersonaList = { available: boolean; host: Persona; items: Persona[]; default: string[]; disclaimer: string }
 export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaList>('/personas'), staleTime: 60_000 })
@@ -437,7 +445,7 @@ export type RoomEvent =
 
 export const usePersonaRecent = (id: string) =>
   useQuery({ queryKey: ['personas', id, 'recent'], enabled: !!id, staleTime: 30_000,
-             queryFn: () => get<{ items: { room_id: number; seq: number; text: string; title: string; created_at: string }[] }>(`/personas/${id}/recent`) })
+             queryFn: () => get<{ items: { room_id: number; seq: number; text: string; title: string; created_at: string }[]; said: number; stocks: number }>(`/personas/${id}/recent`) })
 /** mode: 'deep' = 和一位角色一对一深聊（members 只能有他一个，且他要有深聊包） */
 export const openRoom = (code: string, members?: string[], mode?: 'deep') => post<{ id: number }>('/rooms', { code, members, mode })
 export const useRooms = () => useQuery({ queryKey: ['rooms'], queryFn: () => get<{ items: RoomListItem[] }>('/rooms'), staleTime: 0 })
