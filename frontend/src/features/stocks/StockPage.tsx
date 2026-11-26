@@ -5,6 +5,7 @@ import KLineChart from '../../components/KLineChart'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import SubNav, { MARKET_TABS } from '../../components/SubNav'
 import WatchStar from '../../components/WatchStar'
+import PickFlag from '../../components/PickFlag'
 import { dailyChange } from '../../lib/indicators'
 import { displayCode, fmtBig, fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import { FinancialCard, ValuationCard } from './FinancialPanels'
@@ -42,6 +43,7 @@ export default function StockPage() {
               <div>
                 <h1>{security.data?.name ?? '…'} <span className="code num">{displayCode(code)}</span><WatchStar code={code} /></h1>
                 <p className="muted">{security.data?.sector ?? '未分类'} · 上市以来 {security.data?.rows ?? '—'} 个交易日</p>
+                <PickFlag code={code} />
               </div>
               <div className="quote">
                 <b className={`num ${trendClass(chg)}`}>{fmtPrice(last?.close)}</b>

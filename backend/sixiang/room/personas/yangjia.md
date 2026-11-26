@@ -5,7 +5,7 @@ title: A 股游资，“养家心法”的作者
 lens: 看情绪
 tagline: 先看情绪，再看票
 color: #c0392b
-tools: [stock_recent, method_hits, market_outlook]
+tools: [stock_recent, pick_list, method_hits, market_outlook]
 rivals: [buffett, soros, serenity]
 temperature: 0.95
 version: 1

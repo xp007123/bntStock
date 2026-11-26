@@ -1,20 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { CandlestickChart, FlaskConical, LogOut, type LucideIcon, MessageCircle, Shield, Stamp } from 'lucide-react'
+import { CandlestickChart, LogOut, type LucideIcon, MessageCircle, Shield, UserRound, Zap } from 'lucide-react'
 import { logout, useDataVersion, useJudgments, useMe } from '../api/client'
 import StockSearch from '../components/StockSearch'
 import HomeResearchPet from '../components/xiaosi/HomeResearchPet'
 import './AppLayout.css'
 
 type Item = { to: string; label: string; short?: string; icon: LucideIcon; match?: (path: string) => boolean }
-// 四项：问、看结果、验证方法（方法库 + 我验证过的）、行情（个股 + 大盘）。后两项的两页在页内切换。
+// 四项：选股（名单 + 历史表现 + 方法库）、问小四、行情、我的（账户 + 我的判断）。每项下面的几页在页内切换。
 const GROUPS: { title: string; items: Item[] }[] = [
   { title: '', items: [
+    { to: '/picks', label: '选股', icon: Zap, match: p => p.startsWith('/picks') || p.startsWith('/patterns') || p.startsWith('/records') },
     { to: '/', label: '问小四', icon: MessageCircle, match: p => p === '/' || p.startsWith('/ask') || p.startsWith('/rooms') || p.startsWith('/personas') },
-    { to: '/judgments', label: '我的判断', short: '判断', icon: Stamp },
-    { to: '/patterns', label: '验证方法', short: '方法', icon: FlaskConical, match: p => p.startsWith('/patterns') || p.startsWith('/records') },
     { to: '/watch', label: '行情', icon: CandlestickChart, match: p => p.startsWith('/watch') || p.startsWith('/stocks') || p.startsWith('/market') },
+    { to: '/me', label: '我的', icon: UserRound, match: p => p.startsWith('/me') || p.startsWith('/judgments') },
   ] },
 ]
 
@@ -34,7 +34,7 @@ function UserMenu() {
   return (
     <div className="user-menu">
       {me.data.is_admin && <NavLink to="/admin" className="icon-link" title="管理后台"><Shield size={15} /><span>管理</span></NavLink>}
-      <span className="user-chip" title={me.data.username}><i aria-hidden="true">{me.data.username.slice(0, 1).toUpperCase()}</i><span>{me.data.username}</span></span>
+      <Link to="/me" className="user-chip" title="我的"><i aria-hidden="true">{me.data.username.slice(0, 1).toUpperCase()}</i><span>{me.data.username}</span></Link>
       <button className="icon-link" title="退出登录" aria-label="退出登录" onClick={async () => { await logout(); qc.clear(); navigate('/login', { replace: true }) }}>
         <LogOut size={15} />
       </button>
@@ -90,7 +90,7 @@ export default function AppLayout() {
                 return (
                   <NavLink key={n.to} to={n.to} className={active ? 'on' : ''} aria-current={active ? 'page' : undefined} title={n.label}>
                     <n.icon size={17} /><span className="nav-full">{n.label}</span><span className="nav-short">{n.short ?? n.label}</span>
-                    {n.to === '/judgments' && sealed > 0 && <em key={bump} className={bump ? 'bump' : ''} title={`${sealed} 个判断封存中`}>{sealed}</em>}
+                    {n.to === '/me' && sealed > 0 && <em key={bump} className={bump ? 'bump' : ''} title={`${sealed} 个判断封存中`}>{sealed}</em>}
                   </NavLink>
                 )
               })}

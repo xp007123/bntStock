@@ -26,7 +26,9 @@ from ..room import llm as room_llm
 from ..room.registry import PersonaRegistry
 from ..room.service import RoomService
 from ..room.store import RoomStore
-from .routes import admin, admin_personas, ask, auth, judgments, market, patterns, rooms, watchlist
+from ..picks.service import PickSchedule, PickService
+from ..picks.store import PickStore
+from .routes import admin, admin_personas, ask, auth, judgments, market, patterns, picks, rooms, watchlist
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,26 +39,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     scheduler = DailySync(settings.market_dir, os.environ["SIXIANG_SYNC_AT"]) if os.environ.get("SIXIANG_SYNC_AT") else None
 
+    engine = make_engine(settings.db_url())
+    pick_service = PickService(PickStore(engine), market_store)
+    # 选股名单：设了 SIXIANG_PICKS_AT（如 09:25:40）才会每天自动去取
+    pick_schedule = PickSchedule(pick_service, os.environ["SIXIANG_PICKS_AT"]) if os.environ.get("SIXIANG_PICKS_AT") else None
+
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         if scheduler:
             scheduler.start()
+        if pick_schedule:
+            pick_schedule.start()
         yield
         if scheduler:
             scheduler.stop()
+        if pick_schedule:
+            pick_schedule.stop()
         jobs.shutdown()
 
     app = FastAPI(title="四象智投", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)
     app.state.settings = settings
     app.state.market = market_store
     app.state.jobs = jobs
-    engine = make_engine(settings.db_url())
+    app.state.picks = pick_service
     app.state.auth = AuthService(engine)
     app.state.library = UserLibrary(engine)
     app.state.judgments = Judgments(engine)
     app.state.watchlist = Watchlist(engine)
     # 群聊：没配模型密钥时 model 为空，群聊入口不显示，其他功能不受影响
     app.state.rooms = RoomService(RoomStore(engine), PersonaRegistry(engine), market_store, settings.data_dir / "research" / "jobs", room_llm.from_env())
+    app.state.rooms.picks = pick_service
 
     @app.get("/api/health", tags=["system"])
     def health():
@@ -72,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(judgments.router, dependencies=[Depends(current_user)])
     app.include_router(watchlist.router, dependencies=[Depends(current_user)])
     app.include_router(rooms.router, dependencies=[Depends(current_user)])
+    app.include_router(picks.router, dependencies=[Depends(current_user)])
 
     dist = settings.frontend_dist
     if (dist / "index.html").exists():

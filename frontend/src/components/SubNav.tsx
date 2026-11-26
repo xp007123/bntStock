@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 
-/** 页内的二级切换。主导航收成 4 项后，“验证方法”“行情”各自下面的两页用它切。 */
+/** 页内的二级切换。主导航只有 4 项（选股 / 问小四 / 行情 / 我的），每项下面的几页用它切。 */
 export default function SubNav({ items }: { items: { to: string; label: string; match?: (path: string) => boolean }[] }) {
   const { pathname } = useLocation()
   return (
@@ -22,9 +22,15 @@ export const ADMIN_TABS = [
   { to: '/admin', label: '用户与数据', match: (p: string) => p === '/admin' },
   { to: '/admin/personas', label: '角色管理' },
 ]
-export const METHOD_TABS = [
+export const PICK_TABS = [
+  { to: '/picks', label: '今日名单', match: (p: string) => p === '/picks' },
+  { to: '/picks/record', label: '历史表现' },
   { to: '/patterns', label: '方法库' },
   { to: '/records', label: '我验证过的' },
+]
+export const ME_TABS = [
+  { to: '/me', label: '账户' },
+  { to: '/judgments', label: '我的判断' },
 ]
 export const MARKET_TABS = [
   { to: '/watch', label: '自选' },

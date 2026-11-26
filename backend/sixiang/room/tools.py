@@ -29,6 +29,7 @@ class ToolContext:
     store: Any
     jobs_root: Path | None = None
     cache: dict = field(default_factory=dict)      # 同一个群里，同样的调用只算一次
+    picks: Any = None                              # 选股名单服务（没接上时相关工具回“取不到”）
 
 
 @dataclass
@@ -251,3 +252,23 @@ def method_hits(ctx: ToolContext, code: str) -> ToolResult:
     desc = "；".join(f"“{x['method']}”（历史上出现 {x['events']:,} 次，之后 {x['horizon']} 天在涨的占 {P(x['win_rate'])}，比同一天随便买"
                     f"{'多赚' if (x['excess'] or 0) > 0 else '少赚'} {abs(x['excess'] or 0) * 100:.1f} 个百分点）" for x in hits)
     return ToolResult(True, f"{name} 今天符合：{desc}。", {"type": "methods", "code": c, "name": name, "checked": checked, "hits": hits})
+
+
+@tool("pick_list", "查这只股票最近有没有进量化选股名单（比如“竞价先锋”：开盘前集合竞价抢得最凶的 10 只），以及这份名单过去的表现：当天涨停的比例、开盘买进去到收盘是赚是亏。",
+      {"code": {"type": "string", "description": "股票代码或名称"}}, ["code"])
+def pick_list(ctx: ToolContext, code: str) -> ToolResult:
+    c = resolve(ctx, code)
+    name = ctx.store.security(c)["name"]
+    if ctx.picks is None:
+        return ToolResult(False, "选股名单现在取不到。")
+    hit = ctx.picks.of_stock(c)
+    if not hit:
+        return ToolResult(True, f"{name} 不在最近一次的选股名单里。", {"type": "picks", "code": c, "name": name, "hit": None})
+    h = hit.get("headline") or {}
+    text = f"{name} 在 {hit['date']} 进了“{hit['name']}”名单，排第 {hit['rank']} 名"
+    if hit.get("auction_pct") is not None:
+        text += f"，集合竞价涨了 {S(hit['auction_pct'])}"
+    if h:
+        text += (f"。这份名单过去 {h['days']} 个交易日里：当天封住涨停的占 {P(h['sealed_rate'], 1)}（全市场是 {P(h['market_sealed_rate'] or 0, 1)}），"
+                 f"但开盘买、收盘卖平均 {S(h['intraday_mean'], 2)}")
+    return ToolResult(True, text + "。", {"type": "picks", "code": c, "name": name, "hit": hit})

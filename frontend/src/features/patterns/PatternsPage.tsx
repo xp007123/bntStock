@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Play, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { ApiError, type Method, removeLibraryItem, submitJob, useJobs, useLibrary, useMethods } from '../../api/client'
-import SubNav, { METHOD_TABS } from '../../components/SubNav'
+import SubNav, { PICK_TABS } from '../../components/SubNav'
 import JobList from './JobList'
 import { patternVerdict } from './verdict'
 import './patterns.css'
@@ -23,7 +23,7 @@ export default function PatternsPage() {
   return (
     <div className="pt-layout">
       <section>
-        <SubNav items={METHOD_TABS} />
+        <SubNav items={PICK_TABS} />
         <header className="pt-head">
           <h1>方法库</h1>
           <p className="muted">大家常说的几种买法，到底灵不灵？小四已经按默认参数翻过 2007 年以来的全市场，点开就有结论。想按你自己的习惯改，就调参数再算一遍。</p>

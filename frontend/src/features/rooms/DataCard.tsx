@@ -73,6 +73,25 @@ export default function DataCard({ card }: { card: RoomCard }) {
       </div>
     )
   }
+  if (c.type === 'picks') {
+    const hit = c.hit as any
+    const h = hit?.headline
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 在不在选股名单里</span>
+        {!hit ? <span className="data-foot">不在最近一次的名单里</span> : (
+          <>
+            <div className="data-row">
+              <span><Link to={`/picks?date=${hit.date}`}>{hit.name}</Link> <b className="num">第 {hit.rank} 名</b></span>
+              <span>{hit.date}</span>
+              {hit.auction_pct != null && <span>竞价 <em className={`num ${trendClass(hit.auction_pct)}`}>{fmtPct(hit.auction_pct, 1)}</em></span>}
+            </div>
+            {h && <span className="data-foot">名单过去 {h.days} 个交易日：当天封板 {(h.sealed_rate * 100).toFixed(1)}% · 开盘买到收盘平均 <em className={`num ${trendClass(h.intraday_mean)}`}>{fmtPct(h.intraday_mean)}</em></span>}
+          </>
+        )}
+      </div>
+    )
+  }
   if (c.type === 'methods') {
     const hits = c.hits as any[]
     return (

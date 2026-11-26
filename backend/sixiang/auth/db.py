@@ -164,3 +164,24 @@ persona_settings = Table(
     Column("sort", Integer, nullable=False, default=0),            # 座次
     Column("updated_at", DateTime(), nullable=False),
 )
+
+# 量化选股名单。pick_days 记“这一天取过没有、取到几只”（取到 0 只也要记，免得反复去取）。
+pick_days = Table(
+    "pick_days", metadata,
+    Column("strategy", String(40), primary_key=True),
+    Column("date", String(10), primary_key=True),
+    Column("count", Integer, nullable=False),
+    Column("fetched_at", DateTime(), nullable=False),
+)
+
+picks = Table(
+    "picks", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("strategy", String(40), nullable=False),
+    Column("date", String(10), nullable=False, index=True),
+    Column("code", String(12), nullable=False),
+    Column("name", String(40), nullable=False),
+    Column("rank", Integer, nullable=False),                 # 名单里的顺序，1 是竞价涨幅最高
+    Column("detail_json", LongText),                         # 出名单时的原始数字（竞价涨幅、涨停价等）
+    UniqueConstraint("strategy", "date", "code"),
+)

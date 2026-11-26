@@ -385,7 +385,7 @@ export type PersonaList = { available: boolean; host: Persona; items: Persona[];
 export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaList>('/personas'), staleTime: 60_000 })
 
 /** 数据卡：角色查了数据时挂在消息下面，内容由后端按引擎结果给，不是模型写的 */
-export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' } & Record<string, any>
+export type RoomCard = { type: 'outlook' | 'recent' | 'financials' | 'option' | 'compare' | 'methods' | 'picks' } & Record<string, any>
 export type RoomMessage = {
   seq: number; role: 'host' | 'guest' | 'user' | 'system'; persona_id: string | null; name: string; text: string
   reply_to: number | null; cards: RoomCard[]; action?: string | null; created_at: string | null
@@ -428,3 +428,45 @@ export const switchPersonaVersion = (id: string, version: number | null) => post
 export const configurePersona = (id: string, s: { enabled?: boolean; in_default?: boolean; sort?: number }) => post<AdminPersonaDetail>(`/admin/personas/${id}/settings`, s)
 export const tryPersona = (content: string, code: string, cue = '') =>
   post<{ ok: boolean; text: string; note?: string; data?: string[]; stock?: string; seconds?: number }>('/admin/personas/try', { content, code, cue })
+
+// ---------------------------------------------------------------- 选股名单
+
+export type PickStrategy = { id: string; name: string; alias: string; publish_at: string; tagline: string; rules: string[] }
+export type PickHeadline = {
+  days: number; start: string; end: string; sealed_rate: number; market_sealed_rate: number | null; any_sealed_rate: number; intraday_mean: number
+}
+export type PickItem = {
+  rank: number; code: string; name: string; board: string | null; auction_pct: number | null; limit_price: number | null
+  open: number | null; close: number | null; open_pct: number | null; day_pct: number | null; intraday: number | null
+  sealed: boolean | null; touched: boolean | null; next_open_ret: number | null; next_date: string | null; settled: boolean
+}
+export type PickDay = {
+  strategy: PickStrategy; date: string | null; items: PickItem[]; days: string[]; data_end: string; today: string; is_today: boolean; settled: boolean
+}
+export type PickBlock = {
+  n: number; sealed_rate: number; touched_rate: number; open_pct_median: number; intraday_mean: number; intraday_median: number
+  intraday_win: number; day_up_rate: number; next_open_mean: number | null; next_open_win: number | null
+}
+export type PickBase = { n: number; sealed_rate: number; touched_rate: number; intraday_mean: number; intraday_win: number }
+export type PickStats = {
+  strategy: PickStrategy
+  range: { start: string; end: string; days: number; n: number } | null
+  overall: PickBlock
+  recent: (PickBlock & { days: number; start: string }) | null
+  per_day: { any_sealed_rate: number; sealed_mean: number; up_day_rate: number }
+  by_rank: (PickBlock & { label: string })[]
+  by_board: (PickBlock & { label: string })[]
+  by_month: (PickBlock & { label: string })[]
+  baseline: { market: PickBase | null; same_gap: PickBase | null }
+}
+export type StockPick = { strategy: string; name: string; alias: string; date: string; rank: number; auction_pct: number | null; headline: PickHeadline | null }
+
+export const usePickStrategies = () =>
+  useQuery({ queryKey: ['picks'], queryFn: () => get<{ items: (PickStrategy & { latest_date: string | null; headline: PickHeadline | null })[] }>('/picks'), staleTime: 60_000 })
+export const usePickDay = (strategy: string, date?: string) =>
+  useQuery({ queryKey: ['picks', strategy, 'day', date ?? 'latest'], queryFn: () => get<PickDay>(`/picks/${strategy}`, { date }),
+             placeholderData: keepPreviousData, staleTime: 30_000 })
+export const usePickStats = (strategy: string) =>
+  useQuery({ queryKey: ['picks', strategy, 'stats'], queryFn: () => get<PickStats>(`/picks/${strategy}/stats`), staleTime: 5 * 60_000 })
+export const useStockPick = (code: string) =>
+  useQuery({ queryKey: ['picks', 'stock', code], queryFn: () => get<{ pick: StockPick | null }>(`/picks/stock/${code}`), staleTime: 60_000 })

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { type Judgment, useJudgments } from '../../api/client'
 import Seal from '../../components/Seal'
+import SubNav, { ME_TABS } from '../../components/SubNav'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
 import { isRevealed } from '../../lib/motion'
 import { stanceText } from '../../lib/stance'
@@ -18,6 +19,7 @@ export default function JudgmentsPage() {
 
   return (
     <div className="jd">
+      <SubNav items={ME_TABS} />
       <header className="page-head fade-in">
         <h1>我的判断</h1>
         <p className="muted">交给小四保管的判断。封存后不再改动，走满期限那天自动揭晓，和当初的判断放在一起看。</p>

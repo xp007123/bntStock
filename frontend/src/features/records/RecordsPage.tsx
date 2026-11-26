@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useJobs } from '../../api/client'
 import JobList from '../patterns/JobList'
-import SubNav, { METHOD_TABS } from '../../components/SubNav'
+import SubNav, { PICK_TABS } from '../../components/SubNav'
 import '../patterns/patterns.css'
 
 /** 研究记录：目前包含形态研究；小四对话、期权分析与到期结算在后续阶段加入。 */
@@ -9,7 +9,7 @@ export default function RecordsPage() {
   const jobs = useJobs()
   return (
     <div className="pt-report">
-      <SubNav items={METHOD_TABS} />
+      <SubNav items={PICK_TABS} />
       <header className="pt-head">
         <h1>我验证过的</h1>
         <p className="muted">你自己调过参数、跑过的方法都在这里。每条固定在当时的数据版本上，可以随时回看。</p>

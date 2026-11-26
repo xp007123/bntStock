@@ -8,7 +8,8 @@
 
 - 产品与架构说明：[docs/产品与架构说明-V1.md](docs/产品与架构说明-V1.md)
 - 视觉规范：[docs/视觉规范-V3.md](docs/视觉规范-V3.md)
-- 群聊（尚未开发）：[docs/群聊-需求与架构.md](docs/群聊-需求与架构.md)
+- 群聊：[docs/群聊-需求与架构.md](docs/群聊-需求与架构.md)
+- 量化选股（竞价先锋已上，文哥选股与模拟盘的调研）：[docs/量化选股-调研记录.md](docs/量化选股-调研记录.md)
 
 当前状态：M1 进行中。已完成行情快照与接口、首页、个股看盘、指数概览、形态测试（与 PatternLab 全市场对数一致，含增减条件与对比）、研究记录、登录与后台审核、iFinD 每日同步、财务数据与估值。
 
@@ -81,4 +82,4 @@ iFinD 增量同步（凭证写在仓库根目录 `.env`，不入库）：
 .\.venv\Scripts\python -m sixiang.data.ifind_sync
 ```
 
-环境变量（可写在 `.env`）：`SIXIANG_DATA_DIR`（默认 `data/`）、`SIXIANG_FRONTEND_DIST`（默认 `frontend/dist`）、`SIXIANG_IFIND_REFRESH_TOKEN`（iFinD 凭证）、`SIXIANG_SYNC_AT`（如 `17:30`，启用每日自动同步）、`SIXIANG_DATABASE_URL`（默认 SQLite `data/app.db`）、`SIXIANG_COOKIE_SECURE=1`（HTTPS 部署时开启）。
+环境变量（可写在 `.env`）：`SIXIANG_DATA_DIR`（默认 `data/`）、`SIXIANG_FRONTEND_DIST`（默认 `frontend/dist`）、`SIXIANG_IFIND_REFRESH_TOKEN`（iFinD 凭证）、`SIXIANG_SYNC_AT`（如 `17:30`，启用每日自动同步）、`SIXIANG_PICKS_AT`（如 `09:25:40`，启用每天开盘前自动取选股名单）、`SIXIANG_DATABASE_URL`（默认 SQLite `data/app.db`）、`SIXIANG_COOKIE_SECURE=1`（HTTPS 部署时开启）。

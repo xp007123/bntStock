@@ -35,6 +35,7 @@ class RoomService:
         self._inbox: dict[int, list[dict]] = {}
         self._tasks: dict[int, asyncio.Task] = {}
         self._ctx: dict[int, tools.ToolContext] = {}
+        self.picks = None      # 选股名单服务，由应用入口接上
 
     @property
     def available(self) -> bool:
@@ -42,11 +43,13 @@ class RoomService:
 
     # ---------------------------------------------------------- 指令（由接口调用）
     def _brief(self, code: str) -> tuple[str, str, str]:
-        ctx = tools.ToolContext(self.market, self.jobs_root)
+        ctx = tools.ToolContext(self.market, self.jobs_root, picks=self.picks)
         code = tools.resolve(ctx, code)
         recent = tools.run(ctx, "stock_recent", {"code": code})
         name = recent.card["name"] if recent.card else self.market.security(code)["name"]
-        return code, name, f"股票：{name}（{code}）。{recent.text if recent.ok else ''}"
+        picked = tools.run(ctx, "pick_list", {"code": code})      # 在选股名单里的话，开场就让大家知道
+        extra = picked.text if picked.ok and picked.card and picked.card.get("hit") else ""
+        return code, name, f"股票：{name}（{code}）。{recent.text if recent.ok else ''}{extra}"
 
     async def open(self, user, code: str, members: list[str] | None = None) -> int:
         if not self.available:
@@ -153,7 +156,7 @@ class RoomService:
 
         await asyncio.to_thread(self.store.update, rid, status="playing")
         self._pub(rid, "status", status="playing")
-        ctx = self._ctx.setdefault(rid, tools.ToolContext(self.market, self.jobs_root))
+        ctx = self._ctx.setdefault(rid, tools.ToolContext(self.market, self.jobs_root, picks=self.picks))
 
         async def emit(kind: str, payload: dict) -> None:
             if kind == "message":

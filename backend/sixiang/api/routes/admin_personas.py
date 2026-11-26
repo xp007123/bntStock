@@ -144,7 +144,7 @@ async def try_out(body: TryBody, request: Request):
                 user_name="用户", brief=brief)
     step = (Host("open", body.cue or f"开场。用一句话说今天聊 {name}，然后点一位嘉宾先说。") if me.role == "host"
             else Speak(me.id, body.cue or "小四点你先说。按你自己看股票的顺序，说你的第一反应。想看数据就先查。"))
-    msg = await actor.perform(step, room, cast, host, svc.model, tools.ToolContext(svc.market, svc.jobs_root))
+    msg = await actor.perform(step, room, cast, host, svc.model, tools.ToolContext(svc.market, svc.jobs_root, picks=svc.picks))
     if msg is None:
         return {"ok": False, "text": "", "note": "这次没说出话来（模型没回应）。再试一次。"}
     return {"ok": True, "text": msg.text, "data": msg.data, "cards": msg.cards, "stock": name, "seconds": msg.meta.get("seconds")}
