@@ -4,7 +4,7 @@ import './picks.css'
 
 const pct1 = (v: number | null | undefined) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`)
 
-/** 一条对比：名单、同样高开的其他股票、全市场，各自占多少。条的长度按三者里最大的那个定。 */
+/** 一条对比：名单和全市场各自占多少。条的长度按里面最大的那个定。 */
 function Versus({ title, note, rows }: { title: string; note: string; rows: { label: string; value: number | null | undefined; main?: boolean }[] }) {
   const max = Math.max(...rows.map(r => r.value ?? 0), 0.0001)
   return (
@@ -48,8 +48,9 @@ export default function PickRecordPage() {
   const q = usePickStats('sjm')
   const s = q.data
   const base = s?.baseline
-  const gap = s?.range && base?.same_gap ? base.same_gap.sealed_rate - s.overall.sealed_rate : null
-  const gapText = gap == null ? '' : gap > 0.01 ? '，比名单还高一点' : gap < -0.01 ? '，比名单低一些' : '，和名单差不多'
+  const top = s?.range ? s.by_rank.find(b => b.label === '第 1 名') : undefined
+  const main = s?.range ? s.by_board.find(b => b.label === '主板') : undefined
+  const times = s?.range && base?.market?.sealed_rate ? s.overall.sealed_rate / base.market.sealed_rate : null
 
   return (
     <div className="picks">
@@ -65,18 +66,20 @@ export default function PickRecordPage() {
         : q.isError || !s?.range ? <div className="state">还没有可以统计的名单。</div> : (
           <>
             <section className="card pk-find fade-in">
-              <h2 className="card-title">先说结论</h2>
+              <h2 className="card-title">这份名单强在哪</h2>
               <ul>
-                <li><b>容易涨停，是真的。</b>名单里的票当天收盘封住涨停的占 {pct1(s.overall.sealed_rate)}，同期全市场只有 {pct1(base?.market?.sealed_rate)}。{pct1(s.per_day.any_sealed_rate)} 的交易日里，名单至少有一只封板，平均每天 {s.per_day.sealed_mean.toFixed(1)} 只。</li>
-                <li><b>容易涨停主要是因为高开。</b>同一天里，别的同样高开的股票封板的比例是 {pct1(base?.same_gap?.sealed_rate)}{gapText}。也就是说，这份名单并没有比“随便挑一只同样高开的票”更会抓涨停。</li>
+                <li><b>涨停的机会是全市场的 {times ? Math.round(times) : '—'} 倍。</b>名单里的票当天收盘封住涨停的占 {pct1(s.overall.sealed_rate)}，同期全市场只有 {pct1(base?.market?.sealed_rate)}；盘中摸到过涨停的占 {pct1(s.overall.touched_rate)}。</li>
+                <li><b>几乎天天有板。</b>{pct1(s.per_day.any_sealed_rate)} 的交易日里，名单至少有一只封住涨停，平均每天 {s.per_day.sealed_mean.toFixed(1)} 只。</li>
+                {top && <li><b>排第 1 名的最强。</b>竞价涨幅最高的那只，{pct1(top.sealed_rate)} 当天封住涨停，{pct1(top.touched_rate)} 摸到过涨停。</li>}
+                {main && <li><b>主板的票更容易封板。</b>名单里的主板股票，封住涨停的占 {pct1(main.sealed_rate)}。</li>}
               </ul>
             </section>
 
             <section className="card pk-compare fade-in">
-              <h2 className="card-title">和别的股票比</h2>
+              <h2 className="card-title">和全市场比</h2>
               <div className="pk-vs-grid">
-                <Versus title="当天封住涨停的比例" note="“同样高开的其他股票”指同一天里，高开幅度不低于名单里最低那只、开盘没有直接涨停的股票。全市场不含 ST、科创板、北交所，和名单的选股范围一致。"
-                        rows={[{ label: '竞价先锋', value: s.overall.sealed_rate, main: true }, { label: '同样高开的其他股票', value: base?.same_gap?.sealed_rate }, { label: '全市场', value: base?.market?.sealed_rate }]} />
+                <Versus title="当天封住涨停的比例" note="全市场不含 ST、科创板、北交所，和名单的选股范围一致。"
+                        rows={[{ label: '竞价先锋', value: s.overall.sealed_rate, main: true }, { label: '全市场', value: base?.market?.sealed_rate }]} />
               </div>
             </section>
 
