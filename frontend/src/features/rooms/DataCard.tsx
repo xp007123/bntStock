@@ -105,5 +105,38 @@ export default function DataCard({ card }: { card: RoomCard }) {
       </div>
     )
   }
+  if (c.type === 'limitup') {
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 历史上涨停之后</span>
+        {c.n === 0 ? <span className="data-foot">最近 {c.days} 个交易日里没有涨停过。</span> : (
+          <>
+            <div className="data-row">
+              <span>涨停过 <b className="num">{c.n}</b> 次</span>
+              {c.next_up != null && <span>第二天还在涨 <b className="num">{pct(c.next_up)}</b></span>}
+              {c.next_mean != null && <span>第二天平均 <em className={`num ${trendClass(c.next_mean)}`}>{fmtPct(c.next_mean, 1)}</em></span>}
+              {c.week_mean != null && <span>一周后平均 <em className={`num ${trendClass(c.week_mean)}`}>{fmtPct(c.week_mean, 1)}</em></span>}
+            </div>
+            <span className="data-foot">最近 {c.days} 个交易日{c.streak > 0 ? ` · 现在连着 ${c.streak} 天涨停` : ''}{c.next_n < 10 ? ' · 次数不多，只能当参考' : ''}</span>
+          </>
+        )}
+      </div>
+    )
+  }
+  if (c.type === 'sector') {
+    const top = c.top as { code: string; name: string; pct: number }[]
+    return (
+      <div className="data-card">
+        <span className="data-title">{c.name} · 在{c.sector}里的位置</span>
+        <div className="data-row">
+          <span>当天 <em className={`num ${trendClass(c.pct)}`}>{fmtPct(c.pct, 1)}</em></span>
+          <span>行业里排第 <b className="num">{c.rank}</b> / {c.n}</span>
+          <span>上涨 <b className="num">{c.up}</b> 只</span>
+          <span>涨停 <b className="num">{c.limit}</b> 只</span>
+        </div>
+        <span className="data-foot">涨得最多的：{top.map(t => `${t.name} ${fmtPct(t.pct, 1)}`).join('、')}</span>
+      </div>
+    )
+  }
   return null
 }

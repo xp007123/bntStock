@@ -327,3 +327,19 @@ def test_minutes_api(client: TestClient):
     card = last["cards"][0]
     assert card["type"] == "minutes" and card["name"] == "贵州茅台" and len(card["stances"]) == len(personas.DEFAULT_GUESTS)
     assert all(s["quote"] for s in card["stances"]) and card["asof"] and card["since"] is None      # 假模型不出 JSON：卡照样有
+
+
+def test_limit_up_and_sector_tools(ctx):
+    """两个新工具：涨停之后怎么样、在行业里排第几。数字和日线对得上。"""
+    r = tools.run(ctx, "limit_up_history", {"code": "贵州茅台"})
+    assert r.ok and r.card["type"] == "limitup" and r.card["days"] == 600 and "涨停过" in r.text
+    bars = pd.DataFrame(ctx.store.daily("sh600519", adjust="none", limit=750)["bars"])
+    want = int((bars.close >= (bars.prev_close * 1.1 * 100 + 0.5).astype(int) / 100 - 0.001).sum())
+    assert r.card["n"] == want and (r.card["next_n"] <= want)
+    s = tools.run(ctx, "sector_today", {"code": "sh600519"})
+    assert (s.ok and s.card["rank"] >= 1 and s.card["n"] >= 1) or "行业" in s.text       # 测试数据里没有行业分类时回一句话，不报错
+    assert {"limit_up_history", "sector_today"} <= {t["function"]["name"] for t in tools.schemas()}
+    cast = personas.all_personas(reload=True)
+    assert {"lynch", "livermore", "templeton"} <= set(cast)
+    for pid in ("lynch", "livermore", "templeton"):
+        assert all(t in tools.REGISTRY for t in cast[pid].tools) and all(x in cast for x in cast[pid].rivals) and cast[pid].public()["lines"]

@@ -19,6 +19,11 @@
 .pk-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 10px; font-size: 13px; }
 .pk-date { display: flex; align-items: center; gap: 8px; }
 .pk-date b { font: 600 17px/1 var(--display); min-width: 104px; text-align: center; }
+/* 日期本身可以点：点开浏览器自带的日历 */
+.pk-pick { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: var(--r); border: 1px solid var(--line-strong); color: var(--muted); cursor: pointer; transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.pk-pick:hover { border-color: var(--ink); color: var(--ink); }
+.pk-pick b { color: var(--ink); }
+.pk-pick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .pk-date .btn { width: 34px; height: 34px; padding: 0; justify-content: center; }
 .pk-wait { margin: 0 0 10px; padding: 10px 14px; border-radius: var(--r); background: var(--accent-softer); color: var(--accent-ink); font-size: 13px; }
 

@@ -202,7 +202,7 @@ class PickService:
                 r["settled"] = r["open"] is not None
                 r["sealed"], r["touched"] = (bool(r["sealed"]), bool(r["touched"])) if r["settled"] else (None, None)
                 items.append(r)
-        return {"strategy": meta, "date": date, "items": items, "days": days[-120:], "data_end": snap.data_end,
+        return {"strategy": meta, "date": date, "items": items, "days": days, "data_end": snap.data_end,
                 "today": today.date().isoformat(), "is_today": date == today.date().isoformat(),
                 "settled": bool(items) and all(i["settled"] for i in items)}
 

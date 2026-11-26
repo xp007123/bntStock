@@ -177,3 +177,9 @@
 .room-ats .room-minutes { margin-left: auto; }
 .room-ats .room-minutes + .room-more { margin-left: 0; }
 @media (max-width: 760px) { .room-ats .room-minutes { order: -1; margin-left: 0; } .minutes { padding: 14px; } }
+
+/* 一点就发的追问 */
+.room-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.room-quick button { border: 0; background: var(--accent-softer); color: var(--accent-ink); border-radius: var(--r-pill); padding: 5px 13px; font-size: 13px; transition: background var(--t-fast) var(--ease); }
+.room-quick button:hover { background: var(--accent-soft); }
+@media (max-width: 760px) { .room-quick { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .room-quick::-webkit-scrollbar { display: none; } .room-quick button { flex-shrink: 0; } }

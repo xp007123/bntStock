@@ -4,10 +4,28 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from ...analysis.distribution import NotEnoughHistory, analyze, load, load_index, series
-from ...analysis.narrative import compare_answer, option_answer, stock_answer
+from ...analysis.narrative import compare_answer, horizon_text, option_answer, stock_answer
 from ...data.store import NoDataVersion, UnknownSecurity
+from ...room import tools as room_tools
 
 router = APIRouter(prefix="/api/ask", tags=["ask"])
+
+
+def _environment(store, code: str, horizon: int) -> dict | None:
+    """大盘和板块现在什么状态。和群聊角色查的是同一套数（同一个引擎、同一个工具），取不到就不放这一条。"""
+    parts = []
+    try:
+        m = analyze(load_index(store, "sh000001"), horizon)
+        st, sim, base = m["state"], m["similar"], m["all"]
+        parts.append(f"上证指数近 20 个交易日 {st['r20'] * 100:+.1f}%，在 60 日均线{'上方' if st['pos60'] >= 0 else '下方'} {abs(st['pos60']) * 100:.1f}%；"
+                     f"大盘走成这样的时候，{horizon_text(horizon)}后在涨的占 {sim['up_prob'] * 100:.0f}%（平时 {base['up_prob'] * 100:.0f}%）")
+    except Exception:  # noqa: BLE001
+        pass
+    sector = room_tools.run(room_tools.ToolContext(store), "sector_today", {"code": code})
+    if sector.ok and sector.card:
+        c = sector.card
+        parts.append(f"所在的{c['sector']}行业最新一天 {c['n']} 只里 {c['up']} 只上涨、{c['limit']} 只涨停，它当天 {c['pct'] * 100:+.1f}%，排第 {c['rank']}")
+    return {"role": "大盘与板块", "text": "。".join(parts) + "。", "source": "收益分布引擎 · 全市场日线"} if parts else None
 
 
 def build_answer(request: Request, kind: str, code: str, horizon: int, fee: float | None) -> dict:
@@ -28,19 +46,22 @@ def build_answer(request: Request, kind: str, code: str, horizon: int, fee: floa
             stock_answer(a, None, subject="指数") if kind == "index" else stock_answer(a, valuation))
     latest = fin["reports"][0] if fin.get("reports") else None
     evidence = [{"role": "走势与概率", "text": f"{horizon} 个交易日的涨跌分布：全部历史 {a['all']['n']:,} 个起点，其中和现在最相似的 {a['similar']['n']} 个。",
-                 "source": f"收益分布引擎 · 数据 {snap.version_id} · 截至 {a['asof']}"}]
+                 "source": "收益分布引擎 · 2007 年以来的日线"}]
     if valuation:
         pe = "亏损" if valuation.get("ttm_loss") else (f"{valuation['pe_ttm']:.1f}" if valuation.get("pe_ttm") else "—")
         pb = f"{valuation['pb']:.2f}" if valuation.get("pb") else "—"
         yoy = latest["yoy"].get("R_np_atoopc") if latest else None
         evidence.append({"role": "基本面与估值",
                          "text": f"市盈率 TTM {pe}，市净率 {pb}" + (f"；最新一期归母净利润同比 {'+' if yoy >= 0 else '−'}{abs(yoy) * 100:.0f}%" if yoy is not None else "") + "。",
-                         "source": f"财务报告 · {fin['asof']} 前已披露" + (f"（{latest['date']} 报告期）" if latest else "")})
+                         "source": "财务报告" + (f" · {latest['date']} 报告期" if latest else "")})
+    if kind != "index":
+        env = _environment(store, a["code"], horizon)
+        if env:
+            evidence.append(env)
     return {"kind": kind, "code": a["code"], "name": a["name"], "horizon": horizon, "fee": fee,
             "asof": a["asof"], "close": a["close"], "data_version": snap.version_id, "market_version": snap.market_version,
             "analysis": a, **text, "evidence": evidence,
-            "pending_evidence": (["市场环境（成交量、涨跌家数）"] if kind == "index" else
-                                 ["事件与风险（财报日、解禁、新闻）", "市场环境（大盘与板块）"])}
+            "pending_evidence": []}      # 还没做的不往页面上摆
 
 
 @router.get("/stock")

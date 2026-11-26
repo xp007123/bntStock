@@ -51,8 +51,8 @@ export default function AskPanel({ onPick }: { onPick?: () => void }) {
 
       {tab === 'method' ? (
         <div className="ask-body">
-          <p className="ask-sentence">我常用的一个买点，过去 17 年到底灵不灵？</p>
-          <p className="muted ask-hint">在“形态”里选一个模板，调成你习惯的参数，小四会扫描全市场 2007 年以来的历史，告诉你它出现之后大多怎么样。</p>
+          <p className="ask-sentence">我常用的一个买点，历史上到底灵不灵？</p>
+          <p className="muted ask-hint">在方法库里挑一种常见买法（放量突破、均线金叉、缩量回踩…），调成你习惯的参数。小四扫一遍全市场 2007 年以来的历史，告诉你它出现之后大多怎么样。</p>
           <button className="btn primary lg ask-go" onClick={submit}>去验证我的方法<ArrowRight size={17} /></button>
         </div>
       ) : (

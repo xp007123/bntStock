@@ -140,7 +140,7 @@ function AnswerView({ a, feePct, pending }: { a: Answer; feePct: number; pending
             </ul>
           </section>
 
-          <p className="ask-method">怎么算的：{a.analysis.method} 数据版本 {a.data_version}。</p>
+          <p className="ask-method">怎么算的：{a.analysis.method}</p>
         </div>
 
         <aside className="ask-rail stagger">

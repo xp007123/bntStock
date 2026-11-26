@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowRight, CandlestickChart, ChevronLeft, ChevronRight, MessagesSquare, Share2 } from 'lucide-react'
+import { ArrowRight, CalendarDays, CandlestickChart, ChevronLeft, ChevronRight, MessagesSquare, Share2 } from 'lucide-react'
 import { ApiError, openRoom, type PickItem, usePersonas, usePickDay, usePickStrategies } from '../../api/client'
 import SubNav, { PICK_TABS } from '../../components/SubNav'
 import { displayCode, fmtPct, trendClass } from '../../lib/format'
@@ -28,6 +28,8 @@ export default function PicksPage() {
   const head = meta?.highlights ?? []
   const idx = d?.date ? d.days.indexOf(d.date) : -1
   const go = (to: string | undefined) => to && setParams(to === d?.days[d.days.length - 1] ? {} : { date: to })
+  // 选了一个没有名单的日子（周末、节假日）：跳到它之前最近的一份
+  const pickDate = (v: string) => { if (d && v) go([...d.days].reverse().find(x => x <= v) ?? d.days[0]) }
   const chat = async (it: PickItem) => {
     setBusy(it.code); setError('')
     try { navigate(`/rooms/${(await openRoom(it.code)).id}`) }
@@ -54,7 +56,11 @@ export default function PicksPage() {
         <div className="pk-bar">
           <div className="pk-date">
             <button className="btn" disabled={idx <= 0} onClick={() => go(d?.days[idx - 1])} aria-label="前一个交易日"><ChevronLeft size={16} /></button>
-            <b className="num">{d?.date ?? '—'}</b>
+            <label className="pk-pick" title="选日期">
+              <b className="num">{d?.date ?? '—'}</b><CalendarDays size={15} />
+              <input type="date" aria-label="选日期" value={d?.date ?? ''} min={d?.days[0]} max={d?.days[d.days.length - 1]}
+                     onClick={e => { try { e.currentTarget.showPicker() } catch { /* 老浏览器：用它自带的方式 */ } }} onChange={e => pickDate(e.target.value)} />
+            </label>
             <button className="btn" disabled={!d || idx < 0 || idx >= d.days.length - 1} onClick={() => go(d?.days[idx + 1])} aria-label="后一个交易日"><ChevronRight size={16} /></button>
             {d?.is_today && <span className="tag night">今天</span>}
           </div>

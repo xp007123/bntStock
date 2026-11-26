@@ -10,6 +10,8 @@ import RoomShareCard from './RoomShareCard'
 import './rooms.css'
 
 type Typing = { persona: string; name: string; text: string }
+/** 不知道问什么的时候，点一下就发。都是问看法和风险，不问该不该买。 */
+const QUICK = ['最坏会怎样？', '最大的风险是什么？', '谁愿意现在拿一个月？', '什么情况说明你看错了？']
 
 /**
  * 群聊页。演出在后台跑，这里只是“观看”：先读已有的消息，再用 SSE 接着收。
@@ -84,11 +86,15 @@ export default function RoomPage() {
   if (missing) return <div className="state">没有这个群。<Link to="/rooms">看看聊过的</Link></div>
   if (!room) return <div className="state">正在进群…</div>
 
+  const say = async (t: string, keep = false) => {
+    setNotice('')
+    try { await sayInRoom(id, t) } catch (e) { setNotice(e instanceof ApiError ? e.message : '没发出去，再试一次'); if (keep) setText(t) }
+  }
   const send = async () => {
     const t = text.trim()
     if (!t) return
-    setText(''); setNotice('')
-    try { await sayInRoom(id, t) } catch (e) { setNotice(e instanceof ApiError ? e.message : '没发出去，再试一次'); setText(t) }
+    setText('')
+    await say(t, true)
   }
   const minutes = async () => { setNotice(''); setPlaying(true); try { await askMinutes(id) } catch (e) { setPlaying(false); setNotice(e instanceof ApiError ? e.message : '纪要没出成，再试一次') } }
   const more = async () => { setNotice(''); setPlaying(true); try { await continueRoom(id) } catch { setPlaying(false) } }
@@ -175,6 +181,11 @@ export default function RoomPage() {
               {!playing && <button className="room-more" onClick={more}>{messages.some(m => m.role === 'guest') ? '让他们接着聊' : '让他们聊起来'}</button>}
               {playing && <span className="room-playing"><i />正在聊</span>}
             </div>
+            {talked && !playing && !text && (
+              <div className="room-quick" aria-label="一点就发的问题">
+                {QUICK.map(q => <button key={q} onClick={() => say(q)}>{q}</button>)}
+              </div>
+            )}
             <div className="room-input">
               <textarea ref={input} rows={1} value={text} maxLength={500} placeholder="说点什么，或者 @ 某个人问一句…" aria-label="在群里说话"
                         onChange={e => setText(e.target.value)}

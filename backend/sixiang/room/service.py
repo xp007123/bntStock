@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import logging
 import os
 from pathlib import Path
@@ -49,7 +50,9 @@ class RoomService:
         name = recent.card["name"] if recent.card else self.market.security(code)["name"]
         picked = tools.run(ctx, "pick_list", {"code": code})      # 在选股名单里的话，开场就让大家知道
         extra = picked.text if picked.ok and picked.card and picked.card.get("hit") else ""
-        return code, name, f"股票：{name}（{code}）。{recent.text if recent.ok else ''}{extra}"
+        now = dt.datetime.now(dt.timezone(dt.timedelta(hours=8)))
+        today = f"今天是 {now:%Y-%m-%d} 周{'一二三四五六日'[now.weekday()]}。下面的行情是最近一个收盘日的。"
+        return code, name, f"股票：{name}（{code}）。{today}{recent.text if recent.ok else ''}{extra}"
 
     async def open(self, user, code: str, members: list[str] | None = None) -> int:
         if not self.available:

@@ -5,7 +5,7 @@ title: 匿名研究者，专找产业链上最卡脖子的环节
 lens: 看产业链
 tagline: 别盯龙头，往上游看
 color: #7f8c9b
-tools: [stock_financials, stock_recent, stock_outlook]
+tools: [stock_financials, sector_today, stock_recent, stock_outlook]
 rivals: [buffett, soros, yangjia]
 temperature: 0.9
 version: 1

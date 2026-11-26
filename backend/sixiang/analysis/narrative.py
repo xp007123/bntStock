@@ -31,7 +31,7 @@ def stock_answer(a: dict, valuation: dict | None, subject: str = "股价") -> di
     p, base = sim["up_prob"], all_["up_prob"]
     diff = p - base
     tilt = ("现在这种走势对结果影响不大" if abs(diff) < SAME else
-            "历史上和现在相似的时候，之后更常涨" if diff > 0 else "历史上和现在相似的时候，之后更常跌")
+            "和现在相似的时候，之后更常涨" if diff > 0 else "和现在相似的时候，之后更常跌")
     voice = [f"{a['name']}{state_text(a['state'], subject)}。", f"按历史看，{tilt}。"]
     if a["state"]["vol_percentile"] > .7:
         voice.append("眼下波动偏大，最好和最坏的情况都会比平时更极端。")

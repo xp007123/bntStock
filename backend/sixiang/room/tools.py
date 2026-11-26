@@ -271,3 +271,67 @@ def pick_list(ctx: ToolContext, code: str) -> ToolResult:
     if h:
         text += (f"。这份名单过去 {h['days']} 个交易日里：当天封住涨停的占 {P(h['sealed_rate'], 1)}（全市场是 {P(h['market_sealed_rate'] or 0, 1)}）")
     return ToolResult(True, text + "。", {"type": "picks", "code": c, "name": name, "hit": hit})
+
+
+def _limit_ratio(code: str, name: str) -> float:
+    """涨停幅度：创业板、科创板 20%，北交所 30%，ST 5%，其余 10%。"""
+    if "ST" in (name or "").upper():
+        return 1.05
+    return 1.2 if code.startswith(("sz30", "sh68")) else 1.3 if code.startswith("bj") else 1.1
+
+
+@tool("limit_up_history", "查这只股票过去三年涨停过多少次，它历史上涨停之后第二天、一周后大多怎么样，以及现在是不是在连板。聊涨停、打板、接力、第二天怎么走的时候用。",
+      {"code": _CODE}, ["code"])
+def limit_up_history(ctx: ToolContext, code: str) -> ToolResult:
+    import pandas as pd
+    c = resolve(ctx, code)
+    raw = pd.DataFrame(ctx.store.daily(c, adjust="none", limit=750)["bars"])      # 认涨停用不复权的真实价格
+    adj = pd.DataFrame(ctx.store.daily(c, adjust="qfq", limit=750)["bars"])       # 算之后的涨跌用前复权
+    name = str(raw.name.iloc[-1])
+    limit = [int(p * _limit_ratio(c, n) * 100 + 0.5 + 1e-6) / 100 for p, n in zip(raw.prev_close, raw.name)]
+    up = (raw.close >= pd.Series(limit) - 0.001) & (raw.prev_close > 0)
+    streak = 0
+    for v in reversed(up.tolist()):
+        if not v:
+            break
+        streak += 1
+    nxt, week = adj.close.shift(-1) / adj.close - 1, adj.close.shift(-5) / adj.close - 1
+    n, n1, n5 = int(up.sum()), nxt[up].dropna(), week[up].dropna()
+    date = str(raw.date.iloc[-1])
+    parts = [f"{name} 最近 {len(raw)} 个交易日里涨停过 {n} 次"]
+    if len(n1):
+        parts.append(f"涨停之后第二天收盘还在涨的有 {int((n1 > 0).sum())} 次（{P((n1 > 0).mean())}），第二天平均 {S(n1.mean())}"
+                     + (f"；一周后平均 {S(n5.mean())}，还在涨的占 {P((n5 > 0).mean())}" if len(n5) else ""))
+        if len(n1) < 10:
+            parts.append("次数不多，只能当参考")
+    parts.append(f"最新一天（{date}）是涨停，已经连着 {streak} 天涨停" if streak else f"最新一天（{date}）没有涨停")
+    return ToolResult(True, "。".join(parts) + "。",
+                      {"type": "limitup", "code": c, "name": name, "days": int(len(raw)), "n": n, "date": date, "streak": streak,
+                       "next_n": int(len(n1)), "next_up": float((n1 > 0).mean()) if len(n1) else None, "next_mean": float(n1.mean()) if len(n1) else None,
+                       "week_up": float((n5 > 0).mean()) if len(n5) else None, "week_mean": float(n5.mean()) if len(n5) else None})
+
+
+@tool("sector_today", "查这只股票在它所属行业里的位置：最新一天这个行业多少只在涨、几只涨停、它的涨幅排第几、行业里涨得最多的是谁。聊板块、龙头、跟风、主线的时候用。",
+      {"code": _CODE}, ["code"])
+def sector_today(ctx: ToolContext, code: str) -> ToolResult:
+    c = resolve(ctx, code)
+    meta = ctx.store.security(c)
+    sector = meta.get("sector")
+    if not sector:
+        return ToolResult(False, "这只股票没有行业分类，查不了板块。")
+    _, cur = ctx.store._current()
+    df = cur.execute("""SELECT d.code, d.name, d.close / d.prev_close - 1 AS pct FROM daily d JOIN securities s ON s.code = d.code
+                        WHERE s.sector_l1 = ? AND CAST(d.date AS VARCHAR) = ? AND d.prev_close > 0 ORDER BY pct DESC""",
+                     [sector, meta["last_date"]]).df()
+    if c not in set(df.code):
+        return ToolResult(False, "这只股票最新一天没有行情，查不了板块。")
+    lim = sum(pct >= _limit_ratio(k, n) - 1 - 0.003 for k, n, pct in zip(df.code, df.name, df.pct))
+    rank = int(df.index[df.code == c][0]) + 1
+    mine = float(df.pct[df.code == c].iloc[0])
+    name = str(df.name[df.code == c].iloc[0])
+    top = [{"code": k, "name": n, "pct": float(p)} for k, n, p in zip(df.code[:3], df.name[:3], df.pct[:3])]
+    text = (f"{name} 属于{sector}。{meta['last_date']} 这个行业 {len(df)} 只股票里 {int((df.pct > 0).sum())} 只上涨、{int(lim)} 只涨停，"
+            f"涨幅居中的那只是 {S(float(df.pct.median()))}。{name} 当天 {S(mine)}，在行业里排第 {rank}。"
+            f"涨得最多的：{'、'.join(t['name'] + ' ' + S(t['pct']) for t in top)}。")
+    return ToolResult(True, text, {"type": "sector", "code": c, "name": name, "sector": sector, "date": meta["last_date"], "n": int(len(df)),
+                                   "up": int((df.pct > 0).sum()), "limit": int(lim), "median": float(df.pct.median()), "pct": mine, "rank": rank, "top": top})

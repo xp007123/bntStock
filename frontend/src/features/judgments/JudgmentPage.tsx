@@ -66,7 +66,6 @@ function Detail({ j }: { j: Judgment }) {
           <div className="jd-tags">
             <span className="tag night">{option ? '问期权' : '问个股'}</span>
             <span className="tag plain">{j.asof} 封存</span>
-            <span className="tag plain">数据 {j.data_version}</span>
           </div>
           <h1>{j.name} <span className="num muted">{displayCode(j.code)}</span></h1>
           <p className="jd-q">{j.question}</p>

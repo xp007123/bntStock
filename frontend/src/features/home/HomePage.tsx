@@ -1,17 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { useIndices, useJobs, useJudgments, useMe, usePickStrategies } from '../../api/client'
+import { useIndices, useJudgments, useMe, usePickStrategies } from '../../api/client'
 import HomeResearchPet from '../../components/xiaosi/HomeResearchPet'
 import Seal from '../../components/Seal'
 import { fmtPct, fmtPrice, trendClass } from '../../lib/format'
 import { isRevealed } from '../../lib/motion'
 import { horizonText } from '../ask/horizons'
-import JobList from '../patterns/JobList'
 import AskPanel from './AskPanel'
 import SubNav, { ASK_TABS } from '../../components/SubNav'
 import WatchlistCard from './WatchlistCard'
-import SignalsCard from '../watch/SignalsCard'
 import StrategyCard from '../picks/StrategyCard'
 import { forget, useRecent } from '../../lib/recent'
 import '../patterns/patterns.css'
@@ -22,7 +20,10 @@ const greeting = () => {
   return h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
 }
 
-/** 首页：左边墨黑主卡里向小四提问，下面是各个选股策略今天的情况；右边是交给小四保管的判断和大盘。全部来自接口。 */
+/**
+ * 首页只放每天都会用的：左边向小四提问、各个选股策略今天的情况、最近问过的；右边自选、判断、大盘。
+ * 自选的信号在“行情”里，验证过的方法在“选股”里，不在这儿重复。全部来自接口。
+ */
 export default function HomePage() {
   const me = useMe()
   // 选好股票时小四点一下头
@@ -33,7 +34,6 @@ export default function HomePage() {
       <SubNav items={ASK_TABS} />
       <header className="home-hello fade-in">
         <h1><span>{greeting()}，</span>{me.data?.username}</h1>
-        <h1>今天想验证什么？</h1>
       </header>
 
       <div className="home-grid">
@@ -42,18 +42,16 @@ export default function HomePage() {
             <div className="hero-text">
               <span className="hero-eyebrow"><i />问小四</span>
               <h2>说给小四听，<br />它去翻历史。</h2>
-              <p>一只股票、一个期权报价、一个你常用的买点都行。小四会去翻 2007 年以来的历史，告诉你类似的情况后来大多怎么样，最坏会怎样。</p>
+              <p>一只股票、一个期权报价、一个常用的买点都行。小四翻完历史告诉你：类似的情况后来大多怎么样，最坏会怎样。</p>
             </div>
             <div className="hero-pet"><HomeResearchPet size={168} followPointer status={nod ? 'complete' : 'idle'} /></div>
             <AskPanel onPick={picked} />
           </section>
           <StrategyBoard />
           <RecentCard />
-          <JobsCard />
         </div>
 
         <aside className="home-side stagger">
-          <SignalsCard compact />
           <WatchlistCard />
           <JudgmentsCard />
           <IndicesCard />
@@ -162,18 +160,6 @@ function RecentCard() {
       <ul className="recent-list">
         {items.map(r => <li key={r.to}><Link to={r.to}><b>{r.title}</b><span>{r.detail}</span></Link></li>)}
       </ul>
-    </section>
-  )
-}
-
-function JobsCard() {
-  const q = useJobs()
-  const jobs = (q.data ?? []).slice(0, 3)
-  return (
-    <section className="card home-card">
-      <div className="card-title"><span>最近验证过的方法 <span className="muted">{q.data ? `共 ${q.data.length} 条` : ''}</span></span><More to="/patterns">去验证方法</More></div>
-      {q.isLoading ? <p className="muted">读取中…</p> : jobs.length ? <JobList jobs={jobs} />
-        : <p className="muted">还没有验证过方法。把你常用的买点写成条件，小四会告诉你它历史上灵不灵。</p>}
     </section>
   )
 }
