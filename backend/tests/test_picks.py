@@ -173,3 +173,21 @@ def test_today_list_gets_live_quotes(app, monkeypatch):
     assert a["live"]["sealed"] and a["live"]["touched"] and not b["live"]["sealed"] and b["live"]["touched"] and day["live_time"] == "2026-11-26 10:30:03"
     assert a["sealed"] is None                                                   # 正式结果还是等收盘行情
     assert "live" not in c.get("/api/picks/sjm", params={"date": DAYS[2]}).json().get("items", [{}])[0] if svc.store.days("sjm").get(DAYS[2]) else True
+
+
+def test_after_close_settles_from_live(app, monkeypatch):
+    """收盘后、日线没进来之前：用 15:00 以后的实时行情先出当天结果和战报；报价不是收盘后的就照旧等。"""
+    from sixiang.data import mcp
+    svc = app.state.picks
+    today = dt.datetime.now(pick_service.CN_TZ).date().isoformat()
+    svc.store.save("sjm", today, [{"code": "sz000001", "name": "甲股份", "rank": 1, "auction_pct": 3.0, "limit_price": 12.2, "board": "主板"},
+                                  {"code": "sh600000", "name": "乙股份", "rank": 2, "auction_pct": 2.0, "limit_price": 22.0, "board": "主板"}])
+    monkeypatch.setattr(pick_service, "CLOSE_AT", dt.time(0, 0))
+    quotes = {"sz000001": {"latest": 12.2, "change": 0.1, "high": 12.2, "time": f"{today} 15:00:02"},
+              "sh600000": {"latest": 20.5, "change": 0.02, "high": 22.0, "time": f"{today} 14:59:58"}}
+    monkeypatch.setattr(mcp, "quotes", lambda codes, ttl=8: quotes)
+    assert not svc.day("sjm", today)["settled"]                                 # 有一只还不是收盘后的报价
+    quotes["sh600000"]["time"] = f"{today} 15:00:03"
+    d = svc.day("sjm", today)
+    assert d["settled"] and d["closed_live"] and [i["sealed"] for i in d["items"]] == [True, False] and d["items"][1]["touched"]
+    assert svc.report("sjm", today)["title"] == "2 只里 1 只封住涨停"

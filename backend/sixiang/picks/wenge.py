@@ -218,7 +218,9 @@ GAIN_LOW_5D_MAX = 0.17        # 从近 5 日最低点到昨收，涨幅超过这
 SURGE_MAX = 0.045             # 昨天冲高回落超过这个不开
 GAP_MAX = 0.049               # 今天高开超过这个不开
 AMPLITUDE_MIN = 0.008         # 近 6 日平均振幅低于这个不开
-AMOUNT_MIN = 3e8              # 近 5 日平均成交额低于 3 亿不开
+# 近 5 日平均成交额低于这个不开。实盘是 3 亿（大资金怕买不进），名单页不用（2026-11-27 用户定）：
+# 2024 年以来被它挡掉的票不比留下的差，页面上那版模拟盘也没这条。设成 0 就是不判断。
+AMOUNT_MIN = 0.0
 BOARD_INDEX = {"main": "sz399303", "gem": "sz399006", "star": "sh000680"}     # 国证 2000 / 创业板指 / 科创 50
 
 
@@ -274,7 +276,7 @@ def skip_reasons(bars: pd.DataFrame, opens: dict[str, float], declining: dict[st
             out[code] = "gap"
         elif (amp.mean() if len(amp) else 0) < AMPLITUDE_MIN:
             out[code] = "amplitude"
-        elif g.amount.iloc[-5:].mean() < AMOUNT_MIN:
+        elif AMOUNT_MIN > 0 and g.amount.iloc[-5:].mean() < AMOUNT_MIN:
             out[code] = "amount"
         elif o >= _limit_up(code, t1.close) - 1e-6:
             out[code] = "limit"

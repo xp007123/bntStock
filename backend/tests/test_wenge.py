@@ -94,8 +94,9 @@ def _bars(code, closes, amount=5e8, high_pad=0.02, low_pad=0.02, last=None):
     return rows
 
 
-def test_skip_reasons_follow_live_gates():
-    """入选后开不开仓：和实盘程序线上版的那几道闸门一致。"""
+def test_skip_reasons_follow_live_gates(monkeypatch):
+    """入选后开不开仓：和实盘程序线上版的那几道闸门一致（成交额那道名单页默认不判断，见下）。"""
+    monkeypatch.setattr(wenge, "AMOUNT_MIN", 3e8)
     flat = [10.0] * 25
     bars = pd.DataFrame(
         _bars("sh600001", flat)                                           # 一切正常
@@ -113,3 +114,5 @@ def test_skip_reasons_follow_live_gates():
     assert out == {"sh600002": "gain", "sh600003": "surge", "sh600004": "gap", "sh600005": "amplitude", "sh600006": "amount",
                    "sz300007": "index", "sh600008": "ma20", "sh600009": "history"}
     assert wenge.skip_reasons(bars, {"sh600001": 11.0}, {}) == {"sh600001": "gap"} and wenge._limit_up("sz300007", 10.0) == 12.0
+    monkeypatch.setattr(wenge, "AMOUNT_MIN", 0.0)                         # 名单页不看成交额
+    assert "sh600006" not in wenge.skip_reasons(bars, opens, {})

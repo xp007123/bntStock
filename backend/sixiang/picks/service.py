@@ -93,6 +93,28 @@ def _sjm_facts(s: dict) -> list[str]:
     return out
 
 
+CLOSE_AT = dt.time(15, 0, 30)      # 收盘后实时行情的最新价就是收盘价
+
+
+def _settle_live(items: list[dict], date: str) -> bool:
+    """收盘了、日线还没同步进来（线上 18:30）：用收盘后的实时行情先把当天结果填上。
+    要每只都拿到 15:00 以后的报价才填，缺一只就照旧等日线。日线进来后以日线为准。"""
+    try:
+        quotes = mcp.quotes([r["code"] for r in items])
+    except Exception:  # noqa: BLE001
+        return False
+    after = f"{date} 15:00"
+    if not all((q := quotes.get(r["code"])) and q.get("change") is not None and str(q.get("time") or "") >= after for r in items):
+        return False
+    for r in items:
+        q, limit = quotes[r["code"]], r.get("limit_price")
+        r["close"], r["day_pct"] = q["latest"], q["change"]
+        r["sealed"] = bool(limit and q["latest"] >= limit - 0.001)
+        r["touched"] = bool(limit and q.get("high") and q["high"] >= limit - 0.001)
+        r["settled"] = True
+    return True
+
+
 def _star(i: dict, tag: str | None, key: str = "day_pct") -> dict:
     return {"rank": i["rank"], "code": i["code"], "name": i["name"], "value": i[key], "tag": tag}
 
@@ -382,6 +404,8 @@ class PickService:
             for r in items:
                 for k in ("pick_price", "since_days", "since_max", "streak", "no_open"):
                     r.pop(k, None)
+            if items and date == today.date().isoformat() and not all(r["settled"] for r in items) and today.time() >= CLOSE_AT:
+                extra["closed_live"] = _settle_live(items, date)
         else:
             items.sort(key=lambda r: (r["no_open"], -(r["streak"] or 0), r["rank"]))   # 能开仓的在前；其中连续入选久的排前面
             level = _level(len(items))
