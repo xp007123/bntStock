@@ -52,10 +52,14 @@ def test_api_sim_and_no_rules(app):  # noqa: F811
     w = items["wenge"]
     m = pick_service.sim()
     assert w["record"] == "sim" and w["highlights"][0]["value"] == m["summary"]["total_return"]
-    assert w["latest"]["title"] == "2 只里 2 只收涨" and w["latest"]["stars"][0]["name"] == "甲股份"     # 甲当天 +10%
+    # 趋势类不讲当天收盘，讲入选以来：甲 18 日开盘 10.5 入选，19 日收 11.1；乙 20.8 → 20.2
+    assert w["latest"]["title"] == "甲股份 入选 1 天涨 6%" and [x["name"] for x in w["latest"]["stars"]] == ["甲股份", "乙股份"]
     day = c.get("/api/picks/wenge", params={"date": DAYS[2]}).json()
     assert [i["name"] for i in day["items"]] == ["乙股份", "甲股份"] and day["settled"]
     assert abs(day["items"][0]["open_pct"] - 0.04) < 1e-9 and "undistri" not in day["items"][0]
+    jia = day["items"][1]
+    assert jia["pick_price"] == 10.5 and jia["since_days"] == 1 and abs(jia["since_ret"] - (11.1 / 10.5 - 1)) < 1e-9
+    assert abs(jia["since_max"] - (11.2 / 10.5 - 1)) < 1e-9 and day["follow_days"] == 20 and day["best"][0]["code"] == "sz000001"
     stats = c.get("/api/picks/wenge/stats").json()
     assert stats["kind"] == "sim" and len(stats["sim"]["nav"]) == len(stats["sim"]["dates"]) == m["days"]
     assert stats["sim"]["summary"]["max_drawdown"] < 0.1 and stats["facts"]

@@ -129,14 +129,19 @@ def _sjm_report(items: list[dict], settled: bool, s: dict) -> dict:
     return {"mode": "result", "title": title, "big": big, "sub": sub, "value_label": "当天收盘", "stars": stars[:6], "note": note}
 
 
+def _span(m: dict) -> str:
+    return f"{m['start'][:7].replace('-', '.')} 到 {m['end'][:7].replace('-', '.')}"
+
+
 def _wenge_highlights(_s: dict) -> list[dict]:
-    """文哥的主打数字：仿真模拟盘的累计收益、年化、回撤。"""
+    """趋势之王的主打数字：累计收益、年化、回撤（都是仿真模拟盘的，页面上在区块标题注明一次）。"""
     m = sim()
-    span = f"{m['start'][:7].replace('-', '.')} 到 {m['end'][:7].replace('-', '.')}"
-    hs300 = next((b for b in m["benchmarks"] if b["code"] == "sh000300"), None)
-    return [{"label": "仿真模拟盘累计收益", "value": m["summary"]["total_return"], "note": span + (f"，同期沪深300 {hs300['total']:+.0%}" if hs300 else "")},
-            {"label": "年化收益", "value": m["summary"]["annualized"], "note": "仿真模拟盘"},
-            {"label": "最大回撤", "value": m["summary"]["max_drawdown"], "note": "从高点最多回落的幅度"}]
+    hs = next((b for b in m["benchmarks"] if b["code"] == "sh000300"), None)
+    full = [y for y in m["years"] if not y["partial"]]
+    yearly = "、".join(f"{y['year']} {y['ret']:+.0%}" for y in full)
+    return [{"label": "累计收益", "value": m["summary"]["total_return"], "note": _span(m) + (f"，同期沪深300 {hs['total']:+.0%}" if hs else "")},
+            {"label": "年化收益", "value": m["summary"]["annualized"], "note": yearly + ("，年年为正" if all(y["ret"] > 0 for y in m["years"]) else "")},
+            {"label": "最大回撤", "value": m["summary"]["max_drawdown"], "note": f"同期沪深300 最大回撤 {hs['max_drawdown']:.0%}" if hs else "从高点最多回落的幅度"}]
 
 
 def _wenge_facts(_s: dict) -> list[str]:
@@ -149,19 +154,32 @@ def _wenge_facts(_s: dict) -> list[str]:
 
 
 def _wenge_report(items: list[dict], settled: bool, s: dict) -> dict:
-    """某一天的名单：没收盘时按开盘涨幅列出来；收盘后讲当天涨得最好的几只。全是当天发生的事。"""
+    """趋势类不讲当天收盘：讲近一个月入选的票里，入选以来涨得最好的几只。全是已经发生的行情。"""
+    note = f"入选价按入选当天开盘价，最多看 {FOLLOW_DAYS} 个交易日。名单按平台的固定规则筛出，不是买卖建议。"
+    best = s.get("best") or []
+    stars = [{"rank": i + 1, "code": b["code"], "name": b["name"], "value": b["ret"], "tag": f"{b['days']} 天"} for i, b in enumerate(best)]
+    if best and best[0]["ret"] > 0:
+        top = best[0]
+        return {"mode": "result", "title": f"{top['name']} 入选 {top['days']} 天涨 {top['ret']:.0%}",
+                "big": {"num": f"+{top['ret'] * 100:.0f}", "unit": "%", "label": f"{top['name']} 入选以来"},
+                "sub": "近一个月入选的票里，涨得最好的几只", "value_label": "入选以来", "stars": stars, "note": note}
     n = len(items)
-    note = "名单按平台的固定规则筛出，不是买卖建议。"
-    if not settled:
-        return {"mode": "list", "title": f"名单 {n} 只", "big": None, "sub": "开盘后入选", "value_label": "开盘涨幅",
-                "stars": [_star(i, None, "open_pct") for i in items], "note": note}
-    ups = sorted((i for i in items if (i["day_pct"] or 0) > 0), key=lambda i: -i["day_pct"])
-    if ups:
-        return {"mode": "result", "title": f"{n} 只里 {len(ups)} 只收涨", "big": {"num": str(len(ups)), "unit": "只", "label": "当天收盘是涨的"},
-                "sub": f"名单共 {n} 只，涨得最多的 {ups[0]['name']} {ups[0]['day_pct']:+.1%}", "value_label": "当天收盘",
-                "stars": [_star(i, None) for i in ups[:6]], "note": note}
-    return {"mode": "result", "title": f"名单 {n} 只", "big": None, "sub": "", "value_label": "当天收盘",
-            "stars": [_star(i, None) for i in items[:6]], "note": note}
+    return {"mode": "list", "title": f"名单 {n} 只", "big": None, "sub": "开盘后入选", "value_label": "开盘涨幅",
+            "stars": [_star(i, None, "open_pct") for i in items], "note": note}
+
+
+FOLLOW_DAYS = 20        # 趋势类名单最多跟踪 20 个交易日（策略平均拿 12 天左右）
+
+
+def _best(m) -> list[dict]:
+    """近 20 个出名单的日子里入选过的票，按入选以来的涨幅排前 5。同一只票入选过好几次，按最早那次算。"""
+    if m.empty:
+        return []
+    days = sorted(m.date.unique())[-FOLLOW_DAYS:]
+    x = m[m.date.isin(days) & m.since_ret.notna()].sort_values("date").drop_duplicates("code", keep="first")
+    x = x.sort_values("since_ret", ascending=False).head(5)
+    return [{"code": r.code, "name": r.name, "date": r.date, "days": int(r.since_days), "ret": float(r.since_ret), "max": float(r.since_max)}
+            for r in x.itertuples()]
 
 
 _VIEWS = {"sjm": {"highlights": _sjm_highlights, "facts": _sjm_facts, "report": _sjm_report},
@@ -246,7 +264,11 @@ class PickService:
             hit = self._cache.get(key)
             if hit is None:
                 m = stats.enrich(cur, self.store.rows(strategy))
-                summary = stats.summarize(cur, m) if len(m) and STRATEGIES[strategy]["record"] == "stats" else {"range": None}
+                if STRATEGIES[strategy]["record"] == "sim":       # 趋势类：看入选之后，不看当天
+                    m = stats.follow(cur, m, FOLLOW_DAYS)
+                    summary = {"range": None, "best": _best(m)}
+                else:
+                    summary = stats.summarize(cur, m) if len(m) else {"range": None}
                 hit = {"frame": m, "summary": summary}
                 self._cache = {k: v for k, v in self._cache.items() if k[0] != strategy} | {key: hit}   # 每个策略只留最新的一份
         return snap, hit
@@ -294,17 +316,24 @@ class PickService:
         items = []
         if date and len(m):
             cols = ["rank", "code", "name", "board", "auction_pct", "limit_price", "open", "close", "open_pct", "day_pct",
-                    "intraday", "sealed", "touched", "next_open_ret", "next_date", "pick_open_pct"]
+                    "intraday", "sealed", "touched", "next_open_ret", "next_date", "pick_open_pct", "pick_open",
+                    "since_days", "since_ret", "since_max"]
             for r in m[m.date == date].sort_values("rank").reindex(columns=cols).to_dict("records"):
                 r = {k: _clean(v) for k, v in r.items()}
                 r["auction_pct"] = r["auction_pct"] / 100 if r["auction_pct"] is not None else None   # 问财给的是百分数
                 if r["open_pct"] is None:                       # 当天日线还没进来：先用出名单时的开盘涨幅
                     r["open_pct"] = r["pick_open_pct"]
                 r.pop("pick_open_pct")
+                r["pick_price"] = r.pop("pick_open") if r["open"] is None else r["open"]      # 入选价：当天开盘价
                 r["settled"] = r["open"] is not None
                 r["sealed"], r["touched"] = (bool(r["sealed"]), bool(r["touched"])) if r["settled"] else (None, None)
                 items.append(r)
-        return {"strategy": meta, "date": date, "items": items, "days": days, "data_end": snap.data_end,
+        if meta["record"] != "sim":
+            for r in items:
+                for k in ("pick_price", "since_days", "since_ret", "since_max"):
+                    r.pop(k, None)
+        extra = {"follow_days": FOLLOW_DAYS, "best": hit["summary"].get("best", [])} if meta["record"] == "sim" else {}
+        return {**extra, "strategy": meta, "date": date, "items": items, "days": days, "data_end": snap.data_end,
                 "today": today.date().isoformat(), "is_today": date == today.date().isoformat(),
                 "settled": bool(items) and all(i["settled"] for i in items)}
 

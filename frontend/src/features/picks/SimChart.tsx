@@ -23,13 +23,14 @@ export default function SimChart({ sim, name }: { sim: PickSim; name: string }) 
     return () => { ro.disconnect(); chart.current?.dispose() }
   }, [])
   useEffect(() => {
+    const lines = sim.benchmarks.filter(b => b.nav)
     const cum = (arr: (number | null)[]) => arr.map(v => (v == null ? null : +(v - 1).toFixed(5)))
     const axis = { axisLine: { lineStyle: { color: P.line } }, axisTick: { show: false }, axisLabel: { color: P.muted, fontSize: 11 } }
     chart.current?.setOption({
       animation: false,
       textStyle: { fontFamily: P.sans },
       legend: { top: 0, left: 0, icon: 'roundRect', itemWidth: 14, itemHeight: 4, textStyle: { color: P.ink2, fontSize: 12 },
-                data: [name, ...sim.benchmarks.map(b => `同期${b.name}`)] },
+                data: [name, ...lines.map(b => `同期${b.name}`)] },
       axisPointer: { link: [{ xAxisIndex: 'all' }] },
       grid: [{ left: 52, right: 16, top: 36, height: '58%' }, { left: 52, right: 16, top: '76%', bottom: 28 }],
       tooltip: {
@@ -37,7 +38,7 @@ export default function SimChart({ sim, name }: { sim: PickSim; name: string }) 
         formatter: (ps: { dataIndex: number }[]) => {
           const i = ps[0].dataIndex
           const rows = [`<b>${sim.dates[i]}</b>`, `${name} 累计 ${pct(sim.nav[i] - 1)}`,
-            ...sim.benchmarks.map(b => `同期${b.name} ${pct(b.nav[i] == null ? null : b.nav[i]! - 1)}`), `从高点回落 ${pct(-sim.drawdown[i], false)}`]
+            ...lines.map(b => `同期${b.name} ${pct(b.nav![i] == null ? null : b.nav![i]! - 1)}`), `从高点回落 ${pct(-sim.drawdown[i], false)}`]
           return rows.join('<br/>')
         },
       },
@@ -52,7 +53,7 @@ export default function SimChart({ sim, name }: { sim: PickSim; name: string }) 
       series: [
         { name, type: 'line', data: cum(sim.nav), showSymbol: false, lineStyle: { width: 2.4, color: P.accent }, itemStyle: { color: P.accent },
           areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(251,94,13,.18)' }, { offset: 1, color: 'rgba(251,94,13,0)' }]) }, z: 3 },
-        ...sim.benchmarks.map((b, k) => ({ name: `同期${b.name}`, type: 'line', data: cum(b.nav), showSymbol: false, connectNulls: true,
+        ...lines.map((b, k) => ({ name: `同期${b.name}`, type: 'line', data: cum(b.nav!), showSymbol: false, connectNulls: true,
                                            lineStyle: { width: 1.4, color: BENCH[k % BENCH.length] }, itemStyle: { color: BENCH[k % BENCH.length] } })),
         { name: '回撤', type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: sim.drawdown.map(v => -v), showSymbol: false,
           lineStyle: { width: 1, color: P.down }, itemStyle: { color: P.down }, areaStyle: { color: 'rgba(10,135,84,.14)' } },

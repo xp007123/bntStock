@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { type PickBlock, type PickSimStats, type PickStats, usePickStats } from '../../api/client'
+import { type PickBlock, type PickSim, type PickSimStats, type PickStats, usePickStats } from '../../api/client'
 import SubNav, { PICK_TABS } from '../../components/SubNav'
 import SimChart from './SimChart'
 import StrategyHead from './StrategyHead'
@@ -48,6 +48,42 @@ function Rows({ items }: { items: (PickBlock & { label: string })[] }) {
 
 const signed = (v: number) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
 
+/** 每个月的收益：一年一行，红赚绿亏，颜色深浅按幅度。上面一行讲赚钱的月份有多少、赚的月和亏的月各多少。 */
+function MonthGrid({ months }: { months: PickSim['months'] }) {
+  const win = months.filter(x => x.ret > 0), lose = months.filter(x => x.ret <= 0)
+  const avg = (xs: typeof months) => xs.reduce((a, x) => a + x.ret, 0) / Math.max(1, xs.length)
+  const best = months.reduce((a, x) => (x.ret > a.ret ? x : a), months[0])
+  const worst = months.reduce((a, x) => (x.ret < a.ret ? x : a), months[0])
+  const years = [...new Set(months.map(x => x.month.slice(0, 4)))]
+  const by = Object.fromEntries(months.map(x => [x.month, x.ret]))
+  const shade = (v: number) => `color-mix(in srgb, var(${v > 0 ? '--up' : '--down'}) ${Math.min(80, 10 + Math.abs(v) * 400)}%, var(--surface))`
+  return (
+    <>
+      <div className="sim-mstat">
+        <div><b className="num">{win.length} / {months.length}</b><span>赚钱的月份</span></div>
+        <div><b className="num"><em className="up">{signed(avg(win))}</em> / <em className="down">{signed(avg(lose))}</em></b><span>赚钱的月平均 / 亏钱的月平均</span></div>
+        <div><b className="num"><em className="up">{signed(best.ret)}</em> / <em className="down">{signed(worst.ret)}</em></b><span>最好的一个月 / 最差的一个月</span></div>
+      </div>
+      <div className="table-wrap">
+        <table className="sim-months">
+          <thead><tr><th />{Array.from({ length: 12 }, (_, i) => <th key={i}>{i + 1} 月</th>)}</tr></thead>
+          <tbody>
+            {years.map(y => (
+              <tr key={y}>
+                <th>{y}</th>
+                {Array.from({ length: 12 }, (_, i) => {
+                  const v = by[`${y}-${String(i + 1).padStart(2, '0')}`]
+                  return <td key={i} className="num" style={v == null ? undefined : { background: shade(v), color: Math.abs(v) > 0.12 ? '#fff' : undefined }}>{v == null ? '' : signed(v)}</td>
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
 /** 仿真模拟盘：一条净值曲线、几个数、每年的收益。只讲结果，不讲怎么选、怎么买卖。 */
 function SimRecord({ s }: { s: PickSimStats }) {
   const m = s.sim
@@ -59,12 +95,33 @@ function SimRecord({ s }: { s: PickSimStats }) {
         <div><span>累计收益</span><b className="num up">{signed(m.summary.total_return)}</b><small>{hs ? `同期沪深300 ${signed(hs.total)}` : ''}</small></div>
         <div><span>年化收益</span><b className="num up">{signed(m.summary.annualized)}</b><small>折算成每年</small></div>
         <div><span>最大回撤</span><b className="num">{(m.summary.max_drawdown * 100).toFixed(1)}%</b><small>从高点最多回落的幅度</small></div>
-        <div><span>夏普比率</span><b className="num">{m.summary.sharpe.toFixed(2)}</b><small>每担一分波动换来的收益，越高越稳</small></div>
+        <div><span>夏普比率</span><b className="num">{m.summary.sharpe.toFixed(2)}</b><small>赚的钱是亏的钱的 {m.summary.profit_factor.toFixed(1)} 倍</small></div>
       </section>
 
       <section className="card fade-in">
         <h2 className="card-title">净值曲线</h2>
         <SimChart sim={m} name={s.strategy.name} />
+      </section>
+
+      <section className="card fade-in">
+        <h2 className="card-title">和指数比：收益接近，回撤小得多</h2>
+        <div className="table-wrap">
+          <table className="pk-table sim-vs">
+            <thead><tr><th /><th>累计收益</th><th>最大回撤</th><th>收益 ÷ 回撤</th></tr></thead>
+            <tbody>
+              <tr className="main"><td><b>{s.strategy.name}</b></td><td className="num up">{signed(m.summary.total_return)}</td><td className="num">{pct1(m.summary.max_drawdown)}</td><td className="num"><b>{(m.summary.total_return / m.summary.max_drawdown).toFixed(1)} 倍</b></td></tr>
+              {m.benchmarks.map(b => (
+                <tr key={b.code}><td>同期{b.name}</td><td className={`num ${b.total >= 0 ? 'up' : 'down'}`}>{signed(b.total)}</td><td className="num">{pct1(b.max_drawdown)}</td><td className="num">{(b.total / b.max_drawdown).toFixed(1)} 倍</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="muted pk-foot">“收益 ÷ 回撤”：每承受 1 份最深的回落，换来几份收益。指数按同一段时间的收盘价算。</p>
+      </section>
+
+      <section className="card fade-in">
+        <h2 className="card-title">每个月</h2>
+        <MonthGrid months={m.months} />
       </section>
 
       <section className="card fade-in">
@@ -79,8 +136,18 @@ function SimRecord({ s }: { s: PickSimStats }) {
         </div>
       </section>
 
+      <section className="card fade-in sim-costs">
+        <h2 className="card-title">成交按更难的价格算</h2>
+        <ul>
+          <li><b className="num">{(m.costs.buy_premium * 1000).toFixed(0)}‰</b><span>买入价比开盘价再高千分之{(m.costs.buy_premium * 1000).toFixed(0)}</span></li>
+          <li><b className="num">{m.costs.slippage_bps} 个基点</b><span>每笔再扣一次滑点</span></li>
+          <li><b className="num">{(m.costs.commission * 10000).toFixed(1)}‱</b><span>手续费，单笔最低 5 元</span></li>
+          <li><b className="num">T+1</b><span>当天买的第二天才能卖，开盘涨停买不进、跌停卖不出</span></li>
+        </ul>
+      </section>
+
       <p className="muted pk-note">
-        说明：以上是仿真模拟盘的数据——按平台的固定规则，在历史行情上模拟买入卖出得出（计入了手续费和滑点），不是真实账户的交易记录。
+        说明：以上是仿真模拟盘的数据——按平台的固定规则，在历史行情上模拟买入卖出得出，不是真实账户的交易记录。
         历史表现不代表以后，名单和这些数字都不是买卖建议。
       </p>
     </>

@@ -13,6 +13,7 @@ const pct0 = (v: number) => `${Math.round(v * 100)}%`
 export default function StrategyCard({ s, full = false }: { s: PickStrategyCard; full?: boolean }) {
   const r = s.latest
   const when = !r?.date ? `交易日 ${s.publish_at} 出名单`
+    : s.record === 'sim' ? `${r.is_today ? '今天' : r.date.slice(5)} 的名单 ${r.count} 只`
     : `${r.is_today ? '今天' : r.date.slice(5)} · ${r.mode === 'list' ? '名单已出，等收盘' : '已收盘'}`
   return (
     <Link to={`/picks/${s.id}`} className={`card sc ${full ? 'full' : ''}`}>
@@ -40,7 +41,7 @@ export default function StrategyCard({ s, full = false }: { s: PickStrategyCard;
 
       <div className="sc-foot">
         {s.highlights.slice(0, full ? 3 : 1).map(h => (
-          <span key={h.label} className="sc-num"><b className="num">{pct0(h.value)}</b><span>{h.label}{h.note && <small>{h.note}</small>}</span></span>
+          <span key={h.label} className="sc-num"><b className="num">{pct0(h.value)}</b><span>{s.record === 'sim' && !full ? `仿真模拟盘${h.label}` : h.label}{h.note && <small>{h.note}</small>}</span></span>
         ))}
         <span className="sc-go">看名单<ArrowRight size={14} /></span>
       </div>

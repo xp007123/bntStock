@@ -499,9 +499,14 @@ export type PickItem = {
   sealed: boolean | null; touched: boolean | null; next_open_ret: number | null; next_date: string | null; settled: boolean
   /** 今天的名单在收盘行情到之前：实时行情，以及此刻是不是封着板 */
   live?: { latest: number; change: number | null; time: string | null; sealed: boolean; touched: boolean }
+  /** 趋势类名单：入选价（当天开盘价）、入选后过了几个交易日、到那天收盘的涨跌、期间最高（最多看 follow_days 天） */
+  pick_price?: number | null; since_days?: number | null; since_ret?: number | null; since_max?: number | null
 }
+export type PickBest = { code: string; name: string; date: string; days: number; ret: number; max: number }
 export type PickDay = {
   strategy: PickStrategy; date: string | null; items: PickItem[]; days: string[]; data_end: string; today: string; is_today: boolean; settled: boolean; live_time?: string | null
+  /** 趋势类：最多跟踪几个交易日；近一个月入选过的票里，入选以来涨得最好的几只 */
+  follow_days?: number; best?: PickBest[]
 }
 export type PickBlock = {
   n: number; sealed_rate: number; touched_rate: number; open_pct_median: number; intraday_mean: number; intraday_median: number
@@ -523,10 +528,12 @@ export type PickStats = {
 /** 仿真模拟盘：按平台的买卖规则在历史行情上模拟交易的每日净值（起点为 1）。不是实盘。 */
 export type PickSim = {
   kind: 'sim'; label: string; start: string; end: string; days: number
-  summary: { total_return: number; annualized: number; max_drawdown: number; sharpe: number }
+  summary: { total_return: number; annualized: number; max_drawdown: number; sharpe: number; profit_factor: number }
+  costs: { buy_premium: number; slippage_bps: number; commission: number }
   years: { year: number; ret: number; partial: boolean }[]
+  months: { month: string; ret: number }[]
   dates: string[]; nav: number[]; drawdown: number[]
-  benchmarks: { code: string; name: string; total: number; nav: (number | null)[] }[]
+  benchmarks: { code: string; name: string; total: number; max_drawdown: number; nav: (number | null)[] | null }[]
 }
 export type PickSimStats = { strategy: PickStrategy; highlights: PickHighlight[]; kind: 'sim'; sim: PickSim; facts: string[] }
 export type PickHighlight = { label: string; value: number; note: string }
