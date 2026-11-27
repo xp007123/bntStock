@@ -15,6 +15,8 @@ import threading
 from functools import lru_cache
 from pathlib import Path
 
+import pandas as pd
+
 from ..data import mcp
 from ..data.ifind import IFindClient
 from ..data.ifind_sync import CN_TZ, client_from_env
@@ -237,6 +239,40 @@ def _best(m) -> list[dict]:
     return [{"code": r.code, "name": r.name, "date": r.date, "days": int(r.since_days), "max": float(r.since_max)} for r in x.itertuples()]
 
 
+def _live_follow(m, data_end: str):
+    """今天的日线还没进来（线上 18:30 同步）：把今天盘中的最高价也算进“入选后最高涨过”。
+    只动近 20 个出名单的日子里、20 个交易日还没走完的票；要拿到今天的报价才算。
+    返回（新的表，数字算到哪一天）。"""
+    today = dt.datetime.now(CN_TZ).date().isoformat()
+    if m.empty or data_end >= today:
+        return m, data_end
+    days = sorted(m.date.unique())[-FOLLOW_DAYS:]
+    live = m.date.isin(days) & (m.since_days.isna() | (m.since_days < FOLLOW_DAYS))
+    if not live.any():
+        return m, data_end
+    try:
+        quotes = mcp.quotes(sorted(set(m[live].code)))
+    except Exception:  # noqa: BLE001
+        return m, data_end
+    m, got = m.copy(), False
+    for i in m.index[live]:
+        r = m.loc[i]
+        q = quotes.get(r.code)
+        if not q or not q.get("high") or not str(q.get("time") or "").startswith(today):
+            continue
+        if pd.notna(r.base):                            # 以前入选的：按复权口径比
+            v = q["high"] * r.adj_last / r.base - 1
+        elif r.date == today and pd.notna(r.get("pick_open")) and r.pick_open:   # 今天刚入选的：比今天开盘价
+            v = q["high"] / r.pick_open - 1
+        else:
+            continue
+        m.at[i, "since_max"] = v if pd.isna(r.since_max) else max(r.since_max, v)
+        if pd.isna(r.since_days):
+            m.at[i, "since_days"] = 0
+        got = True
+    return m, (today if got else data_end)
+
+
 _VIEWS = {"sjm": {"highlights": _sjm_highlights, "facts": _sjm_facts, "report": _sjm_report},
           "wenge": {"highlights": _wenge_highlights, "facts": _wenge_facts, "report": _wenge_report}}
 
@@ -253,6 +289,7 @@ class PickService:
     def __init__(self, store: PickStore, market: MarketStore):
         self.store, self.market = store, market
         self._cache: dict[tuple, dict] = {}
+        self._live: dict[str, tuple] = {}
         self._lock = threading.Lock()
         self._pool_lock = threading.Lock()      # 候选池同一时间只算一份（启动补算和开盘出名单可能撞上）
 
@@ -343,6 +380,20 @@ class PickService:
                 self._cache = {k: v for k, v in self._cache.items() if k[0] != strategy} | {key: hit}   # 每个策略只留最新的一份
         return snap, hit
 
+    LIVE_TTL = 60           # 盘中的“入选后最高涨过”一分钟更新一次就够
+
+    def _now(self, strategy: str):
+        """趋势类：带上今天盘中行情的名单表和“近一个月涨得最好的”。返回 (snap, hit, frame, best, asof)。"""
+        snap, hit = self._enriched(strategy)
+        key = (strategy, snap.version_id, self.store.stamp(strategy))
+        live = self._live.get(strategy)
+        if live and live[0] == key and dt.datetime.now().timestamp() - live[1] < self.LIVE_TTL:
+            return snap, hit, *live[2]
+        m, asof = _live_follow(hit["frame"], snap.data_end)
+        out = (m, _best(m) if m is not hit["frame"] else hit["summary"].get("best", []), asof)
+        self._live[strategy] = (key, dt.datetime.now().timestamp(), out)
+        return snap, hit, *out
+
     def strategies(self) -> list[dict]:
         out = []
         for sid, meta in STRATEGIES.items():
@@ -361,9 +412,12 @@ class PickService:
         d = self.day(strategy, date)
         _, hit = self._enriched(strategy)
         view = _VIEWS[strategy]
-        body = view["report"](d["items"], d["settled"], hit["summary"]) if d["items"] else {
+        s = {**hit["summary"], "best": d["best"]} if "best" in d else hit["summary"]
+        body = view["report"](d["items"], d["settled"], s) if d["items"] else {
             "mode": "empty", "title": "还没有名单", "big": None, "sub": "", "value_label": "", "stars": [], "note": ""}
-        return _clean_tree({"strategy": d["strategy"], "date": d["date"], "is_today": d["is_today"], "today": d["today"],
+        # 趋势类的“近一个月涨得最好的”不跟着选的日子走，按最新的行情算：图上的日期写数字算到的那天
+        asof = d.get("asof") if body.get("mode") == "result" else None
+        return _clean_tree({"strategy": d["strategy"], "date": d["date"], "asof": asof, "is_today": d["is_today"], "today": d["today"],
                             "count": len(d["items"]), **body, "facts": view["facts"](hit["summary"])})
 
     @staticmethod
@@ -378,8 +432,11 @@ class PickService:
     def day(self, strategy: str, date: str | None = None) -> dict:
         """某一天的名单（默认最近一天），每只带上当天的结果；行情还没到的那天结果为空。"""
         meta = STRATEGIES[strategy]
-        snap, hit = self._enriched(strategy)
-        m = hit["frame"]
+        if meta["record"] == "sim":
+            snap, hit, m, best, asof = self._now(strategy)
+        else:
+            (snap, hit), best, asof = self._enriched(strategy), None, None
+            m = hit["frame"]
         days = sorted(d for d, n in self.store.days(strategy).items() if n)
         today = dt.datetime.now(CN_TZ)
         date = date or (days[-1] if days else None)
@@ -409,7 +466,7 @@ class PickService:
         else:
             items.sort(key=lambda r: (r["no_open"], -(r["streak"] or 0), r["rank"]))   # 能开仓的在前；其中连续入选久的排前面
             level = _level(len(items))
-            extra = {"follow_days": FOLLOW_DAYS, "best": hit["summary"].get("best", []),
+            extra = {"follow_days": FOLLOW_DAYS, "best": best, "asof": asof,
                      "open_count": sum(not r["no_open"] for r in items),
                      "heat": {"count": len(items), "level": level, "history": hit["summary"].get("heat", {}).get(level)} if items else None}
         return {**extra, "strategy": meta, "date": date, "items": items, "days": days, "data_end": snap.data_end,

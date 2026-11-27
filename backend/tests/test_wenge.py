@@ -116,3 +116,26 @@ def test_skip_reasons_follow_live_gates(monkeypatch):
     assert wenge.skip_reasons(bars, {"sh600001": 11.0}, {}) == {"sh600001": "gap"} and wenge._limit_up("sz300007", 10.0) == 12.0
     monkeypatch.setattr(wenge, "AMOUNT_MIN", 0.0)                         # 名单页不看成交额
     assert "sh600006" not in wenge.skip_reasons(bars, opens, {})
+
+
+def test_live_follow_counts_today_high(monkeypatch):
+    """今天的日线还没进来：把今天盘中最高价算进“入选后最高涨过”；报价不是今天的不算。"""
+    import datetime as dt
+    from sixiang.data import mcp
+    from sixiang.picks import service as svc_mod
+    today = dt.datetime.now(svc_mod.CN_TZ).date().isoformat()
+    m = pd.DataFrame([
+        {"date": "2026-11-12", "code": "sh688256", "name": "甲", "skip": None, "since_days": 10.0, "since_max": 0.129, "base": 915.0, "adj_last": 1.0, "pick_open": None},
+        {"date": "2026-11-09", "code": "sh688981", "name": "乙", "skip": None, "since_days": 13.0, "since_max": 0.15, "base": 111.2, "adj_last": 1.0, "pick_open": None},
+        {"date": today, "code": "sz000001", "name": "丙", "skip": None, "since_days": None, "since_max": None, "base": None, "adj_last": None, "pick_open": 10.0},
+    ])
+    quotes = {"sh688256": {"high": 1126.88, "time": f"{today} 15:00:01"},
+              "sh688981": {"high": 120.0, "time": "2026-11-26 15:00:01"},          # 不是今天的报价：不动
+              "sz000001": {"high": 10.5, "time": f"{today} 10:00:00"}}
+    monkeypatch.setattr(mcp, "quotes", lambda codes, ttl=8: quotes)
+    out, asof = svc_mod._live_follow(m, "2026-11-26")
+    assert asof == today
+    assert round(out.since_max[0], 3) == 0.232 and out.since_max[1] == 0.15 and round(out.since_max[2], 3) == 0.05
+    assert [b["name"] for b in svc_mod._best(out)][0] == "甲"
+    same, asof = svc_mod._live_follow(m, today)                                   # 日线已经到今天：原样
+    assert same is m and asof == today

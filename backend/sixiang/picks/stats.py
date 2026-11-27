@@ -113,26 +113,29 @@ def follow(cur, m: pd.DataFrame, horizon: int = 20) -> pd.DataFrame:
 
     加三列：since_days 已经过了几个交易日（0 = 只有当天）、since_ret 到那天收盘的涨跌、since_max 期间最高价比入选价高多少。
     行情还没到入选那天的（今天刚出的名单）三列为空。
+    另带两列给盘中用：base 入选价（复权后）、adj_last 最近一根日线的复权因子（实时价 × adj_last / base 就是盘中涨了多少）。
     """
     m = m.copy()
-    for c in ("since_days", "since_ret", "since_max"):
+    for c in ("since_days", "since_ret", "since_max", "base", "adj_last"):
         m[c] = np.nan
     if m.empty:
         return m
     cur.register("follow_codes", pd.DataFrame({"code": m.code.unique()}))
     d = cur.execute("""SELECT code, CAST(date AS VARCHAR) AS date, open, high, close, adj_factor
                        FROM daily JOIN follow_codes USING (code) WHERE date >= ? AND open > 0 ORDER BY code, date""", [m.date.min()]).df()
-    groups = {c: (g.date.to_numpy(), (g.open * g.adj_factor).to_numpy(), (g.high * g.adj_factor).to_numpy(), (g.close * g.adj_factor).to_numpy())
+    groups = {c: (g.date.to_numpy(), (g.open * g.adj_factor).to_numpy(), (g.high * g.adj_factor).to_numpy(), (g.close * g.adj_factor).to_numpy(),
+                  float(g.adj_factor.iloc[-1]))
               for c, g in d.groupby("code")}
-    days, rets, maxs = [], [], []
+    days, rets, maxs, bases, adjs = [], [], [], [], []
     for code, date in zip(m.code, m.date):
         g = groups.get(code)
         i = np.searchsorted(g[0], date) if g is not None else 0
         if g is None or i >= len(g[0]) or g[0][i] != date:
-            days.append(np.nan); rets.append(np.nan); maxs.append(np.nan)
+            days.append(np.nan); rets.append(np.nan); maxs.append(np.nan); bases.append(np.nan); adjs.append(np.nan)
             continue
         j = min(i + horizon, len(g[0]) - 1)
         base = g[1][i]
         days.append(j - i); rets.append(g[3][j] / base - 1); maxs.append(g[2][i:j + 1].max() / base - 1)
-    m["since_days"], m["since_ret"], m["since_max"] = days, rets, maxs
+        bases.append(base); adjs.append(g[4])
+    m["since_days"], m["since_ret"], m["since_max"], m["base"], m["adj_last"] = days, rets, maxs, bases, adjs
     return m

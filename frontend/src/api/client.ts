@@ -548,6 +548,8 @@ export type PickStar = { rank: number; code: string; name: string; value: number
 /** 某一天的战报：讲当天最亮的那件事。首页看板和分享图用。文字和数字都由后端按策略给出。 */
 export type PickReport = {
   strategy: PickStrategy; date: string | null; is_today: boolean; today: string; count: number
+  /** 趋势类战报：“涨得最好的”算到哪一天（分享图上印这个日期） */
+  asof?: string | null
   mode: 'result' | 'list' | 'empty'; title: string; big: { num: string; unit: string; label: string } | null; sub: string
   value_label: string; stars: PickStar[]; note: string; facts: string[]
 }

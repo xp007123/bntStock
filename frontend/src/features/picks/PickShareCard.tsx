@@ -33,7 +33,7 @@ function row(c: CanvasRenderingContext2D, x: PickReport['stars'][number], top: n
  */
 function draw(r: PickReport, host: string): HTMLCanvasElement {
   const { canvas, c } = blankCard()
-  c.fillStyle = ON_MUTED; c.font = font(500, 34); c.textAlign = 'right'; c.fillText(r.date ?? '', W - PAD, PAD + 44); c.textAlign = 'left'
+  c.fillStyle = ON_MUTED; c.font = font(500, 34); c.textAlign = 'right'; c.fillText(r.asof ?? r.date ?? '', W - PAD, PAD + 44); c.textAlign = 'left'
 
   let y = PAD + 176
   c.fillStyle = ON; c.font = font(600, 44); c.fillText(r.strategy.name, PAD, y)
@@ -99,10 +99,10 @@ export default function PickShareCard({ strategy, date, onClose }: { strategy: s
     <div className="share-modal" role="dialog" aria-modal="true" aria-label="战报图" onClick={onClose}>
       <div className="share-box" onClick={e => e.stopPropagation()}>
         <button className="share-close" aria-label="关闭" onClick={onClose}><X size={18} /></button>
-        {url ? <img src={url} alt={`${r?.strategy.name} ${r?.date} ${kind}图`} />
+        {url ? <img src={url} alt={`${r?.strategy.name} ${r?.asof ?? r?.date} ${kind}图`} />
           : <div className="share-wait">{q.isError || r?.mode === 'empty' ? '这一天没有可以画的内容' : '正在画…'}</div>}
         <div className="share-actions">
-          <a className={`btn primary lg ${url ? '' : 'disabled'}`} href={url || undefined} download={`四象智投-${r?.strategy.name ?? ''}-${r?.date ?? ''}.png`}><Download size={16} />保存图片</a>
+          <a className={`btn primary lg ${url ? '' : 'disabled'}`} href={url || undefined} download={`四象智投-${r?.strategy.name ?? ''}-${r?.asof ?? r?.date ?? ''}.png`}><Download size={16} />保存图片</a>
           <span className="muted">手机上长按图片也能保存。图上只有当天已经发生的结果和历史统计。{r?.note}</span>
         </div>
       </div>
