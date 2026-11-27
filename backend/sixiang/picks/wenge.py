@@ -209,3 +209,77 @@ def week_of(day: dt.date, trade_days: list[dt.date]) -> tuple[dt.date, dt.date]:
     mon = day - dt.timedelta(days=day.weekday())
     days = [d for d in trade_days if mon <= d <= mon + dt.timedelta(days=6)]
     return (days[0], days[-1]) if days else (day, day)
+
+
+# ---------------------------------------------------------------- 入选之后：今天开不开仓
+# 口径照搬实盘程序最后的线上版（WengeEntryStrategy 的过滤闸门，只取和股票有关的那几道）。
+# 和账户有关的（满仓、已持有、止盈后的冷却期）这里判断不了。原因只存库里备查，不进接口、不上页面。
+GAIN_LOW_5D_MAX = 0.17        # 从近 5 日最低点到昨收，涨幅超过这个不开
+SURGE_MAX = 0.045             # 昨天冲高回落超过这个不开
+GAP_MAX = 0.049               # 今天高开超过这个不开
+AMPLITUDE_MIN = 0.008         # 近 6 日平均振幅低于这个不开
+AMOUNT_MIN = 3e8              # 近 5 日平均成交额低于 3 亿不开
+BOARD_INDEX = {"main": "sz399303", "gem": "sz399006", "star": "sh000680"}     # 国证 2000 / 创业板指 / 科创 50
+
+
+def board(code: str) -> str:
+    n = code[2:]
+    return "gem" if n.startswith("30") else "star" if n.startswith("68") else "main"
+
+
+def _limit_up(code: str, prev_close: float) -> float:
+    pct = 1.2 if board(code) in ("gem", "star") else 1.1
+    return int(prev_close * pct * 100 + 0.5 + 1e-6) / 100
+
+
+def prior_bars(cur, codes: list[str], day: dt.date, n: int = 25) -> pd.DataFrame:
+    """每只票 day 之前最近 n 根有成交的日线。"""
+    cur.register("wenge_gate_codes", pd.DataFrame({"code": codes}))
+    d = cur.execute("""SELECT code, date, open, high, low, close, amount, adj_factor FROM daily JOIN wenge_gate_codes USING (code)
+                       WHERE date < ? AND date >= ? AND open > 0 AND volume > 0 ORDER BY code, date""",
+                    [day, day - dt.timedelta(days=n * 3)]).df()
+    return d.groupby("code").tail(n)
+
+
+def index_declining(cur, day: dt.date, now: dict[str, float]) -> dict[str, bool]:
+    """每个板块的指数是不是“双下拐”：现在的点位同时低于第 5、第 10 个交易日前的收盘。now：指数代码 → 现在的点位。"""
+    out = {}
+    for b, code in BOARD_INDEX.items():
+        closes = [r[0] for r in cur.execute("SELECT close FROM indices WHERE code = ? AND date < ? ORDER BY date DESC LIMIT 10", [code, day]).fetchall()]
+        v = now.get(code)
+        out[b] = bool(v and len(closes) >= 10 and v < closes[4] and v < closes[9])
+    return out
+
+
+def skip_reasons(bars: pd.DataFrame, opens: dict[str, float], declining: dict[str, bool]) -> dict[str, str]:
+    """哪些票今天不开仓：code → 原因（内部代号）。没出现在结果里的就是可以开。"""
+    out: dict[str, str] = {}
+    groups = {c: g for c, g in bars.groupby("code")}
+    for code, o in opens.items():
+        g = groups.get(code)
+        if g is None or len(g) < 5:
+            out[code] = "history"
+            continue
+        adj = g.adj_factor / g.adj_factor.iloc[-1]
+        closes, lows = (g.close * adj).to_numpy(), (g.low * adj).to_numpy()
+        t1 = g.iloc[-1]
+        low5 = lows[-5:].min()
+        top = max(t1.open, t1.close)
+        amp = ((g.high - g.low) / g.close.shift(1)).iloc[-6:].dropna()
+        if (closes[-1] - low5) / low5 > GAIN_LOW_5D_MAX:
+            out[code] = "gain"
+        elif (t1.high - top) / top > SURGE_MAX:
+            out[code] = "surge"
+        elif (o - t1.close) / t1.close > GAP_MAX:
+            out[code] = "gap"
+        elif (amp.mean() if len(amp) else 0) < AMPLITUDE_MIN:
+            out[code] = "amplitude"
+        elif g.amount.iloc[-5:].mean() < AMOUNT_MIN:
+            out[code] = "amount"
+        elif o >= _limit_up(code, t1.close) - 1e-6:
+            out[code] = "limit"
+        elif declining.get(board(code)):
+            out[code] = "index"
+        elif len(closes) >= 19 and o < closes[-19:].mean():
+            out[code] = "ma20"
+    return out

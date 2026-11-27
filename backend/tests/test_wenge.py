@@ -52,20 +52,64 @@ def test_api_sim_and_no_rules(app):  # noqa: F811
     w = items["wenge"]
     m = pick_service.sim()
     assert w["record"] == "sim" and w["highlights"][0]["value"] == m["summary"]["total_return"]
-    # 趋势类不讲当天收盘，讲入选以来：甲 18 日开盘 10.5 入选，19 日收 11.1；乙 20.8 → 20.2
-    assert w["latest"]["title"] == "甲股份 入选 1 天涨 6%" and [x["name"] for x in w["latest"]["stars"]] == ["甲股份", "乙股份"]
+    # 趋势类不讲当天收盘，讲入选后最高涨过多少：甲 18 日开盘 10.5 入选，之后最高 11.2；乙 20.8 → 22.0
+    assert w["latest"]["title"] == "甲股份 入选后最高涨过 7%" and [x["name"] for x in w["latest"]["stars"]] == ["甲股份", "乙股份"]
     day = c.get("/api/picks/wenge", params={"date": DAYS[2]}).json()
     assert [i["name"] for i in day["items"]] == ["乙股份", "甲股份"] and day["settled"]
     assert abs(day["items"][0]["open_pct"] - 0.04) < 1e-9 and "undistri" not in day["items"][0]
     jia = day["items"][1]
-    assert jia["pick_price"] == 10.5 and jia["since_days"] == 1 and abs(jia["since_ret"] - (11.1 / 10.5 - 1)) < 1e-9
+    assert jia["pick_price"] == 10.5 and jia["since_days"] == 1 and jia["streak"] == 1 and "since_ret" not in jia
     assert abs(jia["since_max"] - (11.2 / 10.5 - 1)) < 1e-9 and day["follow_days"] == 20 and day["best"][0]["code"] == "sz000001"
+    assert all("no_open" in i and "skip" not in i for i in day["items"]) and day["open_count"] == sum(not i["no_open"] for i in day["items"])
+    assert day["heat"] == {"count": 2, "level": "cold", "history": None}                 # 历史不够长：只说冷热，不给统计
     stats = c.get("/api/picks/wenge/stats").json()
     assert stats["kind"] == "sim" and len(stats["sim"]["nav"]) == len(stats["sim"]["dates"]) == m["days"]
-    assert stats["sim"]["summary"]["max_drawdown"] < 0.1 and stats["facts"]
+    assert stats["sim"]["summary"]["max_drawdown"] < 0.1 and stats["facts"] and stats["sim"]["trades"]["win_avg"] > -stats["sim"]["trades"]["loss_avg"]
     hit = c.get("/api/picks/stock/sz000001").json()["pick"]
     assert hit["strategy"] == "wenge" and hit["rank"] == 2 and "仿真模拟盘" in hit["facts"][0]
     # 选股、买卖的规则不出现在任何接口里
     blob = json.dumps([items, day, stats, hit], ensure_ascii=False)
-    for word in ("未分配", "资本公积", "净利润", "undistri", "np_yoy", "冲高", "振幅", "止盈", "止损", "均线", "MA", "冷却"):
+    for word in ("未分配", "资本公积", "净利润", "undistri", "np_yoy", "冲高", "振幅", "止盈", "止损", "均线", "MA", "冷却", "成交额", "ma20", "amplitude", "surge"):
         assert word not in blob, word
+
+
+def test_streak_counts_consecutive_list_days():
+    """连续入选第几天：按出名单的日子数，断一天重新数。"""
+    m = pd.DataFrame({"code": ["a", "a", "a", "b", "b", "a"], "date": ["d1", "d2", "d3", "d1", "d3", "d5"]})
+    m = pd.concat([m, pd.DataFrame({"code": ["c"], "date": ["d4"]})])          # d4 这天有名单，但没有 a
+    out = pick_service._streaks(m).set_index(["code", "date"]).streak.to_dict()
+    assert out[("a", "d3")] == 3 and out[("b", "d3")] == 1 and out[("a", "d5")] == 1
+    assert [pick_service._level(n) for n in (4, 15, 40, 41)] == ["cold", "normal", "normal", "hot"]
+
+
+def _bars(code, closes, amount=5e8, high_pad=0.02, low_pad=0.02, last=None):
+    """造一串日线：每天开盘等于前一天收盘，最高最低各留一点振幅。last 可以改写最后一根。"""
+    rows, prev = [], closes[0]
+    for i, c in enumerate(closes):
+        rows.append({"code": code, "date": i, "open": prev, "high": max(prev, c) * (1 + high_pad), "low": min(prev, c) * (1 - low_pad),
+                     "close": c, "amount": amount, "adj_factor": 1.0})
+        prev = c
+    if last:
+        rows[-1].update(last)
+    return rows
+
+
+def test_skip_reasons_follow_live_gates():
+    """入选后开不开仓：和实盘程序线上版的那几道闸门一致。"""
+    flat = [10.0] * 25
+    bars = pd.DataFrame(
+        _bars("sh600001", flat)                                           # 一切正常
+        + _bars("sh600002", [10.0] * 20 + [10.0, 10.5, 11.0, 11.6, 12.2])   # 从 5 日低点涨了 20% 多
+        + _bars("sh600003", flat, last={"high": 10.6})                    # 昨天冲高 6% 又回落
+        + _bars("sh600004", flat)                                         # 今天高开 6%
+        + _bars("sh600005", flat, high_pad=0.002, low_pad=0.002)          # 振幅太小
+        + _bars("sh600006", flat, amount=1e8)                             # 成交额不够
+        + _bars("sz300007", flat)                                         # 板块指数双下拐
+        + _bars("sh600008", [12.0] * 15 + [10.0] * 10)                    # 在 20 日线下面
+        + _bars("sh600009", flat[:3])                                     # 上市没几天
+    )
+    opens = {c: 10.0 for c in bars.code.unique()} | {"sh600004": 10.6, "sh600002": 12.2}
+    out = wenge.skip_reasons(bars, opens, {"main": False, "gem": True, "star": False})
+    assert out == {"sh600002": "gain", "sh600003": "surge", "sh600004": "gap", "sh600005": "amplitude", "sh600006": "amount",
+                   "sz300007": "index", "sh600008": "ma20", "sh600009": "history"}
+    assert wenge.skip_reasons(bars, {"sh600001": 11.0}, {}) == {"sh600001": "gap"} and wenge._limit_up("sz300007", 10.0) == 12.0

@@ -499,14 +499,20 @@ export type PickItem = {
   sealed: boolean | null; touched: boolean | null; next_open_ret: number | null; next_date: string | null; settled: boolean
   /** 今天的名单在收盘行情到之前：实时行情，以及此刻是不是封着板 */
   live?: { latest: number; change: number | null; time: string | null; sealed: boolean; touched: boolean }
-  /** 趋势类名单：入选价（当天开盘价）、入选后过了几个交易日、到那天收盘的涨跌、期间最高（最多看 follow_days 天） */
-  pick_price?: number | null; since_days?: number | null; since_ret?: number | null; since_max?: number | null
+  /** 趋势类名单：入选价（当天开盘价）、入选后过了几个交易日、期间最高（最多看 follow_days 天）、连续入选第几天 */
+  pick_price?: number | null; since_days?: number | null; since_max?: number | null; streak?: number | null
+  /** 入选了，但按策略的规矩这一天不开仓（原因不对外） */
+  no_open?: boolean
 }
-export type PickBest = { code: string; name: string; date: string; days: number; ret: number; max: number }
+export type PickBest = { code: string; name: string; date: string; days: number; max: number }
+/** 当天入选了多少只、算偏冷还是偏热；history：历史上这一档的日子，之后 20 个交易日那批票整体上涨的占多少 */
+export type PickHeat = { count: number; level: 'cold' | 'normal' | 'hot'; history: { days: number; up_rate: number } | null }
 export type PickDay = {
   strategy: PickStrategy; date: string | null; items: PickItem[]; days: string[]; data_end: string; today: string; is_today: boolean; settled: boolean; live_time?: string | null
   /** 趋势类：最多跟踪几个交易日；近一个月入选过的票里，入选以来涨得最好的几只 */
-  follow_days?: number; best?: PickBest[]
+  follow_days?: number; best?: PickBest[]; heat?: PickHeat | null
+  /** 这一天入选的票里，策略会开仓的有几只 */
+  open_count?: number
 }
 export type PickBlock = {
   n: number; sealed_rate: number; touched_rate: number; open_pct_median: number; intraday_mean: number; intraday_median: number
@@ -530,6 +536,7 @@ export type PickSim = {
   kind: 'sim'; label: string; start: string; end: string; days: number
   summary: { total_return: number; annualized: number; max_drawdown: number; sharpe: number; profit_factor: number }
   costs: { buy_premium: number; slippage_bps: number; commission: number }
+  trades: { count: number; win_avg: number; loss_avg: number; ge20: number; ge50: number; best: number }
   years: { year: number; ret: number; partial: boolean }[]
   months: { month: string; ret: number }[]
   dates: string[]; nav: number[]; drawdown: number[]

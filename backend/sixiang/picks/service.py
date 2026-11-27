@@ -155,14 +155,14 @@ def _wenge_facts(_s: dict) -> list[str]:
 
 def _wenge_report(items: list[dict], settled: bool, s: dict) -> dict:
     """趋势类不讲当天收盘：讲近一个月入选的票里，入选以来涨得最好的几只。全是已经发生的行情。"""
-    note = f"入选价按入选当天开盘价，最多看 {FOLLOW_DAYS} 个交易日。名单按平台的固定规则筛出，不是买卖建议。"
+    note = f"最高涨幅 = 入选后 {FOLLOW_DAYS} 个交易日内的最高价比入选当天开盘价高多少。名单按平台的固定规则筛出，不是买卖建议。"
     best = s.get("best") or []
-    stars = [{"rank": i + 1, "code": b["code"], "name": b["name"], "value": b["ret"], "tag": f"{b['days']} 天"} for i, b in enumerate(best)]
-    if best and best[0]["ret"] > 0:
+    stars = [{"rank": i + 1, "code": b["code"], "name": b["name"], "value": b["max"], "tag": None} for i, b in enumerate(best)]
+    if best and best[0]["max"] > 0:
         top = best[0]
-        return {"mode": "result", "title": f"{top['name']} 入选 {top['days']} 天涨 {top['ret']:.0%}",
-                "big": {"num": f"+{top['ret'] * 100:.0f}", "unit": "%", "label": f"{top['name']} 入选以来"},
-                "sub": "近一个月入选的票里，涨得最好的几只", "value_label": "入选以来", "stars": stars, "note": note}
+        return {"mode": "result", "title": f"{top['name']} 入选后最高涨过 {top['max']:.0%}",
+                "big": {"num": f"+{top['max'] * 100:.0f}", "unit": "%", "label": f"{top['name']} 入选后最高涨过"},
+                "sub": "近一个月入选的票里，涨得最好的几只", "value_label": "入选后最高涨过", "stars": stars, "note": note}
     n = len(items)
     return {"mode": "list", "title": f"名单 {n} 只", "big": None, "sub": "开盘后入选", "value_label": "开盘涨幅",
             "stars": [_star(i, None, "open_pct") for i in items], "note": note}
@@ -171,15 +171,48 @@ def _wenge_report(items: list[dict], settled: bool, s: dict) -> dict:
 FOLLOW_DAYS = 20        # 趋势类名单最多跟踪 20 个交易日（策略平均拿 12 天左右）
 
 
+HEAT = (15, 40)         # 当天入选不到 15 只算偏冷，超过 40 只算偏热（按 2024 年以来的分布定的）
+
+
+def _streaks(m):
+    """连续入选第几天：按出名单的日子数，中间断一天就重新数。"""
+    if m.empty:
+        return m.assign(streak=[])
+    order = {d: i for i, d in enumerate(sorted(m.date.unique()))}
+    m = m.sort_values(["code", "date"]).copy()
+    pos = m.date.map(order)
+    run = (pos.groupby(m.code).diff() != 1).cumsum()
+    m["streak"] = m.groupby(run).cumcount() + 1
+    return m
+
+
+def _level(n: int) -> str:
+    return "cold" if n < HEAT[0] else "hot" if n > HEAT[1] else "normal"
+
+
+def _heat_history(m) -> dict:
+    """每一档（偏冷 / 正常 / 偏热）在历史上：这样的日子有多少个，之后 20 个交易日那批票整体上涨的占多少。只算已经走完 20 天的。"""
+    x = m[m.since_days >= FOLLOW_DAYS]
+    if x.empty:
+        return {}
+    day = x.groupby("date").agg(n=("code", "size"), r=("since_ret", "mean"))
+    out = {}
+    for lv in ("cold", "normal", "hot"):
+        d = day[day.n.map(_level) == lv]
+        if len(d) >= 20:
+            out[lv] = {"days": int(len(d)), "up_rate": float((d.r > 0).mean())}
+    return out
+
+
 def _best(m) -> list[dict]:
-    """近 20 个出名单的日子里入选过的票，按入选以来的涨幅排前 5。同一只票入选过好几次，按最早那次算。"""
+    """近 20 个出名单的日子里入选过的票，按入选后的最高涨幅排前 5。同一只票入选过好几次，按最早那次算。"""
     if m.empty:
         return []
     days = sorted(m.date.unique())[-FOLLOW_DAYS:]
-    x = m[m.date.isin(days) & m.since_ret.notna()].sort_values("date").drop_duplicates("code", keep="first")
-    x = x.sort_values("since_ret", ascending=False).head(5)
-    return [{"code": r.code, "name": r.name, "date": r.date, "days": int(r.since_days), "ret": float(r.since_ret), "max": float(r.since_max)}
-            for r in x.itertuples()]
+    ok = m.skip.isna() if "skip" in m else True                    # 只算当天能开仓的
+    x = m[m.date.isin(days) & m.since_max.notna() & ok].sort_values("date").drop_duplicates("code", keep="first")
+    x = x.sort_values("since_max", ascending=False).head(5)
+    return [{"code": r.code, "name": r.name, "date": r.date, "days": int(r.since_days), "max": float(r.since_max)} for r in x.itertuples()]
 
 
 _VIEWS = {"sjm": {"highlights": _sjm_highlights, "facts": _sjm_facts, "report": _sjm_report},
@@ -236,8 +269,9 @@ class PickService:
                 self.store.save_pool("wenge", monday.isoformat(), pool)
         return pool
 
-    def _fetch_wenge(self, client: IFindClient, day: dt.date, opens: dict[str, float] | None = None) -> list[dict]:
-        """当天的文哥名单。opens 不给就取实时开盘价（行情 MCP）；回填时传日线里的开盘价。"""
+    def _fetch_wenge(self, client: IFindClient, day: dt.date, opens: dict[str, float] | None = None,
+                     index_now: dict[str, float] | None = None) -> list[dict]:
+        """当天的文哥名单。opens 不给就取实时开盘价（行情 MCP）；回填时传日线里的开盘价。index_now：三个板块指数现在的点位，同理。"""
         pool = self.ensure_pool(client, day)
         if not pool:
             return []
@@ -252,9 +286,23 @@ class PickService:
                 opens = wenge.realtime_open(client, codes)
         _, cur = self.market._current()
         rows = wenge.bullish(pool, wenge.past_closes(cur, codes, day), opens)
+        skip = self.wenge_skips(cur, day, {r["code"]: r["open"] for r in rows}, index_now)
         # 存库的字段不能和日线的列重名（enrich 会再配一遍当天行情）
         return [{"rank": r["rank"], "code": r["code"], "name": r["name"], "pick_open": r["open"], "pick_open_pct": r["open_pct"],
-                 "undistri": r["undistri"]} for r in rows]
+                 "undistri": r["undistri"], "skip": skip.get(r["code"])} for r in rows]
+
+    @staticmethod
+    def wenge_skips(cur, day: dt.date, opens: dict[str, float], index_now: dict[str, float] | None = None) -> dict[str, str]:
+        """入选的票里今天不开仓的：code → 原因（只存库备查）。指数点位取不到时，板块那一道不判。"""
+        if not opens:
+            return {}
+        if index_now is None:
+            index_now = {}
+            try:
+                index_now = {c: q.get("open") or q.get("latest") for c, q in mcp.quotes(list(wenge.BOARD_INDEX.values()), ttl=0).items()}
+            except Exception:  # noqa: BLE001
+                log.exception("文哥：取板块指数点位失败，今天不判板块那一道")
+        return wenge.skip_reasons(wenge.prior_bars(cur, list(opens), day), opens, wenge.index_declining(cur, day, index_now))
 
     # ---------------------------------------------------------- 读
     def _enriched(self, strategy: str):
@@ -265,8 +313,8 @@ class PickService:
             if hit is None:
                 m = stats.enrich(cur, self.store.rows(strategy))
                 if STRATEGIES[strategy]["record"] == "sim":       # 趋势类：看入选之后，不看当天
-                    m = stats.follow(cur, m, FOLLOW_DAYS)
-                    summary = {"range": None, "best": _best(m)}
+                    m = _streaks(stats.follow(cur, m, FOLLOW_DAYS))
+                    summary = {"range": None, "best": _best(m), "heat": _heat_history(m)}
                 else:
                     summary = stats.summarize(cur, m) if len(m) else {"range": None}
                 hit = {"frame": m, "summary": summary}
@@ -317,7 +365,7 @@ class PickService:
         if date and len(m):
             cols = ["rank", "code", "name", "board", "auction_pct", "limit_price", "open", "close", "open_pct", "day_pct",
                     "intraday", "sealed", "touched", "next_open_ret", "next_date", "pick_open_pct", "pick_open",
-                    "since_days", "since_ret", "since_max"]
+                    "since_days", "since_max", "streak", "skip"]
             for r in m[m.date == date].sort_values("rank").reindex(columns=cols).to_dict("records"):
                 r = {k: _clean(v) for k, v in r.items()}
                 r["auction_pct"] = r["auction_pct"] / 100 if r["auction_pct"] is not None else None   # 问财给的是百分数
@@ -325,14 +373,21 @@ class PickService:
                     r["open_pct"] = r["pick_open_pct"]
                 r.pop("pick_open_pct")
                 r["pick_price"] = r.pop("pick_open") if r["open"] is None else r["open"]      # 入选价：当天开盘价
+                r["no_open"] = bool(r.pop("skip"))                 # 今天不开仓。原因不出接口
                 r["settled"] = r["open"] is not None
                 r["sealed"], r["touched"] = (bool(r["sealed"]), bool(r["touched"])) if r["settled"] else (None, None)
                 items.append(r)
+        extra = {}
         if meta["record"] != "sim":
             for r in items:
-                for k in ("pick_price", "since_days", "since_ret", "since_max"):
+                for k in ("pick_price", "since_days", "since_max", "streak", "no_open"):
                     r.pop(k, None)
-        extra = {"follow_days": FOLLOW_DAYS, "best": hit["summary"].get("best", [])} if meta["record"] == "sim" else {}
+        else:
+            items.sort(key=lambda r: (r["no_open"], -(r["streak"] or 0), r["rank"]))   # 能开仓的在前；其中连续入选久的排前面
+            level = _level(len(items))
+            extra = {"follow_days": FOLLOW_DAYS, "best": hit["summary"].get("best", []),
+                     "open_count": sum(not r["no_open"] for r in items),
+                     "heat": {"count": len(items), "level": level, "history": hit["summary"].get("heat", {}).get(level)} if items else None}
         return {**extra, "strategy": meta, "date": date, "items": items, "days": days, "data_end": snap.data_end,
                 "today": today.date().isoformat(), "is_today": date == today.date().isoformat(),
                 "settled": bool(items) and all(i["settled"] for i in items)}

@@ -109,7 +109,7 @@ function SimRecord({ s }: { s: PickSimStats }) {
           <table className="pk-table sim-vs">
             <thead><tr><th /><th>累计收益</th><th>最大回撤</th><th>收益 ÷ 回撤</th></tr></thead>
             <tbody>
-              <tr className="main"><td><b>{s.strategy.name}</b></td><td className="num up">{signed(m.summary.total_return)}</td><td className="num">{pct1(m.summary.max_drawdown)}</td><td className="num"><b>{(m.summary.total_return / m.summary.max_drawdown).toFixed(1)} 倍</b></td></tr>
+              <tr className="self"><td><b>{s.strategy.name}</b></td><td className="num up">{signed(m.summary.total_return)}</td><td className="num">{pct1(m.summary.max_drawdown)}</td><td className="num"><b>{(m.summary.total_return / m.summary.max_drawdown).toFixed(1)} 倍</b></td></tr>
               {m.benchmarks.map(b => (
                 <tr key={b.code}><td>同期{b.name}</td><td className={`num ${b.total >= 0 ? 'up' : 'down'}`}>{signed(b.total)}</td><td className="num">{pct1(b.max_drawdown)}</td><td className="num">{(b.total / b.max_drawdown).toFixed(1)} 倍</td></tr>
               ))}
@@ -117,6 +117,17 @@ function SimRecord({ s }: { s: PickSimStats }) {
           </table>
         </div>
         <p className="muted pk-foot">“收益 ÷ 回撤”：每承受 1 份最深的回落，换来几份收益。指数按同一段时间的收盘价算。</p>
+      </section>
+
+      <section className="card fade-in sim-costs">
+        <h2 className="card-title">亏的时候亏得少，赚的时候赚得多</h2>
+        <ul>
+          <li><b className="num up">{signed(m.trades.win_avg)}</b><span>赚钱的交易，平均每笔</span></li>
+          <li><b className="num down">{signed(m.trades.loss_avg)}</b><span>亏钱的交易，平均每笔</span></li>
+          <li><b className="num">{m.trades.ge20} 笔</b><span>单笔赚超过 20%，其中 {m.trades.ge50} 笔超过 50%</span></li>
+          <li><b className="num up">{signed(m.trades.best)}</b><span>赚得最多的一笔</span></li>
+        </ul>
+        <p className="muted pk-foot">一共 {m.trades.count.toLocaleString()} 笔完整的买卖。不是每笔都赚，靠的是赚的那些比亏的那些大得多。</p>
       </section>
 
       <section className="card fade-in">
@@ -142,7 +153,6 @@ function SimRecord({ s }: { s: PickSimStats }) {
           <li><b className="num">{(m.costs.buy_premium * 1000).toFixed(0)}‰</b><span>买入价比开盘价再高千分之{(m.costs.buy_premium * 1000).toFixed(0)}</span></li>
           <li><b className="num">{m.costs.slippage_bps} 个基点</b><span>每笔再扣一次滑点</span></li>
           <li><b className="num">{(m.costs.commission * 10000).toFixed(1)}‱</b><span>手续费，单笔最低 5 元</span></li>
-          <li><b className="num">T+1</b><span>当天买的第二天才能卖，开盘涨停买不进、跌停卖不出</span></li>
         </ul>
       </section>
 
