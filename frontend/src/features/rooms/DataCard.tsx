@@ -86,6 +86,7 @@ export default function DataCard({ card }: { card: RoomCard }) {
               <span>{hit.date}</span>
               {hit.auction_pct != null && <span>竞价 <em className={`num ${trendClass(hit.auction_pct)}`}>{fmtPct(hit.auction_pct, 1)}</em></span>}
             </div>
+            {hit.facts?.length > 0 && <span className="data-foot">{hit.facts.join('；')}</span>}
             {h && <span className="data-foot">名单过去 {h.days} 个交易日：当天封板 {(h.sealed_rate * 100).toFixed(1)}%{h.market_sealed_rate != null && <>（全市场 {(h.market_sealed_rate * 100).toFixed(1)}%）</>}</span>}
           </>
         )}

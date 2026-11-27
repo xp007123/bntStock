@@ -34,6 +34,8 @@ def enrich(cur, picks: list[dict]) -> pd.DataFrame:
         d[f"next_{col}"] = g[col].shift(-1) * g.adj_factor.shift(-1) / d.adj_factor   # 复权到当天口径，跨除权日也可比
     d["next_date"] = g.date.shift(-1)
     m = p.merge(d, on=["code", "date"], how="left")
+    if "limit_price" not in m:                 # 有的策略出名单时不记涨停价：按规则现算
+        m["limit_price"] = np.nan
     limit = m.limit_price.fillna(pd.Series(_limit(m.code, m.pc), index=m.index))
     has = m.open.notna()
     m["open_pct"] = m.open / m.pc - 1

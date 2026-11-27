@@ -123,3 +123,14 @@
 .pk-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pk-pulse 2s var(--ease) infinite; }
 @keyframes pk-pulse { 0%, 100% { box-shadow: 0 0 0 0 #fb5e0d66; } 50% { box-shadow: 0 0 0 6px #fb5e0d00; } }
 @media (prefers-reduced-motion: reduce) { .pk-live i { animation: none; } }
+
+/* 仿真模拟盘 */
+.sim-nums { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.sim-nums b.up { color: var(--up); }
+.sim-chart { width: 100%; height: 420px; }
+.sim-years { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.sim-years div { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px; border-radius: var(--r); background: var(--bg); }
+.sim-years span { font-size: 13px; color: var(--muted); }
+.sim-years b { font-size: 26px; font-weight: 600; }
+.sim-years b.up { color: var(--up); } .sim-years b.down { color: var(--down); }
+@media (max-width: 760px) { .sim-nums { grid-template-columns: 1fr 1fr; } .sim-chart { height: 320px; } }

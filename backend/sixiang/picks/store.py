@@ -7,7 +7,7 @@ import json
 from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
-from ..auth.db import pick_days, picks
+from ..auth.db import pick_days, pick_pools, picks
 
 
 class PickStore:
@@ -50,3 +50,15 @@ class PickStore:
         """这只股票在这一天进了哪些名单。"""
         with self.engine.connect() as conn:
             return [r.strategy for r in conn.execute(select(picks.c.strategy).where(picks.c.code == code, picks.c.date == date)).all()]
+
+    # ---------------------------------------------------------- 候选池（文哥每周的初筛结果）
+    def save_pool(self, strategy: str, week: str, pool: list[dict]) -> None:
+        now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        with self.engine.begin() as conn:
+            conn.execute(delete(pick_pools).where(pick_pools.c.strategy == strategy, pick_pools.c.week == week))
+            conn.execute(insert(pick_pools).values(strategy=strategy, week=week, pool_json=json.dumps(pool, ensure_ascii=False), created_at=now))
+
+    def pool(self, strategy: str, week: str) -> list[dict] | None:
+        with self.engine.connect() as conn:
+            row = conn.execute(select(pick_pools.c.pool_json).where(pick_pools.c.strategy == strategy, pick_pools.c.week == week)).first()
+        return json.loads(row.pool_json) if row else None

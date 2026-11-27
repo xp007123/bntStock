@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
-import { type PickBlock, usePickStats } from '../../api/client'
+import { type PickBlock, type PickSimStats, type PickStats, usePickStats } from '../../api/client'
 import SubNav, { PICK_TABS } from '../../components/SubNav'
+import SimChart from './SimChart'
 import StrategyHead from './StrategyHead'
 import './picks.css'
 
@@ -45,11 +46,61 @@ function Rows({ items }: { items: (PickBlock & { label: string })[] }) {
   )
 }
 
-/** 历史表现：把名单过去每一天的结果摊开，好的坏的都放上来。 */
+const signed = (v: number) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
+
+/** 仿真模拟盘：一条净值曲线、几个数、每年的收益。只讲结果，不讲怎么选、怎么买卖。 */
+function SimRecord({ s }: { s: PickSimStats }) {
+  const m = s.sim
+  const hs = m.benchmarks.find(b => b.code === 'sh000300')
+  return (
+    <>
+      <p className="muted pk-range">{m.start} 到 {m.end}，{m.days} 个交易日的{m.label}。</p>
+      <section className="pk-head card fade-in sim-nums">
+        <div><span>累计收益</span><b className="num up">{signed(m.summary.total_return)}</b><small>{hs ? `同期沪深300 ${signed(hs.total)}` : ''}</small></div>
+        <div><span>年化收益</span><b className="num up">{signed(m.summary.annualized)}</b><small>折算成每年</small></div>
+        <div><span>最大回撤</span><b className="num">{(m.summary.max_drawdown * 100).toFixed(1)}%</b><small>从高点最多回落的幅度</small></div>
+        <div><span>夏普比率</span><b className="num">{m.summary.sharpe.toFixed(2)}</b><small>每担一分波动换来的收益，越高越稳</small></div>
+      </section>
+
+      <section className="card fade-in">
+        <h2 className="card-title">净值曲线</h2>
+        <SimChart sim={m} name={s.strategy.name} />
+      </section>
+
+      <section className="card fade-in">
+        <h2 className="card-title">每一年</h2>
+        <div className="sim-years">
+          {m.years.map(y => (
+            <div key={y.year}>
+              <span>{y.year} 年{y.partial ? `（到 ${m.end.slice(5).replace('-', ' 月 ')} 日）` : ''}</span>
+              <b className={`num ${y.ret >= 0 ? 'up' : 'down'}`}>{signed(y.ret)}</b>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <p className="muted pk-note">
+        说明：以上是仿真模拟盘的数据——按平台的固定规则，在历史行情上模拟买入卖出得出（计入了手续费和滑点），不是真实账户的交易记录。
+        历史表现不代表以后，名单和这些数字都不是买卖建议。
+      </p>
+    </>
+  )
+}
+
+/** 历史表现：把名单过去每一天的结果摊开，好的坏的都放上来。仿真模拟盘类的策略换成净值曲线。 */
 export default function PickRecordPage() {
   const { strategy = '' } = useParams()
   const q = usePickStats(strategy)
-  const s = q.data
+  if (q.data && 'kind' in q.data) {
+    return (
+      <div className="picks">
+        <SubNav items={PICK_TABS} />
+        <StrategyHead id={strategy} s={q.data.strategy} />
+        <SimRecord s={q.data} />
+      </div>
+    )
+  }
+  const s = q.data as PickStats | undefined
   const base = s?.baseline
   const top = s?.range ? s.by_rank.find(b => b.label === '第 1 名') : undefined
   const main = s?.range ? s.by_board.find(b => b.label === '主板') : undefined

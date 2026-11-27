@@ -8,25 +8,42 @@ STRATEGIES 里的内容会原样发给页面，所以只放能给用户看的（
 from __future__ import annotations
 
 import datetime as dt
+import json
 import logging
 import math
 import threading
+from functools import lru_cache
+from pathlib import Path
 
+from ..data import mcp
 from ..data.ifind import IFindClient
 from ..data.ifind_sync import CN_TZ, client_from_env
 from ..data.store import MarketStore
-from . import stats
+from . import stats, wenge
 from .store import PickStore
 from .wencai import ask, parse_sjm, sjm_query
 
 log = logging.getLogger("sixiang.picks")
 
+# record：策略页第二个标签页叫什么、放什么。stats = 名单的历史统计；sim = 仿真模拟盘
 STRATEGIES = {
     "sjm": {
-        "id": "sjm", "name": "竞价先锋", "alias": "三角猫", "publish_at": "09:25",
+        "id": "sjm", "name": "竞价先锋", "alias": "三角猫", "publish_at": "09:25", "record": "stats", "record_label": "历史表现",
         "tagline": "开盘前 5 分钟，挑出集合竞价里抢得最凶的 10 只。",
     },
+    "wenge": {
+        "id": "wenge", "name": "趋势之王", "alias": "文", "publish_at": "09:26", "record": "sim", "record_label": "仿真模拟盘",
+        "tagline": "看公司质地、做中线的一份名单，开盘后出。",
+    },
 }
+
+SIM_FILE = Path(__file__).parent / "data" / "wenge_sim.json"
+
+
+@lru_cache(maxsize=1)
+def sim() -> dict:
+    """文哥的仿真模拟盘：旧四象回测引擎按平台的买卖规则在历史行情上模拟交易的每日净值（一次性导出，不再变）。"""
+    return json.loads(SIM_FILE.read_text(encoding="utf-8"))
 
 
 def recent_trade_days(client: IFindClient, before: dt.date, lookback: int = 20) -> list[dt.date]:
@@ -51,6 +68,8 @@ _FETCHERS = {"sjm": fetch_sjm}
 
 def _sjm_highlights(s: dict) -> list[dict]:
     """竞价先锋的主打数字：封板。"""
+    if not s.get("range"):
+        return []
     market = (s["baseline"]["market"] or {}).get("sealed_rate")
     top1 = next((b["sealed_rate"] for b in s["by_rank"] if b["label"] == "第 1 名"), None)
     out = [{"label": "当天封住涨停的", "value": s["overall"]["sealed_rate"], "note": f"同期全市场是 {market:.1%}" if market is not None else ""},
@@ -110,7 +129,43 @@ def _sjm_report(items: list[dict], settled: bool, s: dict) -> dict:
     return {"mode": "result", "title": title, "big": big, "sub": sub, "value_label": "当天收盘", "stars": stars[:6], "note": note}
 
 
-_VIEWS = {"sjm": {"highlights": _sjm_highlights, "facts": _sjm_facts, "report": _sjm_report}}
+def _wenge_highlights(_s: dict) -> list[dict]:
+    """文哥的主打数字：仿真模拟盘的累计收益、年化、回撤。"""
+    m = sim()
+    span = f"{m['start'][:7].replace('-', '.')} 到 {m['end'][:7].replace('-', '.')}"
+    hs300 = next((b for b in m["benchmarks"] if b["code"] == "sh000300"), None)
+    return [{"label": "仿真模拟盘累计收益", "value": m["summary"]["total_return"], "note": span + (f"，同期沪深300 {hs300['total']:+.0%}" if hs300 else "")},
+            {"label": "年化收益", "value": m["summary"]["annualized"], "note": "仿真模拟盘"},
+            {"label": "最大回撤", "value": m["summary"]["max_drawdown"], "note": "从高点最多回落的幅度"}]
+
+
+def _wenge_facts(_s: dict) -> list[str]:
+    m = sim()
+    full = [y for y in m["years"] if not y["partial"]]
+    out = [f"仿真模拟盘 {m['start'][:4]} 年以来累计 {m['summary']['total_return']:+.0%}，最大回撤 {m['summary']['max_drawdown']:.1%}"]
+    if full and all(y["ret"] > 0 for y in m["years"]):
+        out.append("、".join(f"{y['year']} 年 {y['ret']:+.0%}" for y in full) + "，每年都是赚的")
+    return out
+
+
+def _wenge_report(items: list[dict], settled: bool, s: dict) -> dict:
+    """某一天的名单：没收盘时按开盘涨幅列出来；收盘后讲当天涨得最好的几只。全是当天发生的事。"""
+    n = len(items)
+    note = "名单按平台的固定规则筛出，不是买卖建议。"
+    if not settled:
+        return {"mode": "list", "title": f"名单 {n} 只", "big": None, "sub": "开盘后入选", "value_label": "开盘涨幅",
+                "stars": [_star(i, None, "open_pct") for i in items], "note": note}
+    ups = sorted((i for i in items if (i["day_pct"] or 0) > 0), key=lambda i: -i["day_pct"])
+    if ups:
+        return {"mode": "result", "title": f"{n} 只里 {len(ups)} 只收涨", "big": {"num": str(len(ups)), "unit": "只", "label": "当天收盘是涨的"},
+                "sub": f"名单共 {n} 只，涨得最多的 {ups[0]['name']} {ups[0]['day_pct']:+.1%}", "value_label": "当天收盘",
+                "stars": [_star(i, None) for i in ups[:6]], "note": note}
+    return {"mode": "result", "title": f"名单 {n} 只", "big": None, "sub": "", "value_label": "当天收盘",
+            "stars": [_star(i, None) for i in items[:6]], "note": note}
+
+
+_VIEWS = {"sjm": {"highlights": _sjm_highlights, "facts": _sjm_facts, "report": _sjm_report},
+          "wenge": {"highlights": _wenge_highlights, "facts": _wenge_facts, "report": _wenge_report}}
 
 
 def _clean(v):
@@ -126,18 +181,62 @@ class PickService:
         self.store, self.market = store, market
         self._cache: dict[tuple, dict] = {}
         self._lock = threading.Lock()
+        self._pool_lock = threading.Lock()      # 候选池同一时间只算一份（启动补算和开盘出名单可能撞上）
 
     # ---------------------------------------------------------- 取名单
     def fetch(self, strategy: str, day: dt.date, client: IFindClient | None = None) -> int:
         """取某一天的名单并存库，返回只数。day 可以是今天，也可以是过去的交易日。"""
         client = client or client_from_env()
-        prev = recent_trade_days(client, day)
-        if len(prev) < 2:
-            raise RuntimeError(f"{day} 前面找不到两个交易日")
-        rows = _FETCHERS[strategy](client, day, prev[-1], prev[-2])
+        if strategy == "wenge":
+            rows = self._fetch_wenge(client, day)
+        else:
+            prev = recent_trade_days(client, day)
+            if len(prev) < 2:
+                raise RuntimeError(f"{day} 前面找不到两个交易日")
+            rows = _FETCHERS[strategy](client, day, prev[-1], prev[-2])
         if rows:
             self.store.save(strategy, day.isoformat(), rows)
         return len(rows)
+
+    # ---------------------------------------------------------- 文哥：每周的候选池 + 每天开盘后的判定
+    @staticmethod
+    def _monday(day: dt.date) -> dt.date:
+        return day - dt.timedelta(days=day.weekday())
+
+    def ensure_pool(self, client: IFindClient, day: dt.date, pool_date: dt.date | None = None) -> list[dict]:
+        """day 所在那一周的候选池；库里没有就现算（全 A 拉一遍财务数，几分钟）。pool_date：用哪一天的股票池，默认这一周之前最近的交易日。"""
+        monday = self._monday(day)
+        with self._pool_lock:
+            return self._ensure_pool(client, monday, pool_date)
+
+    def _ensure_pool(self, client: IFindClient, monday: dt.date, pool_date: dt.date | None) -> list[dict]:
+        pool = self.store.pool("wenge", monday.isoformat())
+        if pool is None:
+            pool_date = pool_date or recent_trade_days(client, monday)[-1]
+            pool = wenge.prescreen(client, monday, monday + dt.timedelta(days=4), pool_date)
+            if pool:
+                self.store.save_pool("wenge", monday.isoformat(), pool)
+        return pool
+
+    def _fetch_wenge(self, client: IFindClient, day: dt.date, opens: dict[str, float] | None = None) -> list[dict]:
+        """当天的文哥名单。opens 不给就取实时开盘价（行情 MCP）；回填时传日线里的开盘价。"""
+        pool = self.ensure_pool(client, day)
+        if not pool:
+            return []
+        codes = [p["code"] for p in pool]
+        if opens is None:
+            opens = {}
+            try:
+                opens = {c: q["open"] for c, q in mcp.quotes(codes, ttl=0).items() if q.get("open")}
+            except Exception:  # noqa: BLE001
+                log.exception("文哥：行情 MCP 取开盘价失败，改用 iFinD")
+            if not opens:
+                opens = wenge.realtime_open(client, codes)
+        _, cur = self.market._current()
+        rows = wenge.bullish(pool, wenge.past_closes(cur, codes, day), opens)
+        # 存库的字段不能和日线的列重名（enrich 会再配一遍当天行情）
+        return [{"rank": r["rank"], "code": r["code"], "name": r["name"], "pick_open": r["open"], "pick_open_pct": r["open_pct"],
+                 "undistri": r["undistri"]} for r in rows]
 
     # ---------------------------------------------------------- 读
     def _enriched(self, strategy: str):
@@ -147,8 +246,9 @@ class PickService:
             hit = self._cache.get(key)
             if hit is None:
                 m = stats.enrich(cur, self.store.rows(strategy))
-                hit = {"frame": m, "summary": stats.summarize(cur, m) if len(m) else {"range": None}}
-                self._cache = {key: hit}      # 只留最新的一份
+                summary = stats.summarize(cur, m) if len(m) and STRATEGIES[strategy]["record"] == "stats" else {"range": None}
+                hit = {"frame": m, "summary": summary}
+                self._cache = {k: v for k, v in self._cache.items() if k[0] != strategy} | {key: hit}   # 每个策略只留最新的一份
         return snap, hit
 
     def strategies(self) -> list[dict]:
@@ -162,8 +262,7 @@ class PickService:
 
     def highlights(self, strategy: str) -> list[dict]:
         _, hit = self._enriched(strategy)
-        s = hit["summary"]
-        return _clean_tree(_VIEWS[strategy]["highlights"](s)) if s.get("range") else []
+        return _clean_tree(_VIEWS[strategy]["highlights"](hit["summary"]))
 
     def report(self, strategy: str, date: str | None = None) -> dict:
         """某一天的战报（默认最近一天）：首页看板和分享图用。还没收盘的那天只有名单。"""
@@ -195,10 +294,13 @@ class PickService:
         items = []
         if date and len(m):
             cols = ["rank", "code", "name", "board", "auction_pct", "limit_price", "open", "close", "open_pct", "day_pct",
-                    "intraday", "sealed", "touched", "next_open_ret", "next_date"]
-            for r in m[m.date == date].sort_values("rank")[cols].to_dict("records"):
+                    "intraday", "sealed", "touched", "next_open_ret", "next_date", "pick_open_pct"]
+            for r in m[m.date == date].sort_values("rank").reindex(columns=cols).to_dict("records"):
                 r = {k: _clean(v) for k, v in r.items()}
                 r["auction_pct"] = r["auction_pct"] / 100 if r["auction_pct"] is not None else None   # 问财给的是百分数
+                if r["open_pct"] is None:                       # 当天日线还没进来：先用出名单时的开盘涨幅
+                    r["open_pct"] = r["pick_open_pct"]
+                r.pop("pick_open_pct")
                 r["settled"] = r["open"] is not None
                 r["sealed"], r["touched"] = (bool(r["sealed"]), bool(r["touched"])) if r["settled"] else (None, None)
                 items.append(r)
@@ -207,6 +309,9 @@ class PickService:
                 "settled": bool(items) and all(i["settled"] for i in items)}
 
     def summary(self, strategy: str) -> dict:
+        if STRATEGIES[strategy]["record"] == "sim":
+            return {"strategy": STRATEGIES[strategy], "highlights": self.highlights(strategy), "kind": "sim", "sim": sim(),
+                    "facts": _VIEWS[strategy]["facts"]({})}
         _, hit = self._enriched(strategy)
         return {"strategy": STRATEGIES[strategy], "highlights": self.highlights(strategy), **_clean_tree(hit["summary"])}
 
@@ -220,7 +325,8 @@ class PickService:
             if row:
                 _, hit = self._enriched(sid)
                 return {"strategy": sid, "name": meta["name"], "alias": meta["alias"], "date": days[-1], "rank": row["rank"],
-                        "auction_pct": row["auction_pct"] / 100 if row.get("auction_pct") is not None else None, "headline": self._headline(hit["summary"])}
+                        "auction_pct": row["auction_pct"] / 100 if row.get("auction_pct") is not None else None, "headline": self._headline(hit["summary"]),
+                        "facts": _VIEWS[sid]["facts"](hit["summary"]) if meta["record"] == "sim" else []}
         return None
 
 
@@ -239,10 +345,11 @@ class PickSchedule:
     """
     RETRIES, GAP = 8, 60
 
-    def __init__(self, service: PickService, at: str):
+    def __init__(self, service: PickService, at: str, strategies: list[str] | None = None):
         parts = [int(x) for x in at.split(":")]
         self.at = dt.time(*(parts + [0])[:3])
         self.service = service
+        self.strategies = strategies or list(STRATEGIES)
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._loop, name="picks", daemon=True)
 
@@ -262,7 +369,7 @@ class PickSchedule:
 
     def _run(self) -> None:
         today = dt.datetime.now(CN_TZ).date()
-        for sid in STRATEGIES:
+        for sid in self.strategies:
             if today.isoformat() in self.service.store.days(sid):
                 continue
             for attempt in range(self.RETRIES):
@@ -285,3 +392,45 @@ class PickSchedule:
             if self._stop.wait((target - dt.datetime.now(CN_TZ)).total_seconds()):
                 return
             self._run()
+
+
+class PoolSchedule:
+    """文哥的候选池：每周五 16:30 算下一周的；启动时如果这一周的还没有，马上补一份（后台跑，几分钟）。
+
+    和每日名单一起启用（设了 SIXIANG_PICKS_AT 才开）。时间可用 SIXIANG_WENGE_POOL_AT 改。
+    """
+
+    def __init__(self, service: PickService, at: str = "16:30"):
+        h, m = (int(x) for x in at.split(":")[:2])
+        self.at = dt.time(h, m)
+        self.service = service
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._loop, name="wenge-pool", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def _build(self, day: dt.date, pool_date: dt.date | None = None) -> None:
+        try:
+            pool = self.service.ensure_pool(client_from_env(), day, pool_date)
+            log.info("文哥候选池 %s 那一周：%d 只", day, len(pool))
+        except Exception:  # noqa: BLE001  算不出来不影响别的；当天出名单时会再试一次
+            log.exception("文哥候选池 %s 算失败", day)
+
+    def _loop(self) -> None:
+        now = dt.datetime.now(CN_TZ)
+        self._build(now.date() + dt.timedelta(days=2) if now.weekday() >= 5 else now.date())   # 周末启动：补下一周的
+        while not self._stop.is_set():
+            now = dt.datetime.now(CN_TZ)
+            t = now.replace(hour=self.at.hour, minute=self.at.minute, second=0, microsecond=0)
+            days = (4 - now.weekday()) % 7
+            t += dt.timedelta(days=days)
+            if t <= now:
+                t += dt.timedelta(days=7)
+            if self._stop.wait((t - now).total_seconds()):
+                return
+            today = dt.datetime.now(CN_TZ).date()
+            self._build(today + dt.timedelta(days=3), today)        # 周五收盘后：下一周的，股票池用今天的

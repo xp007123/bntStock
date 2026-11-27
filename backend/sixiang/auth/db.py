@@ -193,3 +193,11 @@ picks = Table(
     Column("detail_json", LongText),                         # 出名单时的原始数字（竞价涨幅、涨停价等）
     UniqueConstraint("strategy", "date", "code"),
 )
+
+pick_pools = Table(
+    "pick_pools", metadata,                                   # 选股用的候选池（文哥：每周一次的基本面初筛结果）
+    Column("strategy", String(40), primary_key=True),
+    Column("week", String(10), primary_key=True),             # 这一周的周一
+    Column("pool_json", LongText, nullable=False),            # [{code, name, undistri}]
+    Column("created_at", DateTime(), nullable=False),
+)

@@ -488,7 +488,8 @@ export const tryPersona = (content: string, code: string, cue = '') =>
 
 // ---------------------------------------------------------------- 选股名单
 
-export type PickStrategy = { id: string; name: string; alias: string; publish_at: string; tagline: string }
+/** record：策略页第二页放什么。stats = 名单的历史统计；sim = 仿真模拟盘 */
+export type PickStrategy = { id: string; name: string; alias: string; publish_at: string; tagline: string; record: 'stats' | 'sim'; record_label: string }
 export type PickHeadline = {
   days: number; start: string; end: string; sealed_rate: number; market_sealed_rate: number | null; any_sealed_rate: number; top1_sealed_rate: number | null
 }
@@ -519,6 +520,15 @@ export type PickStats = {
   by_month: (PickBlock & { label: string })[]
   baseline: { market: PickBase | null; same_gap: PickBase | null }
 }
+/** 仿真模拟盘：按平台的买卖规则在历史行情上模拟交易的每日净值（起点为 1）。不是实盘。 */
+export type PickSim = {
+  kind: 'sim'; label: string; start: string; end: string; days: number
+  summary: { total_return: number; annualized: number; max_drawdown: number; sharpe: number }
+  years: { year: number; ret: number; partial: boolean }[]
+  dates: string[]; nav: number[]; drawdown: number[]
+  benchmarks: { code: string; name: string; total: number; nav: (number | null)[] }[]
+}
+export type PickSimStats = { strategy: PickStrategy; highlights: PickHighlight[]; kind: 'sim'; sim: PickSim; facts: string[] }
 export type PickHighlight = { label: string; value: number; note: string }
 export type PickStar = { rank: number; code: string; name: string; value: number | null; tag: string | null }
 /** 某一天的战报：讲当天最亮的那件事。首页看板和分享图用。文字和数字都由后端按策略给出。 */
@@ -540,6 +550,6 @@ export const usePickDay = (strategy: string, date?: string) =>
 export const usePickReport = (strategy: string, date?: string | null, enabled = true) =>
   useQuery({ queryKey: ['picks', strategy, 'report', date ?? 'latest'], queryFn: () => get<PickReport>(`/picks/${strategy}/report`, { date: date ?? undefined }), enabled, staleTime: 30_000 })
 export const usePickStats = (strategy: string) =>
-  useQuery({ queryKey: ['picks', strategy, 'stats'], queryFn: () => get<PickStats>(`/picks/${strategy}/stats`), staleTime: 5 * 60_000 })
+  useQuery({ queryKey: ['picks', strategy, 'stats'], queryFn: () => get<PickStats | PickSimStats>(`/picks/${strategy}/stats`), staleTime: 5 * 60_000 })
 export const useStockPick = (code: string) =>
   useQuery({ queryKey: ['picks', 'stock', code], queryFn: () => get<{ pick: StockPick | null }>(`/picks/stock/${code}`), staleTime: 60_000 })

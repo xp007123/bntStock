@@ -29,7 +29,9 @@ export default function PicksPage() {
   const go = (to: string | undefined) => to && setParams(to === d?.days[d.days.length - 1] ? {} : { date: to })
   // 选了一个没有名单的日子（周末、节假日）：跳到它之前最近的一份
   const pickDate = (v: string) => { if (d && v) go([...d.days].reverse().find(x => x <= v) ?? d.days[0]) }
+  const sim = meta?.record === 'sim'           // 文哥这类中线名单：不讲涨停，讲开盘和收盘
   const sealed = d?.items.filter(i => i.sealed).length ?? 0
+  const ups = d?.items.filter(i => (i.day_pct ?? 0) > 0).length ?? 0
   const live = !!d && !d.settled && d.items.some(i => i.live)
   const sealedNow = d?.items.filter(i => i.live?.sealed).length ?? 0
   const waiting = d && d.today !== d.date && d.days[d.days.length - 1] === d.date && !date   // 今天的还没出，看到的是上一次的
@@ -44,7 +46,7 @@ export default function PicksPage() {
       {head.length > 0 && (
         <section className="pk-head card fade-in">
           {head.map(h => <div key={h.label}><span>{h.label}</span><b className="num">{pct0(h.value)}</b><small>{h.note}</small></div>)}
-          <Link to={`/picks/${STRATEGY}/record`} className="pk-more">看完整的历史表现<ArrowRight size={14} /></Link>
+          <Link to={`/picks/${STRATEGY}/record`} className="pk-more">看{sim ? '仿真模拟盘' : '完整的历史表现'}<ArrowRight size={14} /></Link>
         </section>
       )}
 
@@ -61,27 +63,27 @@ export default function PicksPage() {
             {d?.is_today && <span className="tag night">今天</span>}
           </div>
           {d && d.items.length > 0 && (d.settled
-            ? <span className="muted">这一天 {d.items.length} 只里，{sealed} 只收盘封住涨停</span>
-            : live ? <span className="pk-live"><i />实时 {d.live_time?.slice(11, 16)} · 现在 {sealedNow} 只封着板</span>
+            ? <span className="muted">这一天 {d.items.length} 只里，{sim ? `${ups} 只收盘是涨的` : `${sealed} 只收盘封住涨停`}</span>
+            : live ? <span className="pk-live"><i />实时 {d.live_time?.slice(11, 16)}{sim ? '' : ` · 现在 ${sealedNow} 只封着板`}</span>
             : <span className="muted">当天的结果在收盘后更新</span>)}
           {d && d.items.length > 0 && <button className="btn pk-share" onClick={() => setSharing(true)}><Share2 size={14} />{d.settled ? '生成战报图' : '生成名单图'}</button>}
         </div>
-        {waiting && <p className="pk-wait">今天（{d.today}）还没有名单——交易日 09:25 之后出。下面是上一个交易日的。</p>}
+        {waiting && <p className="pk-wait">今天（{d.today}）还没有名单——交易日 {meta?.publish_at ?? '09:25'} 之后出。下面是上一个交易日的。</p>}
 
         {day.isLoading ? <div className="state">读取中…</div>
           : day.isError ? <div className="state error">名单没读出来，稍后再试</div>
           : !d || d.items.length === 0 ? <div className="state">还没有名单。</div> : (
             <div className="table-wrap">
               <table className="pk-table">
-                <thead><tr><th>#</th><th>股票</th><th>竞价涨幅</th><th>{live ? '现在' : '当天收盘'}</th><th>{live ? '此刻' : '结果'}</th><th /></tr></thead>
+                <thead><tr><th>#</th><th>股票</th><th>{sim ? '开盘涨幅' : '竞价涨幅'}</th><th>{live ? '现在' : '当天收盘'}</th>{!sim && <th>{live ? '此刻' : '结果'}</th>}<th /></tr></thead>
                 <tbody>
                   {d.items.map(it => (
                     <tr key={it.code}>
                       <td className="num pk-rank">{it.rank}</td>
                       <td><Link to={`/ask/stock?code=${it.code}&h=21`} className="pk-name">{it.name}</Link><small className="num">{displayCode(it.code)}{it.board && it.board !== '主板' ? ` · ${it.board}` : ''}</small></td>
-                      <td className={`num ${trendClass(it.auction_pct)}`}>{fmtPct(it.auction_pct)}</td>
+                      <td className={`num ${trendClass(sim ? it.open_pct : it.auction_pct)}`}>{fmtPct(sim ? it.open_pct : it.auction_pct)}</td>
                       <td className={`num ${trendClass(it.settled ? it.day_pct : it.live?.change)}`}>{it.settled ? fmtPct(it.day_pct) : it.live ? fmtPct(it.live.change) : '—'}</td>
-                      <td>{!it.settled ? (it.live ? (it.live.sealed ? <span className="tag pk-sealed">封板中</span> : it.live.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>) : <span className="muted">等收盘</span>) : it.sealed ? <span className="tag pk-sealed">封板</span> : it.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>}</td>
+                      {!sim && <td>{!it.settled ? (it.live ? (it.live.sealed ? <span className="tag pk-sealed">封板中</span> : it.live.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>) : <span className="muted">等收盘</span>) : it.sealed ? <span className="tag pk-sealed">封板</span> : it.touched ? <span className="tag plain">摸过涨停</span> : <span className="muted">没到涨停</span>}</td>}
                       <td className="pk-acts">
                         {personas.data?.available && <button className="btn" onClick={() => setChatting(it)}><MessagesSquare size={14} />拉群聊聊</button>}
                         <Link className="btn" to={`/stocks/${it.code}`} title="看 K 线"><CandlestickChart size={14} /></Link>

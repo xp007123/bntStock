@@ -12,7 +12,7 @@ export default function StrategyHead({ id, s, title }: { id: string; s?: PickStr
       {s && <p className="muted">{s.tagline}每个交易日 {s.publish_at} 出名单。</p>}
       <nav className="seg subnav pk-tabs" aria-label="这个策略的两页">
         <NavLink end to={`/picks/${id}`} className={on}>名单</NavLink>
-        <NavLink to={`/picks/${id}/record`} className={on}>历史表现</NavLink>
+        <NavLink to={`/picks/${id}/record`} className={on}>{s?.record_label ?? '历史表现'}</NavLink>
       </nav>
     </header>
   )

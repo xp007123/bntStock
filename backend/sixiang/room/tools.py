@@ -254,7 +254,7 @@ def method_hits(ctx: ToolContext, code: str) -> ToolResult:
     return ToolResult(True, f"{name} 今天符合：{desc}。", {"type": "methods", "code": c, "name": name, "checked": checked, "hits": hits})
 
 
-@tool("pick_list", "查这只股票最近有没有进量化选股名单（比如“竞价先锋”：开盘前集合竞价抢得最凶的 10 只），以及这份名单过去当天涨停的比例。",
+@tool("pick_list", "查这只股票最近有没有进平台的量化选股名单（“竞价先锋”：开盘前集合竞价抢得最凶的 10 只；“趋势之王”：看公司质地的中线名单），以及这份名单过去的表现。",
       {"code": {"type": "string", "description": "股票代码或名称"}}, ["code"])
 def pick_list(ctx: ToolContext, code: str) -> ToolResult:
     c = resolve(ctx, code)
@@ -268,7 +268,9 @@ def pick_list(ctx: ToolContext, code: str) -> ToolResult:
     text = f"{name} 在 {hit['date']} 进了“{hit['name']}”名单，排第 {hit['rank']} 名"
     if hit.get("auction_pct") is not None:
         text += f"，集合竞价涨了 {S(hit['auction_pct'])}"
-    if h:
+    if hit.get("facts"):
+        text += "。" + "；".join(hit["facts"])
+    elif h:
         text += (f"。这份名单过去 {h['days']} 个交易日里：当天封住涨停的占 {P(h['sealed_rate'], 1)}（全市场是 {P(h['market_sealed_rate'] or 0, 1)}）")
     return ToolResult(True, text + "。", {"type": "picks", "code": c, "name": name, "hit": hit})
 

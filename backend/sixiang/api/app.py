@@ -26,7 +26,7 @@ from ..room import llm as room_llm
 from ..room.registry import PersonaRegistry
 from ..room.service import RoomService
 from ..room.store import RoomStore
-from ..picks.service import PickSchedule, PickService
+from ..picks.service import PickSchedule, PickService, PoolSchedule
 from ..picks.store import PickStore
 from .routes import admin, admin_personas, ask, auth, judgments, market, patterns, picks, rooms, watchlist
 
@@ -42,19 +42,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     engine = make_engine(settings.db_url())
     pick_service = PickService(PickStore(engine), market_store)
     # 选股名单：设了 SIXIANG_PICKS_AT（如 09:25:40）才会每天自动去取
-    pick_schedule = PickSchedule(pick_service, os.environ["SIXIANG_PICKS_AT"]) if os.environ.get("SIXIANG_PICKS_AT") else None
+    # 文哥选股 09:26:30 出（开盘价要等 09:25 集合竞价结束），候选池每周五收盘后算下一周的
+    pick_schedules = [PickSchedule(pick_service, os.environ["SIXIANG_PICKS_AT"], ["sjm"]),
+                      PickSchedule(pick_service, os.environ.get("SIXIANG_WENGE_AT", "09:26:30"), ["wenge"]),
+                      PoolSchedule(pick_service, os.environ.get("SIXIANG_WENGE_POOL_AT", "16:30"))] if os.environ.get("SIXIANG_PICKS_AT") else []
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         if scheduler:
             scheduler.start()
-        if pick_schedule:
-            pick_schedule.start()
+        for job in pick_schedules:
+            job.start()
         yield
         if scheduler:
             scheduler.stop()
-        if pick_schedule:
-            pick_schedule.stop()
+        for job in pick_schedules:
+            job.stop()
         jobs.shutdown()
 
     app = FastAPI(title="四象智投", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)
